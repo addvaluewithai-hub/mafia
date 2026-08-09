@@ -1,3 +1,6 @@
+import { fetch } from 'expo/fetch';
+import { Platform } from 'react-native';
+
 import type { RoomSnapshot } from '@/lib/types';
 import { ensureAnonymousSession, supabase } from '@/lib/supabase';
 
@@ -79,29 +82,41 @@ export async function revealNextRound(code: string) {
   if (error) throw new Error(error.message);
 }
 
-export async function generateAndStartCase(code: string) {
-  await ensureAnonymousSession();
+function apiUrl(path: string) {
+  if (Platform.OS === 'web') return path;
 
-  const { data, error } = await supabase.functions.invoke('generate-case', {
-    body: { roomCode: normalizeRoomCode(code) },
-  });
+  const base = (
+    process.env.EXPO_PUBLIC_API_BASE_URL ?? process.env.EXPO_PUBLIC_APP_URL
+  )?.replace(/\/$/, '');
 
-  if (error) {
-    let message = error.message || 'تعذر توليد القضية';
-    const context = (error as { context?: Response }).context;
-    if (context) {
-      try {
-        const body = (await context.json()) as { error?: string };
-        if (body.error) message = body.error;
-      } catch {
-        // Keep the SDK error message.
-      }
-    }
-    throw new Error(message);
+  if (!base) {
+    throw new Error('حط EXPO_PUBLIC_APP_URL علشان تطبيق الموبايل يوصل لسيرفر اللعبة');
   }
 
-  const body = (data ?? {}) as { ok?: boolean; model?: string; error?: string };
-  if (!body.ok) throw new Error(body.error ?? 'تعذر توليد القضية');
+  return `${base}${path}`;
+}
+
+export async function generateAndStartCase(code: string) {
+  const session = await ensureAnonymousSession();
+  const response = await fetch(apiUrl('/api/generate-case'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ roomCode: normalizeRoomCode(code) }),
+  });
+
+  const body = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    model?: string;
+    error?: string;
+  };
+
+  if (!response.ok || !body.ok) {
+    throw new Error(body.error ?? 'تعذر توليد القضية');
+  }
+
   return body;
 }
 
