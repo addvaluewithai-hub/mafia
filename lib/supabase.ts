@@ -3,12 +3,8 @@ import 'expo-sqlite/localStorage/install';
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
-}
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://bwxgzcppxdrfcaorobpm.supabase.co';
+const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_76VPHfV-oe9rexR8B80Vkw_M0LhqckV';
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
