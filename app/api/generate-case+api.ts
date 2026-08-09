@@ -61,6 +61,7 @@ function schemaFor(playerCount: number, mafiaCount: number) {
 function jsonSchema(playerCount: number, mafiaCount: number) {
   return {
     type: 'object',
+    additionalProperties: false,
     required: ['title', 'premise', 'crime', 'characters', 'mafiaCharacterIndexes', 'rounds', 'solution'],
     properties: {
       title: { type: 'string' },
@@ -72,6 +73,7 @@ function jsonSchema(playerCount: number, mafiaCount: number) {
         maxItems: playerCount,
         items: {
           type: 'object',
+          additionalProperties: false,
           required: ['name', 'bio'],
           properties: {
             name: { type: 'string' },
@@ -91,6 +93,7 @@ function jsonSchema(playerCount: number, mafiaCount: number) {
         maxItems: 4,
         items: {
           type: 'object',
+          additionalProperties: false,
           required: ['clue', 'discussionPrompt'],
           properties: {
             clue: { type: 'string' },
@@ -127,7 +130,7 @@ function buildPrompt(input: {
 قواعد أساسية لا يجوز كسرها:
 - كل معلومات الشخصيات في bio معلومات علنية يسمعها كل اللاعبين. لا توجد أسرار شخصية خاصة.
 - السر الوحيد الذي يراه اللاعب على هاتفه هو هل هو Mafia أم Innocent.
-- المافيوزو لا يعرفون بعضهم. اجعل تعاونهم في الجريمة ممكنًا بدون معرفة الهوية: مثال فرصة صنعها شخص مجهول واستغلها الآخر، تعليمات مجهولة، أو خطتان التقتا بالصدفة.
+- المافيوزو لا يعرفون بعضهم. اجعل تعاونهم في الجريمة ممكنًا بدون معرفة الهوية: فرصة صنعها شخص مجهول واستغلها الآخر، تعليمات مجهولة، أو خطتان التقتا بالصدفة.
 - اختر mafiaCharacterIndexes من فهارس الشخصيات ابتداءً من صفر، ولا تذكر في النصوص العلنية من هم.
 - كل شخصية لازم يكون عندها دافع أو فرصة أو تفصيلة مريبة تجعل اتهامها منطقيًا.
 - لازم توجد تفاصيل مضللة حقيقية تخص الأبرياء، لكنها ليست كذبًا من الراوي.
@@ -142,6 +145,7 @@ function buildPrompt(input: {
 - اجعل أسماء الشخصيات مصرية خفيفة ومضحكة قليلًا لكن غير مهينة.
 - premise هي القصة الافتتاحية التي سيقرأها الـBoss للجميع، بدون كشف الحل.
 - discussionPrompt سؤال قصير يساعد النقاش بعد كل دليل من غير تلميح للإجابة.
+- لا تضع Markdown ولا code fences. أرجع JSON خام فقط.
 
 أرجع JSON فقط مطابقًا للـschema.
 `;
@@ -150,6 +154,15 @@ function buildPrompt(input: {
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function parseModelJson(raw: string) {
+  const trimmed = raw.trim();
+  const withoutFence = trimmed
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  return JSON.parse(withoutFence);
 }
 
 export async function POST(request: Request) {
@@ -201,10 +214,20 @@ export async function POST(request: Request) {
     const mafiaCount = mafiaCountFor(playerCount);
     const validator = schemaFor(playerCount, mafiaCount);
     const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const models = (process.env.GEMINI_MODELS ?? 'gemini-3.5-flash-lite,gemini-3.1-flash-lite')
+    const models = (
+      process.env.GEMINI_MODELS ??
+      'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it'
+    )
       .split(',')
       .map((model) => model.trim())
       .filter(Boolean);
+
+    const prompt = buildPrompt({
+      playerCount,
+      mafiaCount,
+      theme: snapshot.room.theme,
+      difficulty: snapshot.room.difficulty,
+    });
 
     let generated: z.infer<typeof validator> | null = null;
     let usedModel = '';
@@ -212,32 +235,30 @@ export async function POST(request: Request) {
 
     for (const model of models) {
       try {
+        const isGemini = model.startsWith('gemini-');
         const response = await ai.models.generateContent({
           model,
-          contents: buildPrompt({
-            playerCount,
-            mafiaCount,
-            theme: snapshot.room.theme,
-            difficulty: snapshot.room.difficulty,
-          }),
-          config: {
-            responseFormat: {
-              text: {
-                mimeType: 'application/json',
-                schema: jsonSchema(playerCount, mafiaCount),
+          contents: prompt,
+          config: isGemini
+            ? {
+                responseMimeType: 'application/json',
+                responseJsonSchema: jsonSchema(playerCount, mafiaCount),
+                maxOutputTokens: 8192,
+              }
+            : {
+                maxOutputTokens: 8192,
+                temperature: 0.7,
               },
-            },
-          },
         });
 
         const raw = response.text;
         if (!raw) throw new Error('Model returned an empty response.');
-        generated = validator.parse(JSON.parse(raw));
+        generated = validator.parse(parseModelJson(raw));
         usedModel = model;
         break;
       } catch (error) {
         lastError = `${model}: ${errorMessage(error)}`;
-        console.warn('Gemini model failed, trying fallback:', lastError);
+        console.warn('AI model failed, trying fallback:', lastError);
       }
     }
 
