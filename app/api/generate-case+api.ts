@@ -2,6 +2,9 @@ import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
+const DEFAULT_SUPABASE_URL = 'https://bwxgzcppxdrfcaorobpm.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_76VPHfV-oe9rexR8B80Vkw_M0LhqckV';
+
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -167,11 +170,11 @@ function parseModelJson(raw: string) {
 
 export async function POST(request: Request) {
   try {
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? DEFAULT_SUPABASE_URL;
+    const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    if (!supabaseUrl || !supabaseKey || !geminiKey) {
-      return Response.json({ error: 'Server environment is incomplete.' }, { status: 500, headers: corsHeaders() });
+    if (!geminiKey) {
+      return Response.json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' }, { status: 500, headers: corsHeaders() });
     }
 
     const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '');
