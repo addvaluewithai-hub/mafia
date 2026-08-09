@@ -3,14 +3,14 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { Body, Button, Card, ErrorText, Field, Pill, Screen } from '@/components/game-ui';
+import { Body, Button, Card, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import { createRoom, suggestedMafiaCount } from '@/lib/game';
 import { colors, rtlText } from '@/lib/theme';
 
 const difficulties = [
-  { key: 'easy' as const, label: 'سهل' },
-  { key: 'medium' as const, label: 'متوسط' },
-  { key: 'hard' as const, label: 'صعب' },
+  { key: 'easy' as const, label: 'سهل', desc: 'مناسب لأول مرة', icon: '◌' },
+  { key: 'medium' as const, label: 'متوسط', desc: 'أحسن توازن', icon: '◐' },
+  { key: 'hard' as const, label: 'صعب', desc: 'للناس الشكاكة', icon: '●' },
 ];
 
 export default function CreateRoomScreen() {
@@ -31,7 +31,6 @@ export default function CreateRoomScreen() {
       setError('اكتب اسم الـBoss الأول.');
       return;
     }
-
     setLoading(true);
     setError('');
     try {
@@ -52,36 +51,53 @@ export default function CreateRoomScreen() {
 
   return (
     <Screen>
-      <Card>
-        <Pill label="إعداد الروم" tone="gold" />
-        <Body>أنت الـBoss ومش لاعب. اختار عدد المشتبه فيهم، وبعد ما يدخلوا هنولد القضية على العدد الفعلي.</Body>
+      <View style={{ gap: 7, paddingTop: 6 }}>
+        <Eyebrow>MAFIA BOSS SETUP</Eyebrow>
+        <Title size={38}>جهّز القضية</Title>
+        <Body muted>إنت المدير. اختار شكل الماتش وسيب الباقي علينا.</Body>
+      </View>
+
+      <Card accent>
+        <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap' }}>
+          <MiniStat value={`${players}`} label="مشتبه فيه" />
+          <MiniStat value={`${suggestedMafiaCount(players)}`} label="مافيوزو" />
+          <MiniStat value="4" label="جولات" />
+        </View>
       </Card>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ ...rtlText, color: colors.text, fontWeight: '800' }}>اسم الـBoss</Text>
+      <View style={{ gap: 9 }}>
+        <SectionTitle title="اسم الـBoss" caption="الاسم اللي هيظهر فوق الروم" />
         <Field value={bossName} onChangeText={setBossName} placeholder="مثلاً: شريف" maxLength={24} />
       </View>
 
       <Card>
-        <Text style={{ ...rtlText, color: colors.text, fontWeight: '900', fontSize: 18 }}>عدد اللاعبين</Text>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable onPress={() => changePlayers(1)} style={{ padding: 14 }}>
-            <Text style={{ color: colors.gold, fontSize: 30, fontWeight: '900' }}>+</Text>
+        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
+          <SectionTitle title="عدد اللاعبين" caption="من 4 لـ 12 لاعب" />
+          <Pill label={`${suggestedMafiaCount(players)} مافيا`} tone="gold" />
+        </View>
+
+        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+          <Pressable
+            onPress={() => changePlayers(1)}
+            style={({ pressed }) => ({ width: 58, height: 58, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 })}>
+            <Text style={{ color: colors.gold, fontSize: 30, fontWeight: '600' }}>+</Text>
           </Pressable>
-          <View style={{ alignItems: 'center', gap: 4 }}>
-            <Text selectable style={{ color: colors.text, fontSize: 42, fontWeight: '900', fontVariant: ['tabular-nums'] }}>
-              {players}
-            </Text>
-            <Text style={{ color: colors.muted }}>مافيا مقترحة: {suggestedMafiaCount(players)}</Text>
+
+          <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
+            <Text selectable style={{ color: colors.text, fontSize: 54, lineHeight: 60, fontWeight: '900', fontVariant: ['tabular-nums'] }}>{players}</Text>
+            <Text style={{ color: colors.muted2, fontSize: 12 }}>لاعب</Text>
           </View>
-          <Pressable onPress={() => changePlayers(-1)} style={{ padding: 14 }}>
-            <Text style={{ color: colors.gold, fontSize: 34, fontWeight: '900' }}>−</Text>
+
+          <Pressable
+            onPress={() => changePlayers(-1)}
+            style={({ pressed }) => ({ width: 58, height: 58, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 })}>
+            <Text style={{ color: colors.gold, fontSize: 32, fontWeight: '600' }}>−</Text>
           </Pressable>
         </View>
       </Card>
 
       <View style={{ gap: 10 }}>
-        <Text style={{ ...rtlText, color: colors.text, fontWeight: '800' }}>صعوبة الأدلة</Text>
+        <SectionTitle title="صعوبة الأدلة" caption="بتغيّر قد إيه الربط بين الأدلة محتاج تركيز" />
         <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
           {difficulties.map((item) => {
             const selected = difficulty === item.key;
@@ -92,30 +108,37 @@ export default function CreateRoomScreen() {
                   setDifficulty(item.key);
                   void Haptics.selectionAsync();
                 }}
-                style={{
+                style={({ pressed }) => ({
                   flex: 1,
-                  paddingVertical: 13,
+                  minHeight: 112,
+                  padding: 13,
+                  gap: 6,
                   alignItems: 'center',
-                  borderRadius: 15,
+                  justifyContent: 'center',
+                  borderRadius: 20,
                   borderCurve: 'continuous',
                   borderWidth: 1,
-                  borderColor: selected ? colors.gold : colors.border,
-                  backgroundColor: selected ? '#2A2412' : colors.surface,
-                }}>
-                <Text style={{ color: selected ? colors.gold : colors.text, fontWeight: '800' }}>{item.label}</Text>
+                  borderColor: selected ? colors.gold2 : colors.border,
+                  backgroundColor: selected ? colors.goldSoft : colors.surface,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                })}>
+                <Text style={{ color: selected ? colors.gold : colors.muted2, fontSize: 18 }}>{item.icon}</Text>
+                <Text style={{ color: selected ? colors.gold : colors.text, fontWeight: '900', fontSize: 15 }}>{item.label}</Text>
+                <Text style={{ color: colors.muted2, fontSize: 10, textAlign: 'center' }}>{item.desc}</Text>
               </Pressable>
             );
           })}
         </View>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ ...rtlText, color: colors.text, fontWeight: '800' }}>جو القضية — اختياري</Text>
-        <Field value={theme} onChangeText={setTheme} placeholder="فرح، شركة، مصيف، نادي، فيلا..." maxLength={70} />
+      <View style={{ gap: 9 }}>
+        <SectionTitle title="جو القضية" caption="اختياري — والـAI هيبني القضية حواليه" />
+        <Field value={theme} onChangeText={setTheme} placeholder="فرح، فيلا، شركة، مصيف، نادي..." maxLength={70} />
+        <Text style={{ ...rtlText, color: colors.muted2, fontSize: 11 }}>مثال: «حفلة خطوبة في فيلا قديمة» أو «رحلة أصحاب في الساحل»</Text>
       </View>
 
       {error ? <ErrorText message={error} /> : null}
-      <Button label="اعمل الروم" onPress={submit} loading={loading} />
+      <Button label="اعمل الروم وابدأ التجمع" onPress={submit} loading={loading} />
     </Screen>
   );
 }
