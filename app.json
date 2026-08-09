@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "آخر خيط",
+    "slug": "akher-kheit",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "akherkheit",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "headers": {
+            "Cross-Origin-Embedder-Policy": "credentialless",
+            "Cross-Origin-Opener-Policy": "same-origin"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "web": {
+      "output": "server"
+    },
+    "android": {
+      "package": "com.addvaluewithai.akherkheit"
+    },
+    "ios": {
+      "bundleIdentifier": "com.addvaluewithai.akherkheit"
+    }
+  }
+}
