@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { Body, Button, Card, ErrorText, Field, Screen } from '@/components/game-ui';
+import { Body, Button, Card, ErrorText, Eyebrow, Field, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import { joinRoom, normalizeRoomCode } from '@/lib/game';
 import { colors, rtlText } from '@/lib/theme';
 
@@ -19,7 +19,6 @@ export default function JoinRoomScreen() {
       setError('اكتب كود الروم المكوّن من 6 حروف واسمك.');
       return;
     }
-
     setLoading(true);
     setError('');
     try {
@@ -35,29 +34,45 @@ export default function JoinRoomScreen() {
 
   return (
     <Screen>
-      <Card>
-        <Body>خد الكود من الـBoss. أول ما تدخل هتظهر في اللوبي، والدور السري مش هيبان غير لك بعد بداية القضية.</Body>
-      </Card>
+      <View style={{ minHeight: 620, justifyContent: 'center', gap: 20 }}>
+        <View style={{ gap: 7 }}>
+          <Eyebrow>JOIN THE CASE</Eyebrow>
+          <Title size={40}>ادخل الروم</Title>
+          <Body muted>خد الكود من الـBoss، واختار الاسم اللي هيتقال في الاتهامات 😈</Body>
+        </View>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ ...rtlText, color: colors.text, fontWeight: '800' }}>كود الروم</Text>
-        <Field
-          value={code}
-          onChangeText={(value) => setCode(normalizeRoomCode(value))}
-          placeholder="A1B2C3"
-          autoCapitalize="characters"
-          maxLength={6}
-          style={{ textAlign: 'center', writingDirection: 'ltr', fontSize: 24, letterSpacing: 5, fontWeight: '900' }}
-        />
+        <Card accent>
+          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={{ ...rtlText, color: colors.text, fontSize: 17, fontWeight: '900' }}>الدور السري آمن</Text>
+              <Text style={{ ...rtlText, color: colors.muted, fontSize: 13, lineHeight: 20 }}>مش هيبان غير على جهازك بعد ما الـBoss يبدأ القضية.</Text>
+            </View>
+            <Pill label="PRIVATE" tone="gold" />
+          </View>
+        </Card>
+
+        <View style={{ gap: 9 }}>
+          <SectionTitle title="كود الروم" caption="6 حروف أو أرقام" />
+          <Field
+            value={code}
+            onChangeText={(value) => setCode(normalizeRoomCode(value))}
+            placeholder="A1B2C3"
+            autoCapitalize="characters"
+            maxLength={6}
+            style={{ textAlign: 'center', writingDirection: 'ltr', fontSize: 28, letterSpacing: 7, fontWeight: '900', minHeight: 66 }}
+          />
+        </View>
+
+        <View style={{ gap: 9 }}>
+          <SectionTitle title="اسمك في اللعبة" caption="اختار اسم قصير وواضح" />
+          <Field value={nickname} onChangeText={setNickname} placeholder="مثلاً: مهند" maxLength={24} />
+        </View>
+
+        {error ? <ErrorText message={error} /> : null}
+        <Button label="ادخل التحقيق" onPress={submit} loading={loading} />
+
+        <Text style={{ ...rtlText, color: colors.muted2, fontSize: 11, textAlign: 'center' }}>مفيش تسجيل حساب • الدخول مؤقت وسريع</Text>
       </View>
-
-      <View style={{ gap: 8 }}>
-        <Text style={{ ...rtlText, color: colors.text, fontWeight: '800' }}>اسمك</Text>
-        <Field value={nickname} onChangeText={setNickname} placeholder="الاسم اللي هيظهر للناس" maxLength={24} />
-      </View>
-
-      {error ? <ErrorText message={error} /> : null}
-      <Button label="ادخل الروم" onPress={submit} loading={loading} />
     </Screen>
   );
 }
