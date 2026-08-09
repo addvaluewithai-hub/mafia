@@ -2,6 +2,30 @@
 
 لعبة تحقيق اجتماعية للعائلة والأصدقاء. الـBoss يعمل روم ويشارك رابطًا واحدًا، وكل لاعب يدخل باسمه. التطبيق يوزع الأدوار سرًا، يولّد قضية جديدة بالـAI، يكشف الأدلة جولة بجولة، ويدير التصويت والسجن والنهاية.
 
+## Architecture
+
+```text
+Players / Boss
+      |
+      v
+Expo Router app on EAS Hosting
+  - Web UI
+  - /api/generate-case server route
+  - Gemini API key stays server-side
+      |
+      +------> Gemini API
+      |
+      v
+Supabase
+  - Anonymous Auth
+  - Rooms / players / roles
+  - Realtime events
+  - Votes / eliminations
+  - Generated case storage
+```
+
+**Supabase لا يشغّل الـAI في الـproduction architecture.** هو فقط multiplayer backend والداتا. توليد القضية يتم في Expo API Route على السيرفر.
+
 ## الموجود في النسخة الأولى
 
 - Expo SDK 57: Web + Android + iOS من نفس الكود.
@@ -11,100 +35,90 @@
 - توزيع سري `Mafia / Innocent` فقط؛ كل باقي معلومات الشخصية علنية.
 - عدد المافيا تلقائي: 1 للـ4–5، 2 للـ6–9، 3 للـ10–12.
 - 4 جولات أدلة، تصويت حي، كشف دور المسجون، وحسم الفائز.
-- Supabase Anonymous Auth + RLS حتى لا يرى اللاعب أدوار الآخرين أو الأدلة المستقبلية.
-- Supabase Realtime لتحديث كل الموبايلات فورًا.
-- Gemini route server-side: المفتاح لا يصل للموبايل.
-- Model fallback عبر `GEMINI_MODELS`؛ الافتراضي:
-  - `gemini-3.5-flash-lite`
-  - `gemini-3.1-flash-lite`
-- الـAI يولّد القضية مرة واحدة فقط عند بداية الروم ثم تُحفظ في قاعدة البيانات لكل اللاعبين.
+- Supabase Anonymous Auth + RLS.
+- Supabase Realtime لتحديث كل الأجهزة.
+- Gemini server route في `app/api/generate-case+api.ts`.
+- الـAI يولّد القضية مرة واحدة فقط عند بداية الروم ثم تُحفظ للجميع.
 
-## 1) تثبيت المشروع
+## Environment variables
+
+Public client values:
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://bwxgzcppxdrfcaorobpm.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+```
+
+Server-only Gemini values:
+
+```env
+GEMINI_API_KEY=YOUR_GEMINI_KEY
+GEMINI_MODELS=gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it
+```
+
+After the first production web deployment also set:
+
+```env
+EXPO_PUBLIC_APP_URL=https://YOUR_APP.expo.app
+EXPO_PUBLIC_API_BASE_URL=https://YOUR_APP.expo.app
+```
+
+Never prefix `GEMINI_API_KEY` with `EXPO_PUBLIC_`.
+
+## First deployment to EAS Hosting
 
 ```bash
 npm install
-cp .env.example .env
+npx eas-cli@latest login
+npx eas-cli@latest init
 ```
 
-## 2) إعداد Supabase
-
-أنشئ مشروع Supabase جديدًا خاصًا باللعبة، ثم:
-
-1. فعّل **Anonymous Sign-Ins** من Authentication settings.
-2. شغّل migration الموجود في:
-
-```text
-supabase/migrations/20260809180000_initial_game.sql
-```
-
-3. ضع Project URL وPublishable Key في `.env`:
-
-```env
-EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
-```
-
-> لا تستخدم service-role key في التطبيق. التصميم الحالي لا يحتاجه أصلًا.
-
-## 3) Gemini
-
-ضع مفتاح Gemini على السيرفر فقط:
-
-```env
-GEMINI_API_KEY=...
-GEMINI_MODELS=gemini-3.5-flash-lite,gemini-3.1-flash-lite
-```
-
-يمكن إضافة موديلات أخرى إلى القائمة مفصولة بفواصل. الـroute يجربها بالترتيب إلى أن يحصل على قضية JSON صحيحة.
-
-## 4) التشغيل
-
-للـExpo Go / التطبيق:
+Add the environment variables above to the EAS `production` environment, then:
 
 ```bash
-npm run start
+npm run export:web
+npx eas-cli@latest deploy --prod
 ```
 
-لتشغيل Web + API routes محليًا:
+The first deploy gives the production `*.expo.app` URL. Put that URL in `EXPO_PUBLIC_APP_URL` and `EXPO_PUBLIC_API_BASE_URL`, then deploy once more.
+
+## Local development
+
+Create `.env` from `.env.example`, then:
 
 ```bash
-npm run web
+npm install
+npx expo start
 ```
 
-على Native، بعد نشر نسخة الويب/السيرفر، ضع:
+For testing the web server + API route:
 
-```env
-EXPO_PUBLIC_API_BASE_URL=https://YOUR_DEPLOYED_DOMAIN
-EXPO_PUBLIC_APP_URL=https://YOUR_DEPLOYED_DOMAIN
+```bash
+npx expo export --platform web
+npx expo serve
 ```
 
-`EXPO_PUBLIC_APP_URL` هو الرابط الذي سيُشارك مع اللاعبين مثل:
+## AI rules
 
-```text
-https://your-domain.com/room/A1B2C3
-```
+The prompt requires:
 
-## منطق الـAI
+- The first clue implicates at least three characters.
+- No single clue identifies a mafia player on its own.
+- Innocent characters have genuine misleading details.
+- The fourth clue only becomes strong when connected to previous clues.
+- Mafia players do not know each other in the story.
+- All character information is public; only the role is private.
+- The final solution explains both the crime and the red herrings.
 
-الـprompt يفرض قواعد حتى لا تكون الأدلة فاضحة:
-
-- أول دليل يورّط 3 شخصيات على الأقل.
-- لا يوجد دليل واحد يحدد مافيوزو وحده.
-- أدلة مضللة صحيحة للأبرياء.
-- الدليل الرابع يصبح قويًا فقط عند ربطه بما سبقه.
-- المافيوزو لا يعرفون بعضهم داخل القصة.
-- الشخصيات ومعلوماتها كلها علنية؛ السر الوحيد هو الدور.
-- الحل النهائي يفسر الجريمة والأدلة المضللة خطوة بخطوة.
-
-## هيكل المشروع
+## Main files
 
 ```text
 app/
-  index.tsx                 الصفحة الرئيسية
-  create.tsx                إنشاء روم
-  join.tsx                  دخول بكود
-  room/[code].tsx           اللوبي + اللعبة + التصويت
-  api/generate-case+api.ts  Gemini server route
+  index.tsx
+  create.tsx
+  join.tsx
+  room/[code].tsx
+  api/generate-case+api.ts
 components/
   game-ui.tsx
 lib/
@@ -114,18 +128,18 @@ lib/
   types.ts
 supabase/migrations/
   20260809180000_initial_game.sql
+.eas/workflows/
+  deploy.yml
 ```
 
-## الخطوة التالية
+## Next
 
-النسخة الحالية هي Core Multiplayer MVP. بعد توصيل Supabase وتشغيلها، أفضل إضافات المرحلة الثانية:
+After the first live multiplayer test:
 
-- Timer للجولات والتصويت.
-- مؤثرات صوتية وهزات أقوى عند كشف الدور.
-- أنواع قضايا وثيمات جاهزة.
-- إعادة مباراة بنفس الروم.
-- Achievements وإحصائيات.
-- QR للروم.
-- وضع Offline على موبايل واحد.
-- Moderation/Turnstile قبل فتح اللعبة للعامة.
-- Android production build ونشر Google Play.
+- Timer for discussion/voting.
+- QR room join.
+- Rematch in the same room.
+- Better animations, sounds and haptics.
+- Case packs and custom themes.
+- Android production build for Google Play.
+- Abuse protection before a public launch.
