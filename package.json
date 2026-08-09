@@ -8,6 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo serve",
+    "export:web": "expo export --platform web",
+    "deploy:web": "eas deploy --prod",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
