@@ -121,6 +121,12 @@ export async function generateAndStartCase(code: string) {
 }
 
 export function shareRoomUrl(code: string) {
-  const base = process.env.EXPO_PUBLIC_APP_URL?.replace(/\/$/, '');
-  return base ? `${base}/room/${normalizeRoomCode(code)}` : normalizeRoomCode(code);
+  const configured = process.env.EXPO_PUBLIC_APP_URL?.replace(/\/$/, '');
+  if (configured) return `${configured}/room/${normalizeRoomCode(code)}`;
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return `${window.location.origin}/room/${normalizeRoomCode(code)}`;
+  }
+
+  return normalizeRoomCode(code);
 }
