@@ -1,5 +1,3 @@
-import { fetch } from 'expo/fetch';
-
 import type { RoomSnapshot } from '@/lib/types';
 import { ensureAnonymousSession, supabase } from '@/lib/supabase';
 
@@ -81,34 +79,29 @@ export async function revealNextRound(code: string) {
   if (error) throw new Error(error.message);
 }
 
-function apiUrl(path: string) {
-  const base = process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
-  if (base) return `${base}${path}`;
-  if (process.env.EXPO_OS === 'web') return path;
-  throw new Error('حط EXPO_PUBLIC_API_BASE_URL علشان تشغيل الـAI من التطبيق');
-}
-
 export async function generateAndStartCase(code: string) {
-  const session = await ensureAnonymousSession();
-  const response = await fetch(apiUrl('/api/generate-case'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ roomCode: normalizeRoomCode(code) }),
+  await ensureAnonymousSession();
+
+  const { data, error } = await supabase.functions.invoke('generate-case', {
+    body: { roomCode: normalizeRoomCode(code) },
   });
 
-  const body = (await response.json().catch(() => ({}))) as {
-    ok?: boolean;
-    model?: string;
-    error?: string;
-  };
-
-  if (!response.ok) {
-    throw new Error(body.error ?? 'تعذر توليد القضية');
+  if (error) {
+    let message = error.message || 'تعذر توليد القضية';
+    const context = (error as { context?: Response }).context;
+    if (context) {
+      try {
+        const body = (await context.json()) as { error?: string };
+        if (body.error) message = body.error;
+      } catch {
+        // Keep the SDK error message.
+      }
+    }
+    throw new Error(message);
   }
 
+  const body = (data ?? {}) as { ok?: boolean; model?: string; error?: string };
+  if (!body.ok) throw new Error(body.error ?? 'تعذر توليد القضية');
   return body;
 }
 
