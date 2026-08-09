@@ -10,14 +10,17 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '800' },
+          headerTintColor: colors.gold,
+          headerShadowVisible: false,
+          headerBackTitle: '',
+          headerTitleStyle: { color: colors.text, fontWeight: '900', fontSize: 15 },
           contentStyle: { backgroundColor: colors.background },
+          animation: 'fade_from_bottom',
         }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="create" options={{ title: 'اعمل روم' }} />
-        <Stack.Screen name="join" options={{ title: 'ادخل روم' }} />
-        <Stack.Screen name="room/[code]" options={{ title: 'الروم' }} />
+        <Stack.Screen name="create" options={{ title: 'إنشاء روم' }} />
+        <Stack.Screen name="join" options={{ title: 'دخول روم' }} />
+        <Stack.Screen name="room/[code]" options={{ title: 'آخر خيط' }} />
       </Stack>
     </>
   );
