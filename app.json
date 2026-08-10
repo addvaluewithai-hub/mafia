@@ -2,7 +2,7 @@
   "expo": {
     "name": "آخر خيط",
     "slug": "akher-kheit",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "akherkheit",
     "userInterfaceStyle": "dark",
@@ -22,6 +22,7 @@
       "typedRoutes": true
     },
     "web": {
+      "bundler": "metro",
       "output": "server"
     },
     "android": {
