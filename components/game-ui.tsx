@@ -15,7 +15,7 @@ export function Screen({ children }: PropsWithChildren) {
       <View pointerEvents="none" className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-[#4a3512] opacity-25" />
       <View pointerEvents="none" className="absolute -bottom-36 -left-32 h-96 w-96 rounded-full bg-[#241b3a] opacity-25" />
       <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
-        <View className="mx-auto w-full max-w-3xl gap-5 px-4 pb-16 pt-5 sm:px-6">{children}</View>
+        <View className="mx-auto w-full max-w-5xl gap-5 px-4 pb-16 pt-5 sm:px-6 lg:px-8">{children}</View>
       </ScrollView>
     </View>
   );
@@ -92,17 +92,23 @@ export function Button({ label, onPress, disabled, loading, tone = 'gold', icon,
 }
 
 export function Pill({ label, tone = 'neutral' }: { label: string; tone?: 'neutral' | 'gold' | 'red' | 'green' }) {
-  const palette = tone === 'gold'
-    ? 'border-case-gold/30 bg-case-gold/10 text-case-gold'
+  const boxClass = tone === 'gold'
+    ? 'border-case-gold/30 bg-case-gold/10'
     : tone === 'red'
-      ? 'border-case-red/30 bg-case-red/10 text-case-red'
+      ? 'border-case-red/30 bg-case-red/10'
       : tone === 'green'
-        ? 'border-case-green/30 bg-case-green/10 text-case-green'
-        : 'border-white/10 bg-white/5 text-case-muted';
-  const [box, text] = palette.split(' text-');
+        ? 'border-case-green/30 bg-case-green/10'
+        : 'border-white/10 bg-white/5';
+  const textClass = tone === 'gold'
+    ? 'text-case-gold'
+    : tone === 'red'
+      ? 'text-case-red'
+      : tone === 'green'
+        ? 'text-case-green'
+        : 'text-case-muted';
   return (
-    <View className={`self-start rounded-full border px-3 py-1.5 ${box}`}>
-      <Text className={`text-[10px] font-black tracking-wider text-${text}`}>{label}</Text>
+    <View className={`self-start rounded-full border px-3 py-1.5 ${boxClass}`}>
+      <Text className={`text-[10px] font-black tracking-wider ${textClass}`}>{label}</Text>
     </View>
   );
 }
