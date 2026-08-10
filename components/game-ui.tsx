@@ -1,3 +1,4 @@
+import { Fingerprint } from 'lucide-react-native';
 import type { PropsWithChildren, ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -11,11 +12,11 @@ import {
 
 export function Screen({ children }: PropsWithChildren) {
   return (
-    <View className="flex-1 bg-noir-950">
+    <View className="flex-1 bg-noir-950 font-sans">
       <View pointerEvents="none" className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-[#4a3512] opacity-25" />
       <View pointerEvents="none" className="absolute -bottom-36 -left-32 h-96 w-96 rounded-full bg-[#241b3a] opacity-25" />
       <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
-        <View className="mx-auto w-full max-w-5xl gap-5 px-4 pb-16 pt-5 sm:px-6 lg:px-8">{children}</View>
+        <View className="mx-auto w-full max-w-5xl gap-5 px-4 pb-20 pt-5 sm:px-6 lg:px-8">{children}</View>
       </ScrollView>
     </View>
   );
@@ -34,22 +35,22 @@ export function Card({ children, tone = 'default', className = '' }: PropsWithCh
 }
 
 export function Eyebrow({ children }: PropsWithChildren) {
-  return <Text className="text-right text-[11px] font-black uppercase tracking-[2px] text-case-gold">{children}</Text>;
+  return <Text selectable className="text-right text-[11px] font-black uppercase tracking-[2px] text-case-gold">{children}</Text>;
 }
 
 export function Title({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
-  return <Text className={`text-right text-4xl font-black leading-[46px] text-case-cream sm:text-5xl sm:leading-[58px] ${className}`}>{children}</Text>;
+  return <Text selectable className={`text-right text-4xl font-black leading-[50px] text-case-cream sm:text-5xl sm:leading-[62px] ${className}`}>{children}</Text>;
 }
 
 export function Body({ children, muted = false, className = '' }: PropsWithChildren<{ muted?: boolean; className?: string }>) {
-  return <Text className={`text-right text-[15px] leading-7 ${muted ? 'text-case-muted' : 'text-case-cream'} ${className}`}>{children}</Text>;
+  return <Text selectable className={`text-right text-[15px] leading-7 ${muted ? 'text-case-muted' : 'text-case-cream'} ${className}`}>{children}</Text>;
 }
 
 export function SectionTitle({ title, caption }: { title: string; caption?: string }) {
   return (
     <View className="gap-1">
-      <Text className="text-right text-xl font-black text-case-cream">{title}</Text>
-      {caption ? <Text className="text-right text-xs leading-5 text-case-dim">{caption}</Text> : null}
+      <Text selectable className="text-right text-xl font-black text-case-cream">{title}</Text>
+      {caption ? <Text selectable className="text-right text-xs leading-5 text-case-dim">{caption}</Text> : null}
     </View>
   );
 }
@@ -108,7 +109,7 @@ export function Pill({ label, tone = 'neutral' }: { label: string; tone?: 'neutr
         : 'text-case-muted';
   return (
     <View className={`self-start rounded-full border px-3 py-1.5 ${boxClass}`}>
-      <Text className={`text-[10px] font-black tracking-wider ${textClass}`}>{label}</Text>
+      <Text selectable className={`text-[10px] font-black tracking-wider ${textClass}`}>{label}</Text>
     </View>
   );
 }
@@ -116,7 +117,9 @@ export function Pill({ label, tone = 'neutral' }: { label: string; tone?: 'neutr
 export function HeroMark() {
   return (
     <View className="h-20 w-20 rotate-[-5deg] items-center justify-center rounded-[26px] border border-case-gold/40 bg-case-gold/10 web:shadow-gold">
-      <Text className="rotate-[5deg] text-4xl font-black text-case-gold">خ</Text>
+      <View className="rotate-[5deg]">
+        <Fingerprint size={39} color="#f2c14e" strokeWidth={1.8} />
+      </View>
     </View>
   );
 }
@@ -124,7 +127,7 @@ export function HeroMark() {
 export function MiniStat({ value, label }: { value: string; label: string }) {
   return (
     <View className="min-w-[92px] flex-1 gap-1 rounded-2xl border border-white/[0.07] bg-noir-750 px-4 py-3">
-      <Text className="text-right text-lg font-black text-case-cream">{value}</Text>
+      <Text selectable className="text-right text-lg font-black text-case-cream">{value}</Text>
       <Text className="text-right text-[10px] font-bold text-case-dim">{label}</Text>
     </View>
   );
@@ -137,7 +140,7 @@ export function Divider() {
 export function ErrorText({ message }: { message: string }) {
   return (
     <View className="rounded-2xl border border-case-red/30 bg-case-red/10 px-4 py-3">
-      <Text className="text-right text-sm font-bold leading-6 text-[#ff9da5]">{message}</Text>
+      <Text selectable className="text-right text-sm font-bold leading-6 text-[#ff9da5]">{message}</Text>
     </View>
   );
 }
