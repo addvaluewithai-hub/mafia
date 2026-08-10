@@ -82,6 +82,14 @@ export async function revealNextRound(code: string) {
   if (error) throw new Error(error.message);
 }
 
+export async function restartDiscussionTimer(code: string, seconds: number) {
+  const { error } = await supabase.rpc('restart_discussion_timer', {
+    p_code: normalizeRoomCode(code),
+    p_seconds: seconds,
+  });
+  if (error) throw new Error(error.message);
+}
+
 function apiUrl(path: string) {
   if (Platform.OS === 'web') return path;
 
