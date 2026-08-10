@@ -10,6 +10,7 @@ function corsHeaders() {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Cache-Control': 'no-store',
   };
 }
 
@@ -155,7 +156,18 @@ function buildPrompt(input: {
 }
 
 function errorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    if (typeof record.message === 'string') return record.message;
+    if (typeof record.error === 'string') return record.error;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'Unknown error';
+    }
+  }
   return String(error);
 }
 
@@ -177,15 +189,20 @@ export async function POST(request: Request) {
       return Response.json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' }, { status: 500, headers: corsHeaders() });
     }
 
-    const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '');
-    if (!token) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders() });
-    }
-
-    const body = (await request.json()) as { roomCode?: string };
+    const body = (await request.json().catch(() => ({}))) as {
+      roomCode?: string;
+      sessionToken?: string;
+    };
     const roomCode = body.roomCode?.trim().toUpperCase();
+    const headerToken = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '').trim();
+    const token = headerToken || body.sessionToken?.trim();
+
     if (!roomCode) {
-      return Response.json({ error: 'Missing room code.' }, { status: 400, headers: corsHeaders() });
+      return Response.json({ error: 'كود الروم ناقص.' }, { status: 400, headers: corsHeaders() });
+    }
+    if (!token) {
+      console.warn('generate-case rejected: no session token received');
+      return Response.json({ error: 'جلسة الـBoss مش واصلة للسيرفر. اعمل Refresh وجرب تاني.' }, { status: 401, headers: corsHeaders() });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -193,25 +210,28 @@ export async function POST(request: Request) {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
 
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData.user) {
-      return Response.json({ error: 'Invalid session.' }, { status: 401, headers: corsHeaders() });
-    }
-
+    // room_snapshot itself is authenticated and tells us whether this exact user is the Boss.
+    // Avoid a second auth round-trip here; the RPC is the source of truth for game permissions.
     const { data: snapshot, error: snapshotError } = await supabase.rpc('room_snapshot', { p_code: roomCode });
     if (snapshotError || !snapshot) {
-      return Response.json({ error: snapshotError?.message ?? 'Room not found.' }, { status: 404, headers: corsHeaders() });
+      const message = errorMessage(snapshotError ?? 'Room not found');
+      const unauthorized = message.toLowerCase().includes('unauthorized') || message.toLowerCase().includes('jwt');
+      console.warn('generate-case snapshot rejected:', message);
+      return Response.json(
+        { error: unauthorized ? 'جلسة الـBoss انتهت. اعمل Refresh وجرب تاني.' : message },
+        { status: unauthorized ? 401 : 404, headers: corsHeaders() },
+      );
     }
     if (!snapshot.isHost) {
-      return Response.json({ error: 'Only the Boss can start the case.' }, { status: 403, headers: corsHeaders() });
+      return Response.json({ error: 'الـBoss فقط يقدر يبدأ القضية.' }, { status: 403, headers: corsHeaders() });
     }
     if (snapshot.room.status !== 'lobby') {
-      return Response.json({ error: 'The case has already started.' }, { status: 409, headers: corsHeaders() });
+      return Response.json({ error: 'القضية بدأت بالفعل.' }, { status: 409, headers: corsHeaders() });
     }
 
     const playerCount = Number(snapshot.playerCount);
     if (playerCount < 4 || playerCount > 12) {
-      return Response.json({ error: 'Player count must be between 4 and 12.' }, { status: 400, headers: corsHeaders() });
+      return Response.json({ error: 'عدد اللاعبين لازم يكون من 4 لـ12.' }, { status: 400, headers: corsHeaders() });
     }
 
     const mafiaCount = mafiaCountFor(playerCount);
@@ -267,7 +287,7 @@ export async function POST(request: Request) {
 
     if (!generated) {
       return Response.json(
-        { error: `كل موديلات التوليد مشغولة أو وصلت للحد مؤقتًا. ${lastError}` },
+        { error: `موديلات التوليد مش متاحة مؤقتًا. ${lastError}` },
         { status: 503, headers: corsHeaders() },
       );
     }
@@ -277,12 +297,13 @@ export async function POST(request: Request) {
       p_case: generated,
     });
     if (installError) {
-      return Response.json({ error: installError.message }, { status: 500, headers: corsHeaders() });
+      return Response.json({ error: errorMessage(installError) }, { status: 500, headers: corsHeaders() });
     }
 
     return Response.json({ ok: true, model: usedModel }, { headers: corsHeaders() });
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: errorMessage(error) }, { status: 500, headers: corsHeaders() });
+    const message = errorMessage(error);
+    console.error('generate-case fatal:', message);
+    return Response.json({ error: message }, { status: 500, headers: corsHeaders() });
   }
 }
