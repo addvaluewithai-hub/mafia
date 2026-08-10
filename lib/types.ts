@@ -39,6 +39,8 @@ export type RoomSnapshot = {
     lastResolvedRound: number;
     winner: Winner;
     publicSolution: string | null;
+    timerDurationSeconds: number;
+    timerEndsAt: string | null;
   };
   isHost: boolean;
   me: {
