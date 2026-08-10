@@ -3,20 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Share, Text, View } from 'react-native';
 
-import {
-  Body,
-  Button,
-  Card,
-  Divider,
-  ErrorText,
-  Eyebrow,
-  Field,
-  MiniStat,
-  Pill,
-  Screen,
-  SectionTitle,
-  Title,
-} from '@/components/game-ui';
+import { Body, Button, Card, Divider, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import {
   castVote,
   generateAndStartCase,
@@ -28,97 +15,61 @@ import {
   shareRoomUrl,
 } from '@/lib/game';
 import { subscribeToRoomEvents } from '@/lib/supabase';
-import { colors, rtlText } from '@/lib/theme';
 import type { PlayerState, RoomSnapshot } from '@/lib/types';
 
-function PlayerRow({
-  player,
-  selected,
-  onPress,
-  disabled,
-  compact = false,
-}: {
+function PlayerCard({ player, selected, onPress, compact = false, disabled = false }: {
   player: PlayerState;
   selected?: boolean;
   onPress?: () => void;
-  disabled?: boolean;
   compact?: boolean;
+  disabled?: boolean;
 }) {
   const initial = (player.nickname.trim()[0] ?? '?').toUpperCase();
+  const stateClass = selected
+    ? 'border-case-gold/60 bg-case-gold/10'
+    : player.isEliminated
+      ? 'border-case-red/25 bg-case-red/5 opacity-55'
+      : 'border-white/10 bg-noir-800';
+
   return (
     <Pressable
       disabled={disabled || !onPress}
       onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row-reverse',
-        alignItems: compact ? 'center' : 'flex-start',
-        gap: 12,
-        padding: compact ? 12 : 14,
-        borderRadius: 19,
-        borderCurve: 'continuous',
-        borderWidth: 1,
-        borderColor: selected ? colors.gold2 : player.isEliminated ? '#54272C' : colors.border,
-        backgroundColor: selected ? colors.goldSoft : player.isEliminated ? '#1B1012' : colors.surface2,
-        opacity: player.isEliminated ? 0.58 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
-      })}>
-      <View
-        style={{
-          width: 42,
-          height: 42,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 15,
-          backgroundColor: selected ? '#3A2E13' : colors.surface3,
-          borderWidth: 1,
-          borderColor: selected ? colors.gold2 : colors.border,
-        }}>
-        <Text style={{ color: selected ? colors.gold : colors.text, fontSize: 17, fontWeight: '900' }}>{initial}</Text>
+      className={`w-full flex-row-reverse items-start gap-3 rounded-2xl border p-3.5 active:scale-[0.99] ${stateClass}`}>
+      <View className={`h-11 w-11 items-center justify-center rounded-2xl border ${selected ? 'border-case-gold/50 bg-case-gold/15' : 'border-white/10 bg-noir-700'}`}>
+        <Text className={`text-base font-black ${selected ? 'text-case-gold' : 'text-case-cream'}`}>{initial}</Text>
       </View>
-
-      <View style={{ flex: 1, gap: 4 }}>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <Text selectable style={{ ...rtlText, color: colors.text, fontSize: 16, fontWeight: '900' }}>{player.nickname}</Text>
+      <View className="flex-1 gap-1">
+        <View className="flex-row-reverse items-center justify-between gap-2">
+          <Text className="text-right text-base font-black text-case-cream">{player.nickname}</Text>
           {player.isEliminated ? <Pill label="في السجن" tone="red" /> : selected ? <Pill label="اختيارك" tone="gold" /> : null}
         </View>
-        {!compact && player.characterName ? (
-          <Text selectable style={{ ...rtlText, color: colors.gold, fontSize: 13, fontWeight: '900' }}>{player.characterName}</Text>
-        ) : null}
-        {!compact && player.characterBio ? (
-          <Text selectable style={{ ...rtlText, color: colors.muted, fontSize: 13, lineHeight: 21 }}>{player.characterBio}</Text>
-        ) : null}
+        {!compact && player.characterName ? <Text className="text-right text-xs font-black text-case-gold">{player.characterName}</Text> : null}
+        {!compact && player.characterBio ? <Text className="text-right text-xs leading-5 text-case-muted">{player.characterBio}</Text> : null}
       </View>
     </Pressable>
   );
 }
 
-function ClueCard({ roundIndex, clue, prompt, active }: { roundIndex: number; clue: string; prompt: string; active: boolean }) {
+function ClueCard({ index, clue, prompt, active }: { index: number; clue: string; prompt: string; active: boolean }) {
   return (
-    <View
-      style={{
-        gap: 13,
-        padding: 17,
-        borderRadius: 22,
-        borderWidth: 1,
-        borderColor: active ? '#69531F' : colors.border,
-        backgroundColor: active ? '#15130E' : colors.surface,
-      }}>
-      <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: active ? colors.gold : colors.surface3 }}>
-            <Text style={{ color: active ? colors.ink : colors.text, fontWeight: '900' }}>{roundIndex + 1}</Text>
+    <Card tone={active ? 'gold' : 'default'}>
+      <View className="flex-row-reverse items-center justify-between gap-3">
+        <View className="flex-row-reverse items-center gap-3">
+          <View className={`h-11 w-11 items-center justify-center rounded-2xl ${active ? 'bg-case-gold' : 'bg-noir-700'}`}>
+            <Text className={`font-black ${active ? 'text-noir-950' : 'text-case-cream'}`}>{index + 1}</Text>
           </View>
-          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '900' }}>الدليل {roundIndex + 1}</Text>
+          <Text className="text-right text-lg font-black text-case-cream">الدليل {index + 1}</Text>
         </View>
-        {active ? <Pill label="الجولة الحالية" tone="gold" /> : <Pill label="مكشوف" />}
+        <Pill label={active ? 'الجولة الحالية' : 'مكشوف'} tone={active ? 'gold' : 'neutral'} />
       </View>
-      <Text selectable style={{ ...rtlText, color: colors.text, fontSize: 17, lineHeight: 28, fontWeight: '800' }}>{clue}</Text>
+      <Text className="text-right text-base font-bold leading-8 text-case-cream">{clue}</Text>
       <Divider />
-      <View style={{ flexDirection: 'row-reverse', gap: 8, alignItems: 'flex-start' }}>
-        <Text style={{ color: colors.gold, fontSize: 15 }}>؟</Text>
-        <Text style={{ ...rtlText, flex: 1, color: colors.muted, fontSize: 13, lineHeight: 21 }}>{prompt}</Text>
+      <View className="flex-row-reverse items-start gap-2">
+        <Text className="text-case-gold">؟</Text>
+        <Text className="flex-1 text-right text-xs leading-5 text-case-muted">{prompt}</Text>
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -146,23 +97,16 @@ export default function RoomScreen() {
     }
   }, [code]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   useEffect(() => {
     if (!snapshot?.room.id) return;
     return subscribeToRoomEvents(snapshot.room.id, () => void refresh());
   }, [snapshot?.room.id, refresh]);
 
-  useEffect(() => {
-    setSelectedVote(null);
-  }, [snapshot?.room.roundIndex]);
+  useEffect(() => { setSelectedVote(null); }, [snapshot?.room.roundIndex]);
 
-  const alivePlayers = useMemo(
-    () => snapshot?.players.filter((player) => !player.isEliminated) ?? [],
-    [snapshot?.players],
-  );
+  const alivePlayers = useMemo(() => snapshot?.players.filter((player) => !player.isEliminated) ?? [], [snapshot?.players]);
 
   const doAction = async (action: () => Promise<unknown>) => {
     setActionLoading(true);
@@ -180,10 +124,10 @@ export default function RoomScreen() {
   if (loading && !snapshot) {
     return (
       <Screen>
-        <View style={{ minHeight: 560, justifyContent: 'center' }}>
-          <Card accent>
+        <View className="min-h-[600px] justify-center">
+          <Card tone="gold">
             <Eyebrow>CASE FILE</Eyebrow>
-            <Title size={28}>بنفتح ملف القضية...</Title>
+            <Text className="text-right text-2xl font-black text-case-cream">بنفتح ملف القضية...</Text>
             <Body muted>ثواني ونجمع كل اللي حصل في الروم.</Body>
           </Card>
         </View>
@@ -194,7 +138,7 @@ export default function RoomScreen() {
   if (!snapshot) {
     return (
       <Screen>
-        <View style={{ minHeight: 560, justifyContent: 'center', gap: 12 }}>
+        <View className="min-h-[600px] justify-center gap-3">
           <ErrorText message={error || 'الروم مش موجود.'} />
           <Button label="حاول تاني" onPress={() => void refresh()} tone="dark" />
         </View>
@@ -205,6 +149,7 @@ export default function RoomScreen() {
   const { room } = snapshot;
   const isOutsider = !snapshot.isHost && !snapshot.me;
   const lobbyReady = snapshot.playerCount >= 4;
+  const progress = `${Math.min(100, (snapshot.playerCount / room.maxPlayers) * 100)}%` as `${number}%`;
 
   const submitJoin = async () => {
     if (nickname.trim().length < 2) {
@@ -241,33 +186,27 @@ export default function RoomScreen() {
   const settleVote = async () => {
     await doAction(async () => {
       const result = await resolveVote(code);
-      if (result.status === 'pending') {
-        Alert.alert('لسه التصويت ناقص', `ناقص ${result.missing ?? 0} تصويت.`);
-      } else if (result.status === 'tie') {
-        Alert.alert('تعادل', 'الأصوات اتصفّرت. 30 ثانية دفاع لكل مشتبه وبعدها صوّتوا تاني.');
-      } else if (result.status === 'finished') {
-        Alert.alert('انتهت القضية', result.winner === 'innocents' ? 'الأبرياء كشفوا المافيا.' : 'المافيا ضحكت عليكم وكسبت.');
-      } else {
-        Alert.alert('إلى السجن', `${result.nickname} — ${result.role === 'mafia' ? 'مافيوزو' : 'بريء'}`);
-      }
+      if (result.status === 'pending') Alert.alert('لسه التصويت ناقص', `ناقص ${result.missing ?? 0} تصويت.`);
+      else if (result.status === 'tie') Alert.alert('تعادل', 'الأصوات اتصفّرت. ناقشوا بسرعة وصوّتوا تاني.');
+      else if (result.status === 'finished') Alert.alert('انتهت القضية', result.winner === 'innocents' ? 'الأبرياء كشفوا المافيا.' : 'المافيا كسبت.');
+      else Alert.alert('إلى السجن', `${result.nickname} — ${result.role === 'mafia' ? 'مافيوزو' : 'بريء'}`);
     });
   };
 
   return (
     <Screen>
-      <View style={{ gap: 12, paddingTop: 4 }}>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <View style={{ flex: 1, gap: 5 }}>
+      <View className="gap-4 pt-2">
+        <View className="gap-4 sm:flex-row-reverse sm:items-end sm:justify-between">
+          <View className="flex-1 gap-2">
             <Eyebrow>{room.status === 'lobby' ? 'WAITING ROOM' : room.status === 'playing' ? 'LIVE INVESTIGATION' : 'CASE CLOSED'}</Eyebrow>
-            <Title size={34}>{room.title ?? 'غرفة التحقيق'}</Title>
+            <Title className="text-3xl sm:text-4xl">{room.title ?? 'غرفة التحقيق'}</Title>
           </View>
-          <View style={{ alignItems: 'flex-end', gap: 6 }}>
+          <View className="items-end gap-2">
             <Pill label={code} tone="gold" />
-            <Text style={{ color: colors.muted2, fontSize: 11 }}>Boss: {room.bossName}</Text>
+            <Text className="text-[10px] text-case-dim">Boss: {room.bossName}</Text>
           </View>
         </View>
-
-        <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap' }}>
+        <View className="flex-row-reverse flex-wrap gap-2">
           <MiniStat value={`${snapshot.playerCount}/${room.maxPlayers}`} label="لاعبين" />
           <MiniStat value={`${room.mafiaCount}`} label="مافيا" />
           <MiniStat value={room.status === 'lobby' ? 'LOBBY' : room.status === 'playing' ? `R${room.roundIndex + 1}` : 'END'} label="الحالة" />
@@ -277,11 +216,9 @@ export default function RoomScreen() {
       {error ? <ErrorText message={error} /> : null}
 
       {isOutsider ? (
-        <Card accent>
+        <Card tone="gold" className="mx-auto w-full max-w-xl">
           <SectionTitle title="اسمك على قائمة المشتبه فيهم" caption="ادخل قبل ما الـBoss يبدأ القضية" />
-          {room.status !== 'lobby' ? (
-            <Body muted>القضية بدأت بالفعل، ومش بنقبل لاعبين جدد بعد البداية.</Body>
-          ) : (
+          {room.status !== 'lobby' ? <Body muted>القضية بدأت بالفعل، ومش بنقبل لاعبين جدد.</Body> : (
             <>
               <Field value={nickname} onChangeText={setNickname} placeholder="اكتب اسمك" maxLength={24} />
               <Button label="انضم للروم" onPress={submitJoin} loading={actionLoading} />
@@ -291,144 +228,110 @@ export default function RoomScreen() {
       ) : null}
 
       {room.status === 'lobby' ? (
-        <>
-          <Card accent>
-            <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-              <View style={{ flex: 1, gap: 5 }}>
-                <SectionTitle title="اللوبي" caption="اجمع الناس الأول، وبعدها القضية هتتكتب على عددكم" />
+        <View className="gap-5 lg:flex-row-reverse lg:items-start lg:gap-7">
+          <View className="flex-1 gap-5">
+            <Card tone="gold">
+              <View className="flex-row-reverse items-start justify-between gap-3">
+                <SectionTitle title="اللوبي" caption="اجمع الناس، وبعدها القضية هتتكتب على عددكم" />
+                <Pill label={lobbyReady ? 'جاهزين' : 'مستنيين'} tone={lobbyReady ? 'green' : 'gold'} />
               </View>
-              <Pill label={lobbyReady ? 'جاهزين' : 'مستنيين'} tone={lobbyReady ? 'green' : 'gold'} />
-            </View>
-            <View style={{ height: 7, borderRadius: 99, backgroundColor: colors.surface3, overflow: 'hidden' }}>
-              <View style={{ height: '100%', width: `${Math.min(100, (snapshot.playerCount / room.maxPlayers) * 100)}%`, borderRadius: 99, backgroundColor: lobbyReady ? colors.green : colors.gold }} />
-            </View>
-            <Button label="شارك رابط الروم" onPress={() => void share()} tone="dark" />
-          </Card>
+              <View className="h-2 overflow-hidden rounded-full bg-noir-700">
+                <View style={{ width: progress }} className={`h-full rounded-full ${lobbyReady ? 'bg-case-green' : 'bg-case-gold'}`} />
+              </View>
+              <Button label="شارك رابط الروم" onPress={() => void share()} tone="dark" />
+            </Card>
 
-          <View style={{ gap: 10 }}>
-            <SectionTitle title="الموجودين" caption={`${snapshot.playerCount} دخلوا لحد دلوقتي`} />
-            {snapshot.players.map((player) => <PlayerRow key={player.id} player={player} compact />)}
-            {!snapshot.players.length ? (
-              <Card><Body muted>لسه مفيش مشتبه فيهم. ابعت الرابط وخلي أول واحد يدخل.</Body></Card>
-            ) : null}
+            {snapshot.isHost ? (
+              <Card>
+                <View className="flex-row-reverse items-start justify-between gap-3">
+                  <SectionTitle title="لوحة الـBoss" caption={`الصعوبة: ${room.difficulty} • الجو: ${room.theme}`} />
+                  <Pill label="HOST" tone="gold" />
+                </View>
+                <Button
+                  label={snapshot.playerCount < 4 ? 'محتاجين 4 لاعبين على الأقل' : 'ولّد القضية وابدأ'}
+                  onPress={startGame}
+                  disabled={snapshot.playerCount < 4}
+                  loading={actionLoading}
+                />
+                <Text className="text-right text-[10px] leading-5 text-case-dim">القضية بتتولد مرة واحدة وتتخزن للروم كله.</Text>
+              </Card>
+            ) : !isOutsider ? <Card><Body muted>إنت جوه. استنى الـBoss يبدأ القضية.</Body></Card> : null}
           </View>
 
-          {snapshot.isHost ? (
-            <Card>
-              <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <SectionTitle title="لوحة الـBoss" caption={`الصعوبة: ${room.difficulty} • الجو: ${room.theme}`} />
-                <Pill label="HOST" tone="gold" />
-              </View>
-              <Button
-                label={snapshot.playerCount < 4 ? 'محتاجين 4 لاعبين على الأقل' : 'ولّد القضية وابدأ'}
-                onPress={startGame}
-                disabled={snapshot.playerCount < 4}
-                loading={actionLoading}
-              />
-              <Text style={{ ...rtlText, color: colors.muted2, fontSize: 11, lineHeight: 18 }}>الـAI هيولد القضية مرة واحدة ويحفظها للروم كله.</Text>
-            </Card>
-          ) : !isOutsider ? (
-            <Card><Body muted>إنت جوه. استنى الـBoss يبدأ القضية.</Body></Card>
-          ) : null}
-        </>
+          <View className="flex-1 gap-3 lg:max-w-[470px]">
+            <SectionTitle title="الموجودين" caption={`${snapshot.playerCount} دخلوا لحد دلوقتي`} />
+            {snapshot.players.map((player) => <PlayerCard key={player.id} player={player} compact />)}
+            {!snapshot.players.length ? <Card><Body muted>لسه مفيش مشتبه فيهم. ابعت الرابط لأول لاعب.</Body></Card> : null}
+          </View>
+        </View>
       ) : null}
 
       {room.status !== 'lobby' ? (
-        <>
-          <Card accent>
-            <Pill label="ملف القضية" tone="gold" />
-            <Body>{room.premise ?? ''}</Body>
+        <View className="gap-6">
+          <Card tone="gold">
+            <Eyebrow>CASE BRIEF</Eyebrow>
+            <Body className="text-base leading-8">{room.premise ?? ''}</Body>
           </Card>
 
           {snapshot.me ? (
-            <View
-              style={{
-                gap: 14,
-                padding: 20,
-                borderRadius: 26,
-                borderWidth: 1,
-                borderColor: roleVisible ? (snapshot.me.role === 'mafia' ? '#7B3038' : '#285B44') : colors.border,
-                backgroundColor: roleVisible ? (snapshot.me.role === 'mafia' ? colors.redSoft : colors.greenSoft) : colors.surface,
-              }}>
-              <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <SectionTitle title="دورك السري" caption="خلي الشاشة بعيد عن الناس" />
-                <Pill label="سري جدًا" tone={roleVisible && snapshot.me.role === 'mafia' ? 'red' : roleVisible ? 'green' : 'gold'} />
+            <Card tone={roleVisible && snapshot.me.role === 'mafia' ? 'danger' : roleVisible ? 'green' : 'default'} className="overflow-hidden">
+              <View className="flex-row-reverse items-start justify-between gap-3">
+                <SectionTitle title="دورك السري" caption="خلي الشاشة بعيد عن العيون" />
+                <Pill label="PRIVATE" tone="gold" />
               </View>
-
               {roleVisible ? (
-                <View style={{ minHeight: 150, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Text style={{ color: snapshot.me.role === 'mafia' ? colors.red : colors.green, fontSize: 12, fontWeight: '900', letterSpacing: 2 }}>YOU ARE</Text>
-                  <Text selectable style={{ color: snapshot.me.role === 'mafia' ? colors.red : colors.green, fontWeight: '900', fontSize: 42, textAlign: 'center' }}>
-                    {snapshot.me.role === 'mafia' ? 'مافيوزو' : 'بريء'}
+                <View className="items-center gap-3 py-4">
+                  <Text className={`text-center text-4xl font-black ${snapshot.me.role === 'mafia' ? 'text-case-red' : 'text-case-green'}`}>
+                    {snapshot.me.role === 'mafia' ? 'أنت مافيوزو' : 'أنت بريء'}
                   </Text>
-                  <Text style={{ ...rtlText, color: colors.muted, fontSize: 13, lineHeight: 21, textAlign: 'center' }}>
-                    {snapshot.me.role === 'mafia' ? 'في مافيوزو تاني وسطكم — وإنت مش عارف هو مين.' : 'اربط الأدلة، واكشف المافيا قبل ما الأبرياء يدخلوا السجن.'}
+                  <Text className="max-w-lg text-center text-xs leading-5 text-case-muted">
+                    {snapshot.me.role === 'mafia' ? 'في مافيوزو غيرك وسط الناس، وإنت مش عارف مين.' : 'حلّ القضية قبل ما الأبرياء يدخلوا السجن.'}
                   </Text>
                 </View>
-              ) : (
-                <View style={{ minHeight: 110, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 34 }}>◉</Text>
-                  <Text style={{ color: colors.muted, fontSize: 13 }}>اضغط لما محدش يكون باصص</Text>
-                </View>
-              )}
-
-              <Button
-                label={roleVisible ? 'اخفي دوري فورًا' : 'اكشف دوري'}
-                tone={roleVisible && snapshot.me.role === 'mafia' ? 'red' : 'dark'}
-                onPress={() => {
-                  setRoleVisible((value) => !value);
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-              />
-            </View>
+              ) : <Text className="py-5 text-center text-3xl">◉</Text>}
+              <Button label={roleVisible ? 'اخفي دوري' : 'اكشف دوري'} tone={roleVisible && snapshot.me.role === 'mafia' ? 'red' : 'dark'} onPress={() => setRoleVisible((v) => !v)} />
+            </Card>
           ) : null}
 
-          <View style={{ gap: 10 }}>
-            <SectionTitle title="المشتبه فيهم" caption="كل المعلومات دي علنية — الكذب والتفسير عليكم" />
-            {snapshot.players.map((player) => <PlayerRow key={player.id} player={player} />)}
+          <View className="gap-3">
+            <SectionTitle title="المشتبه فيهم" caption="كل المعلومات دي علنية" />
+            <View className="gap-3 md:flex-row-reverse md:flex-wrap">
+              {snapshot.players.map((player) => (
+                <View key={player.id} className="w-full md:w-[48%] md:flex-grow">
+                  <PlayerCard player={player} />
+                </View>
+              ))}
+            </View>
           </View>
 
-          <View style={{ gap: 12 }}>
-            <SectionTitle title="لوحة الأدلة" caption="كل دليل لوحده مش كفاية. اربط اللي اتكشف ببعضه." />
+          <View className="gap-3">
+            <SectionTitle title="الأدلة" caption="كل دليل يفتح احتمالات أكتر مما يقفلها" />
             {snapshot.rounds.map((round) => (
-              <ClueCard
-                key={round.roundIndex}
-                roundIndex={round.roundIndex}
-                clue={round.clue}
-                prompt={round.discussionPrompt}
-                active={round.roundIndex === room.roundIndex}
-              />
+              <ClueCard key={round.roundIndex} index={round.roundIndex} clue={round.clue} prompt={round.discussionPrompt} active={round.roundIndex === room.roundIndex} />
             ))}
           </View>
 
           {snapshot.eliminations.length ? (
-            <Card danger>
-              <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
-                <SectionTitle title="سجل السجن" caption="اللي خرج خلاص ممنوع يتكلم أو يصوّت" />
-                <Pill label={`${snapshot.eliminations.length}`} tone="red" />
+            <Card tone="danger">
+              <SectionTitle title="السجن" caption="الأدوار اللي اتكشفت لحد دلوقتي" />
+              <View className="gap-2">
+                {snapshot.eliminations.map((item) => (
+                  <View key={item.playerId} className="flex-row-reverse items-center justify-between rounded-2xl bg-black/20 px-4 py-3">
+                    <Text className="font-black text-case-cream">{item.nickname}</Text>
+                    <Pill label={item.revealedRole === 'mafia' ? 'مافيوزو' : 'بريء'} tone={item.revealedRole === 'mafia' ? 'red' : 'green'} />
+                  </View>
+                ))}
               </View>
-              <Divider />
-              {snapshot.eliminations.map((item) => (
-                <View key={item.playerId} style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <Text style={{ color: colors.text, fontWeight: '900' }}>{item.nickname}</Text>
-                  <Pill label={item.revealedRole === 'mafia' ? 'مافيوزو' : 'بريء'} tone={item.revealedRole === 'mafia' ? 'red' : 'green'} />
-                </View>
-              ))}
             </Card>
           ) : null}
 
           {room.status === 'playing' && snapshot.me && !snapshot.me.isEliminated && room.lastResolvedRound < room.roundIndex ? (
-            <Card accent>
-              <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <SectionTitle title="مين يدخل السجن؟" caption="اختار مشتبه واحد وثبّت صوتك" />
-                <Pill label={`R${room.roundIndex + 1}`} tone="gold" />
-              </View>
-              <View style={{ gap: 8 }}>
-                {alivePlayers
-                  .filter((player) => player.id !== snapshot.me?.playerId)
-                  .map((player) => (
-                    <PlayerRow
-                      key={player.id}
+            <Card>
+              <SectionTitle title="مين يدخل السجن؟" caption="اختار مشتبه واحد وثبّت صوتك" />
+              <View className="gap-2 md:flex-row-reverse md:flex-wrap">
+                {alivePlayers.filter((player) => player.id !== snapshot.me?.playerId).map((player) => (
+                  <View key={player.id} className="w-full md:w-[48%] md:flex-grow">
+                    <PlayerCard
                       player={player}
                       compact
                       selected={selectedVote === player.id}
@@ -438,29 +341,21 @@ export default function RoomScreen() {
                       }}
                       disabled={snapshot.voteSubmitted}
                     />
-                  ))}
+                  </View>
+                ))}
               </View>
-              <Button
-                label={snapshot.voteSubmitted ? 'صوتك اتحسب ✓' : 'ثبّت صوتي'}
-                onPress={submitVote}
-                disabled={!selectedVote || snapshot.voteSubmitted}
-                loading={actionLoading}
-              />
+              <Button label={snapshot.voteSubmitted ? 'صوتك اتحسب' : 'ثبّت صوتي'} onPress={submitVote} disabled={!selectedVote || snapshot.voteSubmitted} loading={actionLoading} />
             </Card>
           ) : null}
 
           {room.status === 'playing' && snapshot.isHost ? (
-            <Card>
-              <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <SectionTitle title="تحكم الـBoss" caption="إنت اللي بتحرك الجولة للجميع" />
-                <Pill label="HOST" tone="gold" />
-              </View>
-              <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
-                <MiniStat value={`${snapshot.votesCast}`} label="صوّتوا" />
-                <MiniStat value={`${snapshot.eligibleVoters}`} label="مطلوب" />
+            <Card tone="gold">
+              <View className="flex-row-reverse items-start justify-between gap-3">
+                <SectionTitle title="تحكم الـBoss" caption="إنت اللي بتحرك إيقاع الجولة" />
+                <Pill label={`${snapshot.votesCast}/${snapshot.eligibleVoters} أصوات`} tone="gold" />
               </View>
               {room.lastResolvedRound < room.roundIndex ? (
-                <Button label="احسم التصويت واكشف النتيجة" onPress={settleVote} loading={actionLoading} tone="red" />
+                <Button label="احسم التصويت" onPress={settleVote} loading={actionLoading} tone="red" />
               ) : (
                 <Button label="اكشف الدليل اللي بعده" onPress={() => doAction(() => revealNextRound(code))} loading={actionLoading} />
               )}
@@ -468,24 +363,16 @@ export default function RoomScreen() {
           ) : null}
 
           {room.status === 'finished' ? (
-            <View
-              style={{
-                gap: 16,
-                padding: 22,
-                borderRadius: 28,
-                borderWidth: 1,
-                borderColor: room.winner === 'mafia' ? '#743039' : '#2D684E',
-                backgroundColor: room.winner === 'mafia' ? colors.redSoft : colors.greenSoft,
-              }}>
+            <Card tone={room.winner === 'mafia' ? 'danger' : 'green'}>
               <Eyebrow>CASE CLOSED</Eyebrow>
-              <Title size={34}>{room.winner === 'mafia' ? 'المافيا كسبت' : 'الأبرياء كسبوا'}</Title>
-              <Pill label={room.winner === 'mafia' ? 'MAFIA WIN' : 'INNOCENTS WIN'} tone={room.winner === 'mafia' ? 'red' : 'green'} />
+              <Text className={`text-right text-3xl font-black ${room.winner === 'mafia' ? 'text-case-red' : 'text-case-green'}`}>
+                {room.winner === 'mafia' ? 'المافيا كسبت' : 'الأبرياء كسبوا'}
+              </Text>
               <Divider />
-              <SectionTitle title="الحقيقة كاملة" />
               <Body>{room.publicSolution ?? 'تم إغلاق ملف القضية.'}</Body>
-            </View>
+            </Card>
           ) : null}
-        </>
+        </View>
       ) : null}
     </Screen>
   );
