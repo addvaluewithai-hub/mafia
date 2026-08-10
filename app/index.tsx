@@ -1,90 +1,91 @@
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
 import { Body, Card, Eyebrow, HeroMark, MiniStat, Screen, Title } from '@/components/game-ui';
-import { colors, rtlText } from '@/lib/theme';
 
-function HomeAction({ href, title, caption, primary = false }: { href: '/create' | '/join'; title: string; caption: string; primary?: boolean }) {
+function ActionCard({ title, caption, onPress, primary = false }: { title: string; caption: string; onPress: () => void; primary?: boolean }) {
   return (
-    <Link href={href} asChild>
-      <Pressable
-        style={({ pressed }) => ({
-          minHeight: 78,
-          flexDirection: 'row-reverse',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          paddingHorizontal: 18,
-          paddingVertical: 15,
-          borderRadius: 22,
-          borderCurve: 'continuous',
-          borderWidth: primary ? 0 : 1,
-          borderColor: colors.border,
-          backgroundColor: primary ? colors.gold : colors.surface,
-          transform: [{ scale: pressed ? 0.985 : 1 }],
-        })}>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={{ ...rtlText, color: primary ? colors.ink : colors.text, fontSize: 18, fontWeight: '900' }}>{title}</Text>
-          <Text style={{ ...rtlText, color: primary ? '#4A3915' : colors.muted, fontSize: 12, lineHeight: 18 }}>{caption}</Text>
-        </View>
-        <View
-          style={{
-            width: 42,
-            height: 42,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 14,
-            backgroundColor: primary ? '#CDA63F' : colors.surface2,
-          }}>
-          <Text style={{ color: primary ? colors.ink : colors.gold, fontSize: 22, fontWeight: '900' }}>‹</Text>
-        </View>
-      </Pressable>
-    </Link>
+    <Pressable
+      onPress={onPress}
+      className={`min-h-[92px] w-full flex-row-reverse items-center gap-4 rounded-[26px] border p-4 active:scale-[0.99] ${primary ? 'border-case-gold bg-case-gold' : 'border-white/10 bg-noir-800'}`}>
+      <View className={`h-12 w-12 items-center justify-center rounded-2xl ${primary ? 'bg-black/10' : 'bg-noir-700'}`}>
+        <Text className={`text-2xl font-black ${primary ? 'text-noir-950' : 'text-case-gold'}`}>‹</Text>
+      </View>
+      <View className="flex-1 gap-1">
+        <Text className={`text-right text-lg font-black ${primary ? 'text-noir-950' : 'text-case-cream'}`}>{title}</Text>
+        <Text className={`text-right text-xs leading-5 ${primary ? 'text-[#5b4519]' : 'text-case-muted'}`}>{caption}</Text>
+      </View>
+    </Pressable>
   );
 }
 
 export default function HomeScreen() {
   return (
     <Screen>
-      <View style={{ flex: 1, justifyContent: 'center', gap: 22, minHeight: 650 }}>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 16 }}>
-          <HeroMark />
-          <View style={{ flex: 1, gap: 7 }}>
-            <Eyebrow>لعبة تحقيق اجتماعية • AI CASES</Eyebrow>
-            <Title size={48}>آخر خيط</Title>
-          </View>
-        </View>
-
-        <Body muted>كل واحد عنده رواية. اتهم، ناقش، واربط الأدلة قبل ما المافيا تودّي الأبرياء السجن.</Body>
-
-        <Card accent>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 13 }}>
-            <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: colors.goldSoft }}>
-              <Text style={{ fontSize: 20 }}>✦</Text>
+      <View className="min-h-[720px] justify-center gap-8 py-4 lg:min-h-[760px]">
+        <View className="gap-8 lg:flex-row-reverse lg:items-center lg:gap-12">
+          <View className="flex-1 gap-6">
+            <View className="flex-row-reverse items-center gap-4">
+              <HeroMark />
+              <View className="flex-1 gap-2">
+                <Eyebrow>AI SOCIAL MYSTERY</Eyebrow>
+                <Title>آخر خيط</Title>
+              </View>
             </View>
-            <View style={{ flex: 1, gap: 5 }}>
-              <Text style={{ ...rtlText, color: colors.text, fontSize: 18, fontWeight: '900' }}>كل ماتش قضية جديدة</Text>
-              <Text style={{ ...rtlText, color: colors.muted, fontSize: 14, lineHeight: 22 }}>
-                Gemini بيكتب قضية وأدلة وشخصيات على عددكم، والروم كله بيتزامن لحظيًا.
-              </Text>
+
+            <Body muted className="max-w-2xl text-base sm:text-lg sm:leading-8">
+              كل واحد عنده رواية. اربط الأدلة، واجه المشتبه فيهم، وصوّت قبل ما المافيا تودّي الأبرياء السجن.
+            </Body>
+
+            <View className="flex-row-reverse flex-wrap gap-2">
+              <MiniStat value="4–12" label="لاعب" />
+              <MiniStat value="4" label="جولات" />
+              <MiniStat value="LIVE" label="تصويت" />
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap' }}>
-            <MiniStat value="4–12" label="لاعب" />
-            <MiniStat value="4" label="جولات أدلة" />
-            <MiniStat value="LIVE" label="تصويت مباشر" />
-          </View>
-        </Card>
+          <Card tone="gold" className="flex-1 lg:max-w-[470px] lg:p-7">
+            <View className="flex-row-reverse items-center gap-3">
+              <View className="h-12 w-12 items-center justify-center rounded-2xl bg-case-gold/10">
+                <Text className="text-xl text-case-gold">✦</Text>
+              </View>
+              <View className="flex-1 gap-1">
+                <Text className="text-right text-xl font-black text-case-cream">كل مرة قضية جديدة</Text>
+                <Text className="text-right text-xs leading-5 text-case-muted">القصة والشخصيات والأدلة بتتولد على عددكم وجو اللعب اللي تختاروه.</Text>
+              </View>
+            </View>
 
-        <View style={{ gap: 11 }}>
-          <HomeAction href="/create" title="اعمل روم كـ Boss" caption="اختار العدد والصعوبة وابدأ القضية" primary />
-          <HomeAction href="/join" title="ادخل روم" caption="معاك كود؟ ادخل باسمك وانضم للمشتبه فيهم" />
+            <View className="h-px bg-case-gold/15" />
+
+            <View className="gap-2">
+              <View className="flex-row-reverse items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-3">
+                <Text className="text-lg text-case-gold">01</Text>
+                <Text className="flex-1 text-right text-sm font-bold text-case-cream">اعمل روم وابعت الرابط</Text>
+              </View>
+              <View className="flex-row-reverse items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-3">
+                <Text className="text-lg text-case-gold">02</Text>
+                <Text className="flex-1 text-right text-sm font-bold text-case-cream">كل لاعب يشوف دوره سرًا</Text>
+              </View>
+              <View className="flex-row-reverse items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-3">
+                <Text className="text-lg text-case-gold">03</Text>
+                <Text className="flex-1 text-right text-sm font-bold text-case-cream">أدلة، نقاش، تصويت، وكشف الحقيقة</Text>
+              </View>
+            </View>
+          </Card>
         </View>
 
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <View style={{ width: 6, height: 6, borderRadius: 99, backgroundColor: colors.green }} />
-          <Text style={{ ...rtlText, color: colors.muted2, fontSize: 12 }}>الـBoss بيدير اللعبة ومش محسوب ضمن اللاعبين</Text>
+        <View className="gap-3 sm:flex-row-reverse">
+          <View className="flex-1">
+            <ActionCard title="اعمل روم كـ Boss" caption="اختار العدد والصعوبة وجو القضية" onPress={() => router.push('/create')} primary />
+          </View>
+          <View className="flex-1">
+            <ActionCard title="ادخل روم" caption="معاك كود؟ ادخل باسمك وانضم للتحقيق" onPress={() => router.push('/join')} />
+          </View>
+        </View>
+
+        <View className="flex-row-reverse items-center justify-center gap-2">
+          <View className="h-2 w-2 rounded-full bg-case-green" />
+          <Text className="text-right text-[11px] text-case-dim">الـBoss بيدير اللعبة ومش محسوب ضمن المشتبه فيهم</Text>
         </View>
       </View>
     </Screen>
