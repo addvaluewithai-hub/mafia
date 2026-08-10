@@ -1,4 +1,3 @@
-import { fetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 
 import type { RoomSnapshot } from '@/lib/types';
@@ -12,6 +11,40 @@ export function suggestedMafiaCount(playerCount: number) {
   if (playerCount >= 10) return 3;
   if (playerCount >= 6) return 2;
   return 1;
+}
+
+export function errorToMessage(error: unknown, fallback = 'حصلت مشكلة غير متوقعة') {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string' && error.trim()) return error;
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    if (typeof record.message === 'string' && record.message.trim()) return record.message;
+    if (typeof record.error_description === 'string' && record.error_description.trim()) return record.error_description;
+    if (typeof record.error === 'string' && record.error.trim()) return record.error;
+    if (record.error && typeof record.error === 'object') return errorToMessage(record.error, fallback);
+    try {
+      const json = JSON.stringify(error);
+      if (json && json !== '{}') return json;
+    } catch {
+      // Ignore serialization failures and use the friendly fallback below.
+    }
+  }
+  return fallback;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function looksTransient(error: unknown) {
+  const message = errorToMessage(error, '').toLowerCase();
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('network') ||
+    message.includes('load failed') ||
+    message.includes('timeout') ||
+    message.includes('fetch')
+  );
 }
 
 export async function createRoom(input: {
@@ -28,7 +61,7 @@ export async function createRoom(input: {
     p_theme: input.theme.trim(),
   });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(errorToMessage(error, 'تعذر إنشاء الروم'));
   return String(data);
 }
 
@@ -39,18 +72,30 @@ export async function joinRoom(code: string, nickname: string) {
     p_nickname: nickname.trim(),
   });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(errorToMessage(error, 'تعذر دخول الروم'));
   return String(data);
 }
 
 export async function getRoomSnapshot(code: string) {
-  await ensureAnonymousSession();
-  const { data, error } = await supabase.rpc('room_snapshot', {
-    p_code: normalizeRoomCode(code),
-  });
+  let lastError: unknown;
 
-  if (error) throw new Error(error.message);
-  return data as RoomSnapshot;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await ensureAnonymousSession();
+      const { data, error } = await supabase.rpc('room_snapshot', {
+        p_code: normalizeRoomCode(code),
+      });
+
+      if (error) throw error;
+      return data as RoomSnapshot;
+    } catch (error) {
+      lastError = error;
+      if (!looksTransient(error) || attempt === 2) break;
+      await sleep(350 * (attempt + 1));
+    }
+  }
+
+  throw new Error(errorToMessage(lastError, 'تعذر تحميل الروم. جرّب تاني بعد لحظة.'));
 }
 
 export async function castVote(code: string, targetPlayerId: string) {
@@ -58,14 +103,14 @@ export async function castVote(code: string, targetPlayerId: string) {
     p_code: normalizeRoomCode(code),
     p_target_player_id: targetPlayerId,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(errorToMessage(error, 'تعذر تسجيل الصوت'));
 }
 
 export async function resolveVote(code: string) {
   const { data, error } = await supabase.rpc('resolve_vote', {
     p_code: normalizeRoomCode(code),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(errorToMessage(error, 'تعذر حسم التصويت'));
   return data as {
     status: 'pending' | 'tie' | 'eliminated' | 'finished';
     missing?: number;
@@ -79,7 +124,7 @@ export async function revealNextRound(code: string) {
   const { error } = await supabase.rpc('reveal_next_round', {
     p_code: normalizeRoomCode(code),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(errorToMessage(error, 'تعذر كشف الدليل التالي'));
 }
 
 export async function restartDiscussionTimer(code: string, seconds: number) {
@@ -87,7 +132,7 @@ export async function restartDiscussionTimer(code: string, seconds: number) {
     p_code: normalizeRoomCode(code),
     p_seconds: seconds,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(errorToMessage(error, 'تعذر إعادة العداد'));
 }
 
 function apiUrl(path: string) {
@@ -106,23 +151,40 @@ function apiUrl(path: string) {
 
 export async function generateAndStartCase(code: string) {
   const session = await ensureAnonymousSession();
-  const response = await fetch(apiUrl('/api/generate-case'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ roomCode: normalizeRoomCode(code) }),
-  });
+  let response: Response;
 
-  const body = (await response.json().catch(() => ({}))) as {
-    ok?: boolean;
-    model?: string;
-    error?: string;
-  };
+  try {
+    response = await globalThis.fetch(apiUrl('/api/generate-case'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      cache: 'no-store',
+      body: JSON.stringify({
+        roomCode: normalizeRoomCode(code),
+        sessionToken: session.access_token,
+      }),
+    });
+  } catch (error) {
+    throw new Error(errorToMessage(error, 'مش قادرين نوصل لسيرفر توليد القضية. جرّب تاني.'));
+  }
+
+  const raw = await response.text();
+  let body: { ok?: boolean; model?: string; error?: unknown } = {};
+  if (raw) {
+    try {
+      body = JSON.parse(raw) as typeof body;
+    } catch {
+      body = { error: raw };
+    }
+  }
 
   if (!response.ok || !body.ok) {
-    throw new Error(body.error ?? 'تعذر توليد القضية');
+    const fallback = response.status === 401
+      ? 'جلسة الـBoss محتاجة تتجدد. اعمل Refresh واضغط تاني.'
+      : 'تعذر توليد القضية';
+    throw new Error(errorToMessage(body.error, fallback));
   }
 
   return body;
