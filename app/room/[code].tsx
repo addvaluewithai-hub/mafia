@@ -7,9 +7,9 @@ import {
   Eye,
   EyeOff,
   Gavel,
+  Link2,
   LockKeyhole,
   QrCode,
-  Share2,
   ShieldCheck,
   Skull,
   Sparkles,
@@ -26,6 +26,7 @@ import { DiscussionTimer } from '@/components/discussion-timer';
 import { Body, Button, Card, Divider, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import {
   castVote,
+  errorToMessage,
   generateAndStartCase,
   getRoomSnapshot,
   joinRoom,
@@ -114,7 +115,8 @@ export default function RoomScreen() {
   const [nickname, setNickname] = useState('');
   const [roleVisible, setRoleVisible] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const previousRoundCount = useRef<number | null>(null);
   const previousEliminationCount = useRef<number | null>(null);
   const previousWinner = useRef<string | null>(null);
@@ -126,7 +128,7 @@ export default function RoomScreen() {
       setSnapshot(data);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل الروم');
+      setError(errorToMessage(err, 'تعذر تحميل الروم. جرّب تاني.'));
     } finally {
       setLoading(false);
     }
@@ -176,9 +178,28 @@ export default function RoomScreen() {
       await action();
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'حصلت مشكلة');
+      setError(errorToMessage(err, 'حصلت مشكلة. جرّب تاني.'));
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const copyText = async (value: string, kind: 'code' | 'link') => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(value);
+        if (kind === 'code') setCopiedCode(true);
+        else setCopiedLink(true);
+        void playGameSfx('vote');
+        setTimeout(() => {
+          if (kind === 'code') setCopiedCode(false);
+          else setCopiedLink(false);
+        }, 1600);
+        return;
+      }
+      await Share.share({ message: value });
+    } catch (err) {
+      setError(errorToMessage(err, 'معرفناش ننسخ. دوس على الرابط واعمله Copy يدوي.'));
     }
   };
 
@@ -225,25 +246,6 @@ export default function RoomScreen() {
     });
   };
 
-  const share = async () => {
-    await Share.share({ message: `ادخل روم آخر خيط — الكود ${code}\n${roomUrl}` });
-  };
-
-  const copyCode = async () => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(code);
-        setCopied(true);
-        void playGameSfx('vote');
-        setTimeout(() => setCopied(false), 1600);
-      } else {
-        await Share.share({ message: code });
-      }
-    } catch {
-      await Share.share({ message: code });
-    }
-  };
-
   const startGame = async () => {
     await doAction(async () => {
       const result = await generateAndStartCase(code);
@@ -270,10 +272,6 @@ export default function RoomScreen() {
       else if (result.status === 'finished') Alert.alert('انتهت القضية', result.winner === 'innocents' ? 'الأبرياء كشفوا المافيا.' : 'المافيا كسبت.');
       else Alert.alert('إلى السجن', `${result.nickname} — ${result.role === 'mafia' ? 'مافيوزو' : 'بريء'}`);
     });
-  };
-
-  const revealNext = async () => {
-    await doAction(() => revealNextRound(code));
   };
 
   return (
@@ -318,9 +316,7 @@ export default function RoomScreen() {
             <Card tone="gold">
               <View className="flex-row-reverse items-start justify-between gap-3">
                 <View className="flex-row-reverse items-center gap-3">
-                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-case-gold/10">
-                    <Users size={20} color="#f2c14e" strokeWidth={2.2} />
-                  </View>
+                  <View className="h-11 w-11 items-center justify-center rounded-2xl bg-case-gold/10"><Users size={20} color="#f2c14e" strokeWidth={2.2} /></View>
                   <SectionTitle title="اللوبي" caption="اجمع الناس، وبعدها القضية هتتكتب على عددكم" />
                 </View>
                 <Pill label={lobbyReady ? 'جاهزين' : 'مستنيين'} tone={lobbyReady ? 'green' : 'gold'} />
@@ -336,7 +332,7 @@ export default function RoomScreen() {
                   <QrCode size={18} color="#f2c14e" strokeWidth={2.2} />
                   <Text className="text-right text-lg font-black text-case-cream">دخّل الناس بسرعة</Text>
                 </View>
-                <Text className="text-right text-xs leading-5 text-case-dim">امسح الـQR أو ابعت الكود والرابط.</Text>
+                <Text className="text-right text-xs leading-5 text-case-dim">امسح الـQR أو انسخ رابط الروم مباشرة.</Text>
               </View>
 
               <View className="items-center py-2">
@@ -344,17 +340,24 @@ export default function RoomScreen() {
                   <QRCode value={roomUrl} size={168} color="#050507" backgroundColor="#fff6dc" />
                 </View>
                 <Text selectable className="pt-3 text-3xl font-black tracking-[5px] text-case-gold">{code}</Text>
+                <Text selectable className="max-w-full pt-2 text-center text-[10px] text-case-dim">{roomUrl}</Text>
               </View>
 
               <View className="flex-row-reverse gap-2">
                 <Button
                   className="flex-1"
-                  label={copied ? 'اتنسخ' : 'انسخ الكود'}
-                  onPress={() => void copyCode()}
+                  label={copiedLink ? 'الرابط اتنسخ' : 'انسخ الرابط'}
+                  onPress={() => void copyText(roomUrl, 'link')}
                   tone="dark"
-                  icon={copied ? <CheckCircle2 size={17} color="#66d6a0" /> : <Copy size={17} color="#f2c14e" />}
+                  icon={copiedLink ? <CheckCircle2 size={17} color="#66d6a0" /> : <Link2 size={17} color="#f2c14e" />}
                 />
-                <Button className="flex-1" label="شارك الرابط" onPress={() => void share()} tone="dark" icon={<Share2 size={17} color="#f2c14e" />} />
+                <Button
+                  className="flex-1"
+                  label={copiedCode ? 'الكود اتنسخ' : 'انسخ الكود'}
+                  onPress={() => void copyText(code, 'code')}
+                  tone="dark"
+                  icon={copiedCode ? <CheckCircle2 size={17} color="#66d6a0" /> : <Copy size={17} color="#f2c14e" />}
+                />
               </View>
             </Card>
 
@@ -394,10 +397,7 @@ export default function RoomScreen() {
         <View className="gap-6">
           <Animated.View entering={FadeInDown.duration(260)}>
             <Card tone="gold">
-              <View className="flex-row-reverse items-center gap-3">
-                <ShieldCheck size={20} color="#f2c14e" />
-                <Eyebrow>CASE BRIEF</Eyebrow>
-              </View>
+              <View className="flex-row-reverse items-center gap-3"><ShieldCheck size={20} color="#f2c14e" /><Eyebrow>CASE BRIEF</Eyebrow></View>
               <Body className="text-base leading-8">{room.premise ?? ''}</Body>
             </Card>
           </Animated.View>
@@ -405,27 +405,16 @@ export default function RoomScreen() {
           {snapshot.me ? (
             <Card tone={roleVisible && snapshot.me.role === 'mafia' ? 'danger' : roleVisible ? 'green' : 'default'} className="overflow-hidden">
               <View className="flex-row-reverse items-start justify-between gap-3">
-                <View className="flex-row-reverse items-center gap-3">
-                  <LockKeyhole size={20} color="#f2c14e" />
-                  <SectionTitle title="دورك السري" caption="خلي الشاشة بعيد عن العيون" />
-                </View>
+                <View className="flex-row-reverse items-center gap-3"><LockKeyhole size={20} color="#f2c14e" /><SectionTitle title="دورك السري" caption="خلي الشاشة بعيد عن العيون" /></View>
                 <Pill label="PRIVATE" tone="gold" />
               </View>
               {roleVisible ? (
                 <Animated.View entering={ZoomIn.springify().damping(16)} className="items-center gap-3 py-5">
                   {snapshot.me.role === 'mafia' ? <Skull size={42} color="#ef5d68" strokeWidth={1.8} /> : <ShieldCheck size={42} color="#66d6a0" strokeWidth={1.8} />}
-                  <Text className={`text-center text-4xl font-black ${snapshot.me.role === 'mafia' ? 'text-case-red' : 'text-case-green'}`}>
-                    {snapshot.me.role === 'mafia' ? 'أنت مافيوزو' : 'أنت بريء'}
-                  </Text>
-                  <Text className="max-w-lg text-center text-xs leading-5 text-case-muted">
-                    {snapshot.me.role === 'mafia' ? 'في مافيوزو غيرك وسط الناس، وإنت مش عارف مين.' : 'حلّ القضية قبل ما الأبرياء يدخلوا السجن.'}
-                  </Text>
+                  <Text className={`text-center text-4xl font-black ${snapshot.me.role === 'mafia' ? 'text-case-red' : 'text-case-green'}`}>{snapshot.me.role === 'mafia' ? 'أنت مافيوزو' : 'أنت بريء'}</Text>
+                  <Text className="max-w-lg text-center text-xs leading-5 text-case-muted">{snapshot.me.role === 'mafia' ? 'في مافيوزو غيرك وسط الناس، وإنت مش عارف مين.' : 'حلّ القضية قبل ما الأبرياء يدخلوا السجن.'}</Text>
                 </Animated.View>
-              ) : (
-                <View className="items-center py-6">
-                  <EyeOff size={36} color="#6e707e" strokeWidth={1.7} />
-                </View>
-              )}
+              ) : <View className="items-center py-6"><EyeOff size={36} color="#6e707e" strokeWidth={1.7} /></View>}
               <Button
                 label={roleVisible ? 'اخفي دوري' : 'اكشف دوري'}
                 tone={roleVisible && snapshot.me.role === 'mafia' ? 'red' : 'dark'}
@@ -448,43 +437,26 @@ export default function RoomScreen() {
               durationSeconds={room.timerDurationSeconds}
               isHost={snapshot.isHost}
               disabled={actionLoading}
-              onRestart={async (seconds) => {
-                await doAction(() => restartDiscussionTimer(code, seconds));
-              }}
+              onRestart={async (seconds) => { await doAction(() => restartDiscussionTimer(code, seconds)); }}
             />
           ) : null}
 
           <View className="gap-3">
-            <View className="flex-row-reverse items-center gap-2">
-              <Users size={18} color="#a6a7b2" />
-              <SectionTitle title="المشتبه فيهم" caption="كل المعلومات دي علنية" />
-            </View>
+            <View className="flex-row-reverse items-center gap-2"><Users size={18} color="#a6a7b2" /><SectionTitle title="المشتبه فيهم" caption="كل المعلومات دي علنية" /></View>
             <View className="gap-3 md:flex-row-reverse md:flex-wrap">
-              {snapshot.players.map((player) => (
-                <View key={player.id} className="w-full md:w-[48%] md:flex-grow">
-                  <PlayerCard player={player} />
-                </View>
-              ))}
+              {snapshot.players.map((player) => <View key={player.id} className="w-full md:w-[48%] md:flex-grow"><PlayerCard player={player} /></View>)}
             </View>
           </View>
 
           <View className="gap-3">
-            <View className="flex-row-reverse items-center gap-2">
-              <Sparkles size={18} color="#f2c14e" />
-              <SectionTitle title="الأدلة" caption="كل دليل يفتح احتمالات أكتر مما يقفلها" />
-            </View>
-            {snapshot.rounds.map((round) => (
-              <ClueCard key={round.roundIndex} index={round.roundIndex} clue={round.clue} prompt={round.discussionPrompt} active={round.roundIndex === room.roundIndex} />
-            ))}
+            <View className="flex-row-reverse items-center gap-2"><Sparkles size={18} color="#f2c14e" /><SectionTitle title="الأدلة" caption="كل دليل يفتح احتمالات أكتر مما يقفلها" /></View>
+            {snapshot.rounds.map((round) => <ClueCard key={round.roundIndex} index={round.roundIndex} clue={round.clue} prompt={round.discussionPrompt} active={round.roundIndex === room.roundIndex} />)}
           </View>
 
           {snapshot.eliminations.length ? (
             <Animated.View entering={FadeInDown.duration(240)}>
               <Card tone="danger">
-                <View className="flex-row-reverse items-center gap-2">
-                  <LockKeyhole size={18} color="#ef5d68" />
-                  <SectionTitle title="السجن" caption="الأدوار اللي اتكشفت لحد دلوقتي" />
-                </View>
+                <View className="flex-row-reverse items-center gap-2"><LockKeyhole size={18} color="#ef5d68" /><SectionTitle title="السجن" caption="الأدوار اللي اتكشفت لحد دلوقتي" /></View>
                 <View className="gap-2">
                   {snapshot.eliminations.map((item) => (
                     <View key={item.playerId} className="flex-row-reverse items-center justify-between rounded-2xl bg-black/20 px-4 py-3">
@@ -499,10 +471,7 @@ export default function RoomScreen() {
 
           {room.status === 'playing' && snapshot.me && !snapshot.me.isEliminated && room.lastResolvedRound < room.roundIndex ? (
             <Card>
-              <View className="flex-row-reverse items-center gap-2">
-                <Vote size={19} color="#f2c14e" />
-                <SectionTitle title="مين يدخل السجن؟" caption="اختار مشتبه واحد وثبّت صوتك" />
-              </View>
+              <View className="flex-row-reverse items-center gap-2"><Vote size={19} color="#f2c14e" /><SectionTitle title="مين يدخل السجن؟" caption="اختار مشتبه واحد وثبّت صوتك" /></View>
               <View className="gap-2 md:flex-row-reverse md:flex-wrap">
                 {alivePlayers.filter((player) => player.id !== snapshot.me?.playerId).map((player) => (
                   <View key={player.id} className="w-full md:w-[48%] md:flex-grow">
@@ -510,39 +479,25 @@ export default function RoomScreen() {
                       player={player}
                       compact
                       selected={selectedVote === player.id}
-                      onPress={() => {
-                        setSelectedVote(player.id);
-                        void Haptics.selectionAsync();
-                      }}
+                      onPress={() => { setSelectedVote(player.id); void Haptics.selectionAsync(); }}
                       disabled={snapshot.voteSubmitted}
                     />
                   </View>
                 ))}
               </View>
-              <Button
-                label={snapshot.voteSubmitted ? 'صوتك اتحسب' : 'ثبّت صوتي'}
-                onPress={submitVote}
-                disabled={!selectedVote || snapshot.voteSubmitted}
-                loading={actionLoading}
-                icon={snapshot.voteSubmitted ? <CheckCircle2 size={18} color="#050507" /> : <Vote size={18} color="#050507" />}
-              />
+              <Button label={snapshot.voteSubmitted ? 'صوتك اتحسب' : 'ثبّت صوتي'} onPress={submitVote} disabled={!selectedVote || snapshot.voteSubmitted} loading={actionLoading} icon={snapshot.voteSubmitted ? <CheckCircle2 size={18} color="#050507" /> : <Vote size={18} color="#050507" />} />
             </Card>
           ) : null}
 
           {room.status === 'playing' && snapshot.isHost ? (
             <Card tone="gold">
               <View className="flex-row-reverse items-start justify-between gap-3">
-                <View className="flex-row-reverse items-center gap-3">
-                  <Gavel size={20} color="#f2c14e" />
-                  <SectionTitle title="تحكم الـBoss" caption="إنت اللي بتحرك إيقاع الجولة" />
-                </View>
+                <View className="flex-row-reverse items-center gap-3"><Gavel size={20} color="#f2c14e" /><SectionTitle title="تحكم الـBoss" caption="إنت اللي بتحرك إيقاع الجولة" /></View>
                 <Pill label={`${snapshot.votesCast}/${snapshot.eligibleVoters} أصوات`} tone="gold" />
               </View>
-              {room.lastResolvedRound < room.roundIndex ? (
-                <Button label="احسم التصويت" onPress={settleVote} loading={actionLoading} tone="red" icon={<Gavel size={18} color="#fff6dc" />} />
-              ) : (
-                <Button label="اكشف الدليل اللي بعده" onPress={revealNext} loading={actionLoading} icon={<Sparkles size={18} color="#050507" />} />
-              )}
+              {room.lastResolvedRound < room.roundIndex
+                ? <Button label="احسم التصويت" onPress={settleVote} loading={actionLoading} tone="red" icon={<Gavel size={18} color="#fff6dc" />} />
+                : <Button label="اكشف الدليل اللي بعده" onPress={() => void doAction(() => revealNextRound(code))} loading={actionLoading} icon={<Sparkles size={18} color="#050507" />} />}
             </Card>
           ) : null}
 
@@ -552,9 +507,7 @@ export default function RoomScreen() {
                 <Eyebrow>CASE CLOSED</Eyebrow>
                 <View className="flex-row-reverse items-center gap-3">
                   {room.winner === 'mafia' ? <Skull size={34} color="#ef5d68" /> : <ShieldCheck size={34} color="#66d6a0" />}
-                  <Text className={`text-right text-3xl font-black ${room.winner === 'mafia' ? 'text-case-red' : 'text-case-green'}`}>
-                    {room.winner === 'mafia' ? 'المافيا كسبت' : 'الأبرياء كسبوا'}
-                  </Text>
+                  <Text className={`text-right text-3xl font-black ${room.winner === 'mafia' ? 'text-case-red' : 'text-case-green'}`}>{room.winner === 'mafia' ? 'المافيا كسبت' : 'الأبرياء كسبوا'}</Text>
                 </View>
                 <Divider />
                 <Body>{room.publicSolution ?? 'تم إغلاق ملف القضية.'}</Body>
