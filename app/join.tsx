@@ -5,7 +5,6 @@ import { Text, View } from 'react-native';
 
 import { Body, Button, Card, ErrorText, Eyebrow, Field, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import { joinRoom, normalizeRoomCode } from '@/lib/game';
-import { colors, rtlText } from '@/lib/theme';
 
 export default function JoinRoomScreen() {
   const [code, setCode] = useState('');
@@ -34,44 +33,47 @@ export default function JoinRoomScreen() {
 
   return (
     <Screen>
-      <View style={{ minHeight: 620, justifyContent: 'center', gap: 20 }}>
-        <View style={{ gap: 7 }}>
-          <Eyebrow>JOIN THE CASE</Eyebrow>
-          <Title size={40}>ادخل الروم</Title>
-          <Body muted>خد الكود من الـBoss، واختار الاسم اللي هيتقال في الاتهامات 😈</Body>
-        </View>
-
-        <Card accent>
-          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ ...rtlText, color: colors.text, fontSize: 17, fontWeight: '900' }}>الدور السري آمن</Text>
-              <Text style={{ ...rtlText, color: colors.muted, fontSize: 13, lineHeight: 20 }}>مش هيبان غير على جهازك بعد ما الـBoss يبدأ القضية.</Text>
-            </View>
-            <Pill label="PRIVATE" tone="gold" />
+      <View className="min-h-[680px] justify-center gap-7 py-4 lg:flex-row-reverse lg:items-center lg:gap-12">
+        <View className="flex-1 gap-5">
+          <View className="gap-2">
+            <Eyebrow>JOIN THE CASE</Eyebrow>
+            <Title>ادخل الروم</Title>
+            <Body muted>خد الكود من الـBoss، واختار الاسم اللي هيتقال في الاتهامات 😈</Body>
           </View>
+
+          <Card tone="gold">
+            <View className="flex-row-reverse items-center justify-between gap-4">
+              <View className="flex-1 gap-1">
+                <Text className="text-right text-lg font-black text-case-cream">الدور السري آمن</Text>
+                <Text className="text-right text-xs leading-5 text-case-muted">مش هيبان غير على جهازك بعد ما الـBoss يبدأ القضية.</Text>
+              </View>
+              <Pill label="PRIVATE" tone="gold" />
+            </View>
+          </Card>
+        </View>
+
+        <Card className="flex-1 lg:max-w-[470px] lg:p-7">
+          <View className="gap-3">
+            <SectionTitle title="كود الروم" caption="6 حروف أو أرقام" />
+            <Field
+              value={code}
+              onChangeText={(value) => setCode(normalizeRoomCode(value))}
+              placeholder="A1B2C3"
+              autoCapitalize="characters"
+              maxLength={6}
+              className="min-h-[72px] text-center text-3xl font-black tracking-[8px]"
+            />
+          </View>
+
+          <View className="gap-3">
+            <SectionTitle title="اسمك في اللعبة" caption="اختار اسم قصير وواضح" />
+            <Field value={nickname} onChangeText={setNickname} placeholder="مثلاً: مهند" maxLength={24} />
+          </View>
+
+          {error ? <ErrorText message={error} /> : null}
+          <Button label="ادخل التحقيق" onPress={submit} loading={loading} />
+          <Text className="text-center text-[11px] text-case-dim">مفيش تسجيل حساب • الدخول مؤقت وسريع</Text>
         </Card>
-
-        <View style={{ gap: 9 }}>
-          <SectionTitle title="كود الروم" caption="6 حروف أو أرقام" />
-          <Field
-            value={code}
-            onChangeText={(value) => setCode(normalizeRoomCode(value))}
-            placeholder="A1B2C3"
-            autoCapitalize="characters"
-            maxLength={6}
-            style={{ textAlign: 'center', writingDirection: 'ltr', fontSize: 28, letterSpacing: 7, fontWeight: '900', minHeight: 66 }}
-          />
-        </View>
-
-        <View style={{ gap: 9 }}>
-          <SectionTitle title="اسمك في اللعبة" caption="اختار اسم قصير وواضح" />
-          <Field value={nickname} onChangeText={setNickname} placeholder="مثلاً: مهند" maxLength={24} />
-        </View>
-
-        {error ? <ErrorText message={error} /> : null}
-        <Button label="ادخل التحقيق" onPress={submit} loading={loading} />
-
-        <Text style={{ ...rtlText, color: colors.muted2, fontSize: 11, textAlign: 'center' }}>مفيش تسجيل حساب • الدخول مؤقت وسريع</Text>
       </View>
     </Screen>
   );
