@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "akherkheit",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "plugins": [
       [
         "expo-router",
