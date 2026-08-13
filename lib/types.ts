@@ -8,6 +8,7 @@ export type PlayerState = {
   characterName: string | null;
   characterBio: string | null;
   isEliminated: boolean;
+  isHost: boolean;
 };
 
 export type EvidenceRound = {
