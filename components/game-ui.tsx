@@ -12,11 +12,11 @@ import {
 
 export function Screen({ children }: PropsWithChildren) {
   return (
-    <View className="flex-1 bg-noir-950 font-sans">
+    <View className="w-full min-w-0 flex-1 overflow-hidden bg-noir-950 font-sans">
       <View pointerEvents="none" className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-[#4a3512] opacity-25" />
       <View pointerEvents="none" className="absolute -bottom-36 -left-32 h-96 w-96 rounded-full bg-[#241b3a] opacity-25" />
-      <ScrollView className="flex-1" keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
-        <View className="mx-auto w-full max-w-5xl gap-5 px-4 pb-20 pt-5 sm:px-6 lg:px-8">{children}</View>
+      <ScrollView className="w-full min-w-0 flex-1" keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
+        <View className="mx-auto w-full min-w-0 max-w-5xl gap-5 px-4 pb-28 pt-5 sm:px-6 lg:px-8">{children}</View>
       </ScrollView>
     </View>
   );
@@ -31,7 +31,7 @@ export function Card({ children, tone = 'default', className = '' }: PropsWithCh
         : tone === 'green'
           ? 'border-case-green/35 bg-[#0b1511]'
           : 'border-white/10 bg-noir-800/95';
-  return <View className={`gap-4 rounded-[28px] border p-5 web:shadow-card ${toneClass} ${className}`}>{children}</View>;
+  return <View className={`w-full min-w-0 gap-4 rounded-3xl border p-4 sm:rounded-[28px] sm:p-5 web:shadow-card ${toneClass} ${className}`}>{children}</View>;
 }
 
 export function Eyebrow({ children }: PropsWithChildren) {
@@ -48,8 +48,8 @@ export function Body({ children, muted = false, className = '' }: PropsWithChild
 
 export function SectionTitle({ title, caption }: { title: string; caption?: string }) {
   return (
-    <View className="gap-1">
-      <Text selectable className="text-right text-xl font-black text-case-cream">{title}</Text>
+    <View className="min-w-0 gap-1">
+      <Text selectable className="text-right text-lg font-black text-case-cream sm:text-xl">{title}</Text>
       {caption ? <Text selectable className="text-right text-xs leading-5 text-case-dim">{caption}</Text> : null}
     </View>
   );
@@ -60,7 +60,7 @@ export function Field({ className = '', ...props }: TextInputProps & { className
     <TextInput
       placeholderTextColor="#6e707e"
       {...props}
-      className={`min-h-[58px] rounded-2xl border border-white/10 bg-noir-750 px-4 text-right text-base text-case-cream outline-none web:focus:border-case-gold/60 ${className}`}
+      className={`min-h-[58px] w-full min-w-0 rounded-2xl border border-white/10 bg-noir-750 px-4 text-right text-base text-case-cream outline-none web:focus:border-case-gold/60 ${className}`}
     />
   );
 }
@@ -85,9 +85,9 @@ export function Button({ label, onPress, disabled, loading, tone = 'gold', icon,
       accessibilityRole="button"
       disabled={disabled || loading}
       onPress={onPress}
-      className={`min-h-[58px] flex-row-reverse items-center justify-center gap-2 rounded-2xl border px-5 active:scale-[0.99] ${palette} ${(disabled || loading) ? 'opacity-40' : ''} ${className}`}>
+      className={`min-h-[56px] w-full min-w-0 flex-row-reverse items-center justify-center gap-2 rounded-2xl border px-4 active:scale-[0.99] sm:min-h-[58px] sm:px-5 ${palette} ${(disabled || loading) ? 'opacity-40' : ''} ${className}`}>
       {loading ? <ActivityIndicator color={tone === 'gold' ? '#050507' : '#fff6dc'} /> : icon}
-      <Text className={`text-center text-[15px] font-black ${text}`}>{label}</Text>
+      <Text className={`shrink text-center text-[14px] font-black sm:text-[15px] ${text}`}>{label}</Text>
     </Pressable>
   );
 }
@@ -126,8 +126,8 @@ export function HeroMark() {
 
 export function MiniStat({ value, label }: { value: string; label: string }) {
   return (
-    <View className="min-w-[92px] flex-1 gap-1 rounded-2xl border border-white/[0.07] bg-noir-750 px-4 py-3">
-      <Text selectable className="text-right text-lg font-black text-case-cream">{value}</Text>
+    <View className="min-w-[86px] flex-1 gap-1 rounded-2xl border border-white/[0.07] bg-noir-750 px-3 py-3 sm:min-w-[92px] sm:px-4">
+      <Text selectable className="text-right text-base font-black text-case-cream sm:text-lg">{value}</Text>
       <Text className="text-right text-[10px] font-bold text-case-dim">{label}</Text>
     </View>
   );
@@ -139,7 +139,7 @@ export function Divider() {
 
 export function ErrorText({ message }: { message: string }) {
   return (
-    <View className="rounded-2xl border border-case-red/30 bg-case-red/10 px-4 py-3">
+    <View className="w-full min-w-0 rounded-2xl border border-case-red/30 bg-case-red/10 px-4 py-3">
       <Text selectable className="text-right text-sm font-bold leading-6 text-[#ff9da5]">{message}</Text>
     </View>
   );
