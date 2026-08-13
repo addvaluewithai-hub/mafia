@@ -1,6 +1,7 @@
 export type SecretRole = 'mafia' | 'innocent';
 export type RoomStatus = 'lobby' | 'playing' | 'finished';
 export type Winner = 'mafia' | 'innocents' | null;
+export type CaseMode = 'ai' | 'preset';
 
 export type PlayerState = {
   id: string;
@@ -34,6 +35,8 @@ export type RoomSnapshot = {
     mafiaCount: number;
     difficulty: 'easy' | 'medium' | 'hard';
     theme: string;
+    caseMode: CaseMode;
+    storyTemplateId: string | null;
     title: string | null;
     premise: string | null;
     roundIndex: number;
