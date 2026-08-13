@@ -66,7 +66,7 @@ export default function HomeScreen() {
               </View>
               <View className="flex-row-reverse items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-3">
                 <Eye size={17} color="#f2c14e" />
-                <Text className="flex-1 text-right text-sm font-bold text-case-cream">كل لاعب يشوف دوره سرًا</Text>
+                <Text className="flex-1 text-right text-sm font-bold text-case-cream">كل لاعب — حتى الـBoss — يشوف دوره سرًا</Text>
               </View>
               <View className="flex-row-reverse items-center gap-3 rounded-2xl bg-white/[0.03] px-4 py-3">
                 <Gavel size={17} color="#f2c14e" />
@@ -78,7 +78,7 @@ export default function HomeScreen() {
 
         <View className="gap-3 sm:flex-row-reverse">
           <View className="flex-1">
-            <ActionCard title="اعمل روم كـ Boss" caption="اختار العدد والصعوبة وجو القضية" onPress={() => router.push('/create')} primary icon={<Crown size={22} color="#050507" strokeWidth={2.2} />} />
+            <ActionCard title="اعمل روم كـ Boss" caption="إنت هتلعب معاهم وتمسك إدارة الجولة" onPress={() => router.push('/create')} primary icon={<Crown size={22} color="#050507" strokeWidth={2.2} />} />
           </View>
           <View className="flex-1">
             <ActionCard title="ادخل روم" caption="معاك كود؟ ادخل باسمك وانضم للتحقيق" onPress={() => router.push('/join')} icon={<LogIn size={22} color="#f2c14e" strokeWidth={2.2} />} />
@@ -87,7 +87,7 @@ export default function HomeScreen() {
 
         <View className="flex-row-reverse items-center justify-center gap-2">
           <Wifi size={13} color="#66d6a0" strokeWidth={2.3} />
-          <Text className="text-right text-[11px] text-case-dim">الـBoss بيدير اللعبة ومش محسوب ضمن المشتبه فيهم</Text>
+          <Text className="text-right text-[11px] text-case-dim">الـBoss لاعب كامل: له دور سري وتصويت، ومعاه تحكم الجولة</Text>
         </View>
       </View>
     </Screen>
