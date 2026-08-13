@@ -1,0 +1,20 @@
+name: Package Vercel Source
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pack source
+        run: |
+          zip -r vercel-source-latest.zip . \
+            -x '.git/*' 'node_modules/*' 'dist/*' 'vercel-source-latest.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vercel-source-latest
+          path: vercel-source-latest.zip
+          retention-days: 1
