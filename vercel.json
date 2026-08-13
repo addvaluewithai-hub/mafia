@@ -6,9 +6,16 @@
     "api/index.ts": {
       "runtime": "@vercel/node@5.1.8",
       "includeFiles": "dist/server/**"
+    },
+    "api/case-start.ts": {
+      "runtime": "@vercel/node@5.1.8"
     }
   },
   "rewrites": [
+    {
+      "source": "/api/generate-case",
+      "destination": "/api/case-start"
+    },
     {
       "source": "/(.*)",
       "destination": "/api/index"
