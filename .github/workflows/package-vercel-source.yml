@@ -1,7 +1,8 @@
 name: Package Vercel Source
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   package:
