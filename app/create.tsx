@@ -27,7 +27,7 @@ export default function CreateRoomScreen() {
 
   const submit = async () => {
     if (bossName.trim().length < 2) {
-      setError('اكتب اسم الـBoss الأول.');
+      setError('اكتب اسمك الأول.');
       return;
     }
     setLoading(true);
@@ -51,23 +51,23 @@ export default function CreateRoomScreen() {
   return (
     <Screen>
       <View className="gap-2 pt-2">
-        <Eyebrow>BOSS SETUP</Eyebrow>
+        <Eyebrow>BOSS + PLAYER</Eyebrow>
         <Title>جهّز القضية</Title>
-        <Body muted>إنت المدير. اختار شكل الماتش، وبعدها ابعت الرابط للناس.</Body>
+        <Body muted>إنت الـBoss وإنت لاعب كمان. اختار العدد الكلي، وبعدها ابعت الرابط لباقي الناس.</Body>
       </View>
 
       <View className="gap-5 lg:flex-row-reverse lg:items-start lg:gap-7">
         <View className="flex-1 gap-5">
           <Card tone="gold">
             <View className="flex-row-reverse flex-wrap gap-2">
-              <MiniStat value={`${players}`} label="مشتبه فيه" />
+              <MiniStat value={`${players}`} label="لاعب شامل الـBoss" />
               <MiniStat value={`${suggestedMafiaCount(players)}`} label="مافيوزو" />
               <MiniStat value="4" label="جولات" />
             </View>
           </Card>
 
           <View className="gap-2">
-            <SectionTitle title="اسم الـBoss" caption="الاسم اللي هيظهر فوق الروم" />
+            <SectionTitle title="اسمك" caption="هتظهر كـBoss وكلاعب ضمن المشتبه فيهم" />
             <Field value={bossName} onChangeText={setBossName} placeholder="مثلاً: شريف" maxLength={24} />
           </View>
 
@@ -81,7 +81,7 @@ export default function CreateRoomScreen() {
         <View className="flex-1 gap-5 lg:max-w-[470px]">
           <Card>
             <View className="flex-row-reverse items-start justify-between gap-3">
-              <SectionTitle title="عدد اللاعبين" caption="من 4 لـ 12 لاعب" />
+              <SectionTitle title="عدد اللاعبين" caption="من 4 لـ 12 — وإنت واحد منهم" />
               <Pill label={`${suggestedMafiaCount(players)} مافيا`} tone="gold" />
             </View>
 
@@ -91,11 +91,15 @@ export default function CreateRoomScreen() {
               </Pressable>
               <View className="flex-1 items-center gap-1">
                 <Text className="text-6xl font-black text-case-cream">{players}</Text>
-                <Text className="text-xs text-case-dim">لاعب</Text>
+                <Text className="text-xs text-case-dim">لاعب إجمالي</Text>
               </View>
               <Pressable onPress={() => changePlayers(-1)} className="h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-noir-700 active:scale-95">
                 <Text className="text-3xl font-bold text-case-gold">−</Text>
               </Pressable>
+            </View>
+
+            <View className="rounded-2xl border border-case-gold/15 bg-case-gold/5 px-4 py-3">
+              <Text className="text-right text-xs font-bold leading-5 text-case-muted">لو اخترت {players} لاعبين: إنت + {players - 1} يدخلوا من الرابط.</Text>
             </View>
           </Card>
 
@@ -121,7 +125,7 @@ export default function CreateRoomScreen() {
           </View>
 
           {error ? <ErrorText message={error} /> : null}
-          <Button label="اعمل الروم وابدأ التجمع" onPress={submit} loading={loading} />
+          <Button label="اعمل الروم وادخل كلاعب" onPress={submit} loading={loading} />
         </View>
       </View>
     </Screen>
