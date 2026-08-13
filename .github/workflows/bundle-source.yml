@@ -1,0 +1,33 @@
+name: Bundle Source
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload deploy source
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-source
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            app
+            components
+            lib
+            api
+            package.json
+            app.json
+            vercel.json
+            babel.config.js
+            metro.config.js
+            tailwind.config.js
+            tsconfig.json
+            global.css
+            nativewind-env.d.ts
+            expo-env.d.ts
