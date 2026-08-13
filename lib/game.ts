@@ -167,11 +167,17 @@ export async function generateAndStartCase(code: string) {
       }),
     });
   } catch (error) {
-    throw new Error(errorToMessage(error, 'مش قادرين نوصل لسيرفر توليد القضية. جرّب تاني.'));
+    throw new Error(errorToMessage(error, 'مش قادرين نوصل لسيرفر تجهيز القضية. جرّب تاني.'));
   }
 
   const raw = await response.text();
-  let body: { ok?: boolean; model?: string; error?: unknown } = {};
+  let body: {
+    ok?: boolean;
+    model?: string;
+    source?: 'ai' | 'preset';
+    storyTitle?: string;
+    error?: unknown;
+  } = {};
   if (raw) {
     try {
       body = JSON.parse(raw) as typeof body;
@@ -183,7 +189,7 @@ export async function generateAndStartCase(code: string) {
   if (!response.ok || !body.ok) {
     const fallback = response.status === 401
       ? 'جلسة الـBoss محتاجة تتجدد. اعمل Refresh واضغط تاني.'
-      : 'تعذر توليد القضية';
+      : 'تعذر تجهيز القضية';
     throw new Error(errorToMessage(body.error, fallback));
   }
 
