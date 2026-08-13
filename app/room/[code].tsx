@@ -251,7 +251,8 @@ export default function RoomScreen() {
 
   const { room } = snapshot;
   const isOutsider = !snapshot.isHost && !snapshot.me;
-  const lobbyReady = snapshot.playerCount >= 4;
+  const requiredToStart = room.caseMode === 'preset' ? room.maxPlayers : 4;
+  const lobbyReady = snapshot.playerCount >= requiredToStart;
   const progress = `${Math.min(100, (snapshot.playerCount / room.maxPlayers) * 100)}%` as `${number}%`;
   const roomUrl = shareRoomUrl(code);
 
@@ -272,7 +273,7 @@ export default function RoomScreen() {
       const result = await generateAndStartCase(code);
       void playGameSfx('reveal');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('القضية جاهزة', `اتولدت بنجاح${result.model ? ` باستخدام ${result.model}` : ''}.`);
+      Alert.alert('القضية جاهزة', result.storyTitle ? `هنلعب: ${result.storyTitle}` : `اتجهزت بنجاح${result.model ? ` باستخدام ${result.model}` : ''}.`);
     });
   };
 
@@ -344,7 +345,7 @@ export default function RoomScreen() {
                     <Users size={20} color="#f2c14e" strokeWidth={2.2} />
                   </View>
                   <View className="min-w-0 flex-1">
-                    <SectionTitle title="اللوبي" caption={lobbyReady ? 'العدد كفاية — تقدر تبدأ القضية دلوقتي' : 'اجمع 4 لاعبين على الأقل عشان تبدأ'} />
+                    <SectionTitle title="اللوبي" caption={lobbyReady ? 'العدد كفاية — تقدر تبدأ القضية دلوقتي' : room.caseMode === 'preset' ? `القضية الجاهزة دي محتاجة ${room.maxPlayers} لاعبين كاملين` : 'اجمع 4 لاعبين على الأقل عشان تبدأ'} />
                   </View>
                 </View>
                 <Pill label={lobbyReady ? 'جاهزين' : 'مستنيين'} tone={lobbyReady ? 'green' : 'gold'} />
@@ -358,13 +359,13 @@ export default function RoomScreen() {
                 <>
                   <Divider />
                   <Button
-                    label={lobbyReady ? 'ابدأ القضية' : 'محتاجين 4 لاعبين على الأقل'}
+                    label={lobbyReady ? 'ابدأ القضية' : `محتاجين ${requiredToStart} لاعبين عشان نبدأ`}
                     onPress={startGame}
                     disabled={!lobbyReady}
                     loading={actionLoading}
                     icon={<Sparkles size={19} color="#050507" strokeWidth={2.4} />}
                   />
-                  <Text className="text-center text-[10px] leading-5 text-case-dim">هنولّد القضية مرة واحدة ونبدأ فورًا لكل اللاعبين.</Text>
+                  <Text className="text-center text-[10px] leading-5 text-case-dim">هنجهّز القضية مرة واحدة ونبدأ فورًا لكل اللاعبين.</Text>
                 </>
               ) : !isOutsider ? (
                 <Body muted className="text-center">إنت جوه. استنى الـBoss يبدأ القضية.</Body>
