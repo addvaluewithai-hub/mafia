@@ -1,0 +1,38 @@
+name: Patch preset lobby
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch lobby copy and start threshold
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/room/[code].tsx')
+          s = p.read_text()
+          old = "  const lobbyReady = snapshot.playerCount >= 4;"
+          new = "  const requiredToStart = room.caseMode === 'preset' ? room.maxPlayers : 4;\n  const lobbyReady = snapshot.playerCount >= requiredToStart;"
+          if old in s:
+              s = s.replace(old, new)
+          s = s.replace("caption={lobbyReady ? 'العدد كفاية — تقدر تبدأ القضية دلوقتي' : 'اجمع 4 لاعبين على الأقل عشان تبدأ'}", "caption={lobbyReady ? 'العدد كفاية — تقدر تبدأ القضية دلوقتي' : room.caseMode === 'preset' ? `القضية الجاهزة دي محتاجة ${room.maxPlayers} لاعبين كاملين` : 'اجمع 4 لاعبين على الأقل عشان تبدأ'}")
+          s = s.replace("label={lobbyReady ? 'ابدأ القضية' : 'محتاجين 4 لاعبين على الأقل'}", "label={lobbyReady ? 'ابدأ القضية' : `محتاجين ${requiredToStart} لاعبين عشان نبدأ`}")
+          s = s.replace("هنولّد القضية مرة واحدة ونبدأ فورًا لكل اللاعبين.", "هنجهّز القضية مرة واحدة ونبدأ فورًا لكل اللاعبين.")
+          s = s.replace("Alert.alert('القضية جاهزة', `اتولدت بنجاح${result.model ? ` باستخدام ${result.model}` : ''}.`);", "Alert.alert('القضية جاهزة', result.storyTitle ? `هنلعب: ${result.storyTitle}` : `اتجهزت بنجاح${result.model ? ` باستخدام ${result.model}` : ''}.`);")
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "addvaluewithai-hub"
+          git config user.email "addvaluewithai@gmail.com"
+          git add 'app/room/[code].tsx'
+          git commit -m "fix: require full lobby for curated stories"
+          git push
