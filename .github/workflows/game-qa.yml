@@ -23,6 +23,8 @@ jobs:
         run: npx expo-doctor
       - name: Vote UI authoritative contract
         run: node scripts/qa/vote-ui-contract.mjs
+      - name: Gender UI RPC contract
+        run: node scripts/qa/gender-ui-contract.mjs
       - name: Full-game state simulations
         run: node scripts/qa/game-state-sim.mjs
       - name: Story critic (report mode)
