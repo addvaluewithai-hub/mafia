@@ -56,6 +56,18 @@ async function snapshots(clients, code) {
   return Promise.all(clients.map((c) => rpc(c, 'room_snapshot', { p_code: code })));
 }
 
+function assertVotingContract(snaps) {
+  for (const snap of snaps) {
+    if (!snap.me) continue;
+    if (snap.me.isEliminated) {
+      assert.equal(snap.canVote, false, 'eliminated player canVote must be false');
+      continue;
+    }
+    assert.equal(snap.phase, 'voting', 'unresolved playing round must report voting phase');
+    assert.equal(snap.canVote, !snap.voteSubmitted, 'canVote must be the server-authoritative inverse of voteSubmitted for living players');
+  }
+}
+
 async function voteAllFor(clients, snaps, code, targetId) {
   const alive = snaps.filter((s) => s.me && !s.me.isEliminated);
   const alternate = snaps.find((s) => s.me && !s.me.isEliminated && s.me.playerId !== targetId)?.me?.playerId;
@@ -65,6 +77,10 @@ async function voteAllFor(clients, snaps, code, targetId) {
     if (!snap.me || snap.me.isEliminated) continue;
     const target = snap.me.playerId === targetId ? alternate : targetId;
     await rpc(clients[i], 'cast_vote', { p_code: code, p_target_player_id: target });
+    const afterVote = await rpc(clients[i], 'room_snapshot', { p_code: code });
+    assert.equal(afterVote.phase, 'voting', 'submitting a vote must not resolve the round');
+    assert.equal(afterVote.voteSubmitted, true, 'submitted vote must be visible in snapshot');
+    assert.equal(afterVote.canVote, false, 'server must close canVote for a player after submission');
   }
   assert.equal(alive.length, snaps[0].eligibleVoters, 'eligible voter count must match living clients');
 }
@@ -107,6 +123,10 @@ async function runGame(playerCount) {
   assert.equal(snaps[0].playerCount, playerCount);
   assert.equal(snaps[0].isHost, true);
   assert(snaps[0].me?.playerId, 'Boss must also have a player row');
+  for (const snap of snaps) {
+    assert.equal(snap.phase, 'lobby');
+    assert.equal(snap.canVote, false);
+  }
 
   await rpc(boss, 'install_case', { p_code: code, p_case: fakeCase(playerCount) });
   snaps = await snapshots(players, code);
@@ -115,6 +135,7 @@ async function runGame(playerCount) {
     assert(snap.me?.role === 'mafia' || snap.me?.role === 'innocent');
     assert.equal(snap.room.roundIndex, 0);
   }
+  assertVotingContract(snaps);
 
   if (playerCount === 6) {
     await forceTieSix(players, snaps, code);
@@ -123,6 +144,7 @@ async function runGame(playerCount) {
     snaps = await snapshots(players, code);
     assert.equal(snaps[0].votesCast, 0, 'tie must clear votes');
     assert.equal(snaps[0].room.lastResolvedRound, -1, 'tie must leave round unresolved');
+    assertVotingContract(snaps);
     for (const snap of snaps) if (!snap.me.isEliminated) assert.equal(snap.voteSubmitted, false);
   }
 
@@ -130,6 +152,7 @@ async function runGame(playerCount) {
   let guard = 0;
   while (snaps[0].room.status === 'playing' && guard < 6) {
     guard += 1;
+    assertVotingContract(snaps);
     const mafia = snaps.find((s) => s.me?.role === 'mafia' && !s.me?.isEliminated);
     assert(mafia, 'at least one living mafia should exist while playing');
     const targetId = mafia.me.playerId;
@@ -141,6 +164,7 @@ async function runGame(playerCount) {
     const targetIndex = snaps.findIndex((s) => s.me?.playerId === targetId);
     assert(targetIndex >= 0);
     assert.equal(snaps[targetIndex].me.isEliminated, true);
+    assert.equal(snaps[targetIndex].canVote, false, 'eliminated target must never regain canVote');
 
     if (targetIndex === 0) {
       eliminatedBossWhileStillHost = true;
@@ -148,6 +172,8 @@ async function runGame(playerCount) {
     }
 
     if (snaps[0].room.status === 'playing') {
+      for (const snap of snaps) assert.equal(snap.phase, 'round_resolved', 'resolved round must be explicit before next clue');
+
       const { error: eliminatedVoteError } = await players[targetIndex].rpc('cast_vote', {
         p_code: code,
         p_target_player_id: snaps.find((s) => !s.me.isEliminated && s.me.playerId !== targetId).me.playerId,
@@ -157,6 +183,7 @@ async function runGame(playerCount) {
       await rpc(boss, 'reveal_next_round', { p_code: code });
       snaps = await snapshots(players, code);
       assert.equal(snaps[0].room.lastResolvedRound, snaps[0].room.roundIndex - 1);
+      assertVotingContract(snaps);
       for (const snap of snaps) {
         if (!snap.me.isEliminated) assert.equal(snap.voteSubmitted, false, 'new round must reopen vote');
       }
@@ -166,6 +193,10 @@ async function runGame(playerCount) {
   assert.equal(snaps[0].room.status, 'finished');
   assert(['mafia', 'innocents'].includes(snaps[0].room.winner));
   assert(snaps[0].room.publicSolution, 'finished game must expose solution');
+  for (const snap of snaps) {
+    assert.equal(snap.phase, 'finished');
+    assert.equal(snap.canVote, false);
+  }
 
   return {
     playerCount,
@@ -184,7 +215,8 @@ const report = {
   scenarios: results,
   coverage: [
     'anonymous auth', 'Boss auto-player', 'join room', 'install case', 'private roles',
-    'cast vote', 'six-player tie', 'tie reset', 'resolve vote', 'elimination',
+    'server-authoritative phase', 'server-authoritative canVote', 'canVote closes after submit',
+    'cast vote', 'six-player tie', 'tie reset', 'resolve vote', 'round_resolved phase', 'elimination',
     'eliminated voter rejection', 'Boss control after elimination', 'reveal next clue', 'winner and solution',
   ],
 };
