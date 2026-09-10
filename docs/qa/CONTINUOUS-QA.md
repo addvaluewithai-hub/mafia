@@ -43,8 +43,8 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [x] nickname-only PlayerCard identity.
 - [x] `caseRole` population في `install_case`.
 - [x] AI generator contract تحول إلى `characters[{role,bio}]` في المسارين؛ checks على `3b25ae4d700eddae2949ba96564636016a2d55aa`: `validate` ✅ و`qa` ✅.
-- [ ] gender-aware role/bio install contract: implemented على `21003ba17f107e019d469c97a855951b7e5f7b6c` باستخدام optional `roleByGender` / `bioByGender`; full checks ما زالت running عند إغلاق Session 14.
-- [ ] الـAI generator لا ينتج `roleByGender` / `bioByGender` بعد؛ لذلك الـbackend contract الجديد غير مستخدم في live generated cases حتى جلسة لاحقة.
+- [x] gender-aware role/bio install contract على `21003ba17f107e019d469c97a855951b7e5f7b6c`; checks أصبحت `validate` ✅ و`qa` ✅.
+- [ ] AI generator gender variants implementation على `6d7ea4db2dc9df164d06bd77d9afaa8611b34124`; checks ما زالت running عند إغلاق Session 15.
 - [ ] `character_name` و`character_bio` ما زالا legacy story fields، والقضايا الجاهزة ما زالت legacy names.
 
 ## QA coverage الحالي
@@ -52,7 +52,7 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - gender UI RPC contract.
 - standalone join gender contract.
 - player card identity contract.
-- generated case role identity contract للمسارين.
+- generated case schema/prompt/install handoff contract للمسارين.
 - case role install E2E contract.
 - gender-aware case wording install E2E contract.
 - 60 deterministic full-game state simulations.
@@ -64,44 +64,42 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 
 ## Sessions المغلقة المختصرة
 - Session 12: أضيف `caseRole` إلى `install_case` مع local Supabase regression؛ checks على `0e5d5ad5039d6196ebbb89ec74d8bc520c37ac89` Green.
-- Session 13: AI routes تحولت من fictional `name` إلى `role + bio`، مع guard يغطي `app/api/generate-case+api.ts` و`api/case-start.ts`. checks على `3b25ae4d700eddae2949ba96564636016a2d55aa` أصبحت `validate` ✅ و`qa` ✅. القضايا الجاهزة بقيت legacy عمدًا.
+- Session 13: AI routes تحولت من fictional `name` إلى `role + bio`، مع guard يغطي المسارين؛ checks على `3b25ae4d700eddae2949ba96564636016a2d55aa` Green.
+- Session 14: `install_case` أصبح يختار optional `roleByGender` / `bioByGender` بعد player shuffle، بدون تغيير `order by random()` أو `mafiaCharacterIndexes`; checks على `21003ba17f107e019d469c97a855951b7e5f7b6c` Green.
 
-## Session 14 — 2026-09-10 — Gender-aware case wording without changing mafia assignment
+## Session 15 — 2026-09-11 — AI generator gender wording variants
 ### نقطة البداية
 - قُرئ هذا handoff من default branch أولًا وتعاملنا معه كمصدر الحقيقة.
-- أحدث main وقت البداية كان `96152a2915b46a082db58180c2f03b74cc90c251`، والـgenerator implementation المستهدف كان `3b25ae4d700eddae2949ba96564636016a2d55aa`.
-- فُحصت checks للـcommit `3b25ae4d...`: `validate` ✅ و`qa` ✅، لذلك Session 13 أُغلقت قبل بدء بند جديد.
+- أحدث main وقت البداية كان `19fc2109eb3e14f540bd5cad5e2818504b087cb3`.
+- فُحصت checks للـcommit `21003ba17f107e019d469c97a855951b7e5f7b6c`: `validate` ✅ و`qa` ✅، لذلك gender-aware install contract أُغلق قبل بدء بند جديد.
 - Production parity بقي blocked ولم يُلمس.
 
 ### Reproduction / design finding
-- `install_case` كان يختار player order بـ`order by random()` ثم يربط character index باللاعب النهائي.
-- ربط character كامل بجنس محدد ثم اختيار mafia من `mafiaCharacterIndexes` كان ممكن يخلق اعتمادًا غير مقصود بين gender واحتمال المافيا.
-- لذلك لم نغيّر mapping أو player shuffle أو mafia indexes. بدل ذلك عرّفنا optional wording variants داخل **نفس character**: `roleByGender.{male,female}` و`bioByGender.{male,female}`. بعد الإسناد العشوائي الموجود أصلًا، `install_case` يختار الصياغة المطابقة لـ`player.gender` فقط.
-- legacy `role` و`bio` يظلان fallback، وبالتالي القضايا الحالية لا تتكسر.
+- generator schemas في `app/api/generate-case+api.ts` و`api/case-start.ts` كانت ما زالت تطلب `characters[{role,bio}]` فقط، لذلك live AI cases لا تنتج `roleByGender` / `bioByGender` رغم أن `install_case` يقدر يستهلكهم.
+- `api/case-start.ts` يستخدم نفس `validateCase` للـpreset ولـAI؛ جعل gender variants إلزامية بلا تمييز كان سيكسر القضايا الجاهزة legacy.
 
 ### ما تم
-- [x] migration `20260910233000_gender_case_text_variants.sql` يعيد تعريف `install_case` لاختيار role/bio variant حسب gender بعد الإسناد العشوائي.
-- [x] منطق `order by random()` لم يتغير.
-- [x] منطق `mafiaCharacterIndexes -> player_roles.role` لم يتغير.
-- [x] أضيف `scripts/qa/gender-case-text-install-e2e.mjs`: روم mixed gender، كل character يحمل male/female variants، ويثبت أن كل لاعب يستقبل الصياغة المناسبة وأن mafia count يظل المتوقع.
-- [x] أضيف `Gender-aware case wording install contract` إلى Game QA بعد local Supabase startup.
+- [x] كلا AI JSON schemas يطلبان الآن `role`, `bio`, `roleByGender.{male,female}`, `bioByGender.{male,female}`.
+- [x] Expo route Zod validator يفرض وجود male/female variants.
+- [x] server route يفرض gender variants على AI generation فقط (`requireGenderVariants=true`) ويبقي preset compatibility كما هي.
+- [x] prompts في المسارين تنص بوضوح أن male/female لنفس character يجب أن يحافظا على نفس الدور الدلالي ونفس الحقائق والدافع والفرصة ودرجة الاشتباه، ويختلفا لغويًا فقط.
+- [x] prompts تمنع استخدام gender في اختيار `mafiaCharacterIndexes`.
+- [x] تم توسيع `scripts/qa/generated-case-role-contract.mjs` بدل إضافة اختبار مكرر: يثبت schema + prompt + direct `p_case: generated` handoff، ويتحقق أن migration `20260910233000_gender_case_text_variants.sql` يستهلك variants مع بقاء `order by random()` و`mafiaCharacterIndexes`.
 - [x] لم يُحذف أو يُضعف أي اختبار.
 - [x] لم يحدث Production deploy أو migration أو DB write.
 
-### Commits
-- `22168281984f21564a524dab4fb434c07eff2dde` — gender-aware wording selection in `install_case`.
-- `49470b9d537d704d026f1c82a482bd53fbb333f5` — local Supabase regression for gender-specific role/bio wording.
-- `21003ba17f107e019d469c97a855951b7e5f7b6c` — run regression in Game QA.
+### Commit
+- `6d7ea4db2dc9df164d06bd77d9afaa8611b34124` — generate gender-aware case wording variants and extend regression contract.
 
 ### Evidence / checks
-- prerequisite `3b25ae4d700eddae2949ba96564636016a2d55aa`: `validate` ✅ و`qa` ✅.
-- checks على `21003ba17f107e019d469c97a855951b7e5f7b6c` عند آخر فحص: `validate` in_progress، `qa` in_progress، ولا يوجد failure ظاهر بعد.
+- prerequisite `21003ba17f107e019d469c97a855951b7e5f7b6c`: `validate` ✅ و`qa` ✅.
+- checks على `6d7ea4db2dc9df164d06bd77d9afaa8611b34124` عند آخر فحص: `validate` in_progress و`qa` in_progress، ولا يوجد failure ظاهر بعد.
 - لذلك التغيير **ليس deploy-safe بعد** ولا يوجد أي Production deploy.
 
 ### Newly discovered risks / bugs
-- الـbackend الآن يقدر يحافظ على mafia randomness ويختار الصياغة حسب gender، لكن AI schemas/prompts الحالية لا تنتج `roleByGender` / `bioByGender`؛ live AI cases ستستمر باستخدام `role` / `bio` المحايدين حتى تحديث generator في جلسة منفصلة.
-- `character_bio` ما زال اسم column legacy رغم أنه الآن قد يحمل bio صحيحًا حسب gender؛ إزالة/إعادة تسمية legacy schema ليست ضمن هذه الجلسة.
-- regression يثبت عدم تغير **mafia count** ويعتمد على بقاء shuffle/index logic نفسها structurally؛ لا يوجد statistical probability test لأنه سيكون flaky وغير مناسب للـCI.
+- لا يوجد semantic equivalence test فعلي على نص AI الناتج؛ regression الحالي يثبت العقد والـprompt، وليس جودة كل generation. إضافة model-dependent CI ستكون flaky ومكلفة، لذلك لم تُضف في هذه الجلسة.
+- القضايا الجاهزة ما زالت legacy ولا تحتوي gender variants؛ هذا مقصود للحفاظ على compatibility، وتحويلها بند منفصل.
+- `GeneratedCase` TypeScript type ما زال لا يصرّح بالـvariant fields صراحة، لكن server validator يعيد payload كـ`GeneratedCase` من `any` والـruntime/install handoff يعمل. تحديث النوع ممكن كتحسين contract لاحق، وليس blocker للـruntime الحالي.
 
 ## P1 — Player identity backlog
 - [x] تصميم `gender + caseRole` schema + snapshot/types/regression.
@@ -110,7 +108,8 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [x] جعل nickname الاسم الأساسي الظاهر دائمًا في PlayerCard.
 - [x] backend `caseRole` install support.
 - [x] تحديث case generator إلى roles/bios بدون fictional names.
-- [ ] إغلاق gender-aware install بعد Green CI، ثم تحديث generator ليولد male/female wording variants لنفس الدور بدون ربط mafia probability بالجنس.
+- [x] gender-aware install contract Green.
+- [ ] إغلاق AI gender variants بعد Green CI.
 - [ ] إزالة legacy `character_name` بعد تحويل القضايا الجاهزة واختبارات compatibility في جلسة منفصلة.
 
 ## P1 — Story quality backlog
@@ -121,8 +120,8 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [ ] منع clue واحد من كشف المافيا قبل المرحلة الأخيرة، وحتى الأخير يحتاج ربطًا بما قبله.
 
 ## الأولوية الدقيقة للجلسة التالية
-1. افحص checks للـcommit `21003ba17f107e019d469c97a855951b7e5f7b6c` أولًا.
+1. افحص checks للـcommit `6d7ea4db2dc9df164d06bd77d9afaa8611b34124` أولًا.
 2. لو ظهر failure: أصلح **أول failure فقط** مع regression مناسب، ولا تبدأ بندًا جديدًا.
-3. لو `validate` و`qa` Green: أغلق gender-aware install contract، ثم نفّذ **بندًا واحدًا فقط**: حدّث AI generator contract في المسارين ليولد `roleByGender` و`bioByGender` لنفس الدور الدلالي مع fallback compatibility، وأضف regression يثبت schema/prompt/install handoff. لا تغيّر mafia assignment ولا تبدأ story rewrite شامل.
-4. لو generator variants تحتاج إعادة تصميم أكبر أو تسبب schema incompatibility: وثّق blocker ولا تخمن.
+3. لو `validate` و`qa` Green: أغلق AI gender variants، ثم نفّذ **بندًا واحدًا فقط**: أضف `roleByGender` و`bioByGender` إلى `GeneratedCase` TypeScript contract مع regression compile/static يثبت التوافق، من غير UI أو story rewrite أو تغيير mafia assignment.
+4. بعد إغلاق type contract في جلسة لاحقة، ارجع لأول بند Story Quality قابل للقياس بدل توسيع identity بلا داعٍ.
 5. لا تلمس Production parity blocker إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
