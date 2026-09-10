@@ -123,7 +123,7 @@ begin
         'nickname', p.nickname,
         'revealedRole', e.revealed_role,
         'roundIndex', e.round_index
-      ) order by e.created_at
+      ) order by e.created_at)
       from public.eliminations e
       join public.players p on p.id = e.player_id
       where e.room_id = v_room.id
