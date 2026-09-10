@@ -1,0 +1,35 @@
+name: Game QA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13'
+      - name: Install dependencies
+        run: npm install
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Expo doctor
+        run: npx expo-doctor
+      - name: Full-game state simulations
+        run: node scripts/qa/game-state-sim.mjs
+      - name: Story critic (report mode)
+        run: node scripts/qa/story-critic.mjs
+      - name: Upload QA reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-qa-reports
+          path: qa/reports/*.json
+          if-no-files-found: warn
+          retention-days: 14
