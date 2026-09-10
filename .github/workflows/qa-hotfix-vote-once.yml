@@ -1,0 +1,38 @@
+name: QA vote hotfix once
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make vote phase defensive
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/room/[code].tsx')
+          s = p.read_text()
+          anchor = "  const { room } = snapshot;\n  const isOutsider = !snapshot.isHost && !snapshot.me;"
+          replacement = "  const { room } = snapshot;\n  // Defensive fallback: older/stale snapshots may omit lastResolvedRound.\n  // A missing value must never deadlock the vote UI.\n  const safeLastResolvedRound = Number.isFinite(room.lastResolvedRound) ? room.lastResolvedRound : -1;\n  const voteOpen = room.status === 'playing' && safeLastResolvedRound < room.roundIndex;\n  const isOutsider = !snapshot.isHost && !snapshot.me;"
+          if anchor not in s:
+              raise SystemExit('room anchor not found')
+          s = s.replace(anchor, replacement, 1)
+          s = s.replace("room.status === 'playing' && room.lastResolvedRound < room.roundIndex", "voteOpen")
+          s = s.replace("room.status === 'playing' && snapshot.me && !snapshot.me.isEliminated && room.lastResolvedRound < room.roundIndex", "voteOpen && snapshot.me && !snapshot.me.isEliminated")
+          s = s.replace("{room.lastResolvedRound < room.roundIndex ? (", "{voteOpen ? (")
+          p.write_text(s)
+          PY
+      - name: Commit hotfix and remove one-shot workflow
+        run: |
+          git config user.name "addvaluewithai-hub"
+          git config user.email "addvaluewithai@gmail.com"
+          rm .github/workflows/qa-hotfix-vote-once.yml
+          git add 'app/room/[code].tsx' .github/workflows/qa-hotfix-vote-once.yml
+          git commit -m "fix: prevent vote UI deadlock on incomplete snapshot"
+          git push
