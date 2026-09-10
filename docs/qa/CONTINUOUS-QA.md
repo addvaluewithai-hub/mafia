@@ -54,9 +54,9 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [x] أضيف reusable `components/gender-picker.tsx` بقيم `male | female` وعرض مصري بسيط `ذكر / أنثى`.
 - [x] create UI يطلب gender قبل إنشاء الروم ويشرح صراحة أنه للصياغة فقط ولا يغير الدور أو فرص الفوز.
 - [x] create UI انتقل من `create_room_v2` إلى `create_room_v3` ويرسل `p_boss_gender`.
-- [x] join UI يطلب gender قبل الدخول ويشرح أنه للصياغة فقط.
+- [x] join UI داخل صفحة الروم يطلب gender قبل الدخول ويشرح أنه للصياغة فقط.
 - [x] `joinRoom` أصبح يتطلب `PlayerGender` ويستعمل `join_room_v2` ويرسل `p_gender`.
-- [x] أضيف `scripts/qa/gender-ui-contract.mjs` كـregression guard يمنع رجوع create إلى `create_room_v2` أو join إلى `join_room` ويثبت وجود الـpicker وتمرير gender.
+- [x] أضيف `scripts/qa/gender-ui-contract.mjs` كـregression guard لمسار create + join داخل صفحة الروم.
 - [x] Game QA workflow أصبح يشغل `Gender UI RPC contract` قبل محاكاة الجيم وSupabase E2E.
 - [x] لم يتم أي Production deploy أو migration أو schema/data write.
 
@@ -64,24 +64,56 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - `2b5c967d57ef544a3a288668f2759ccf5fd45168` — reusable gender picker.
 - `21411f4fd3e65904533ccafbca5b288d24ce89be` — create UI → `create_room_v3`.
 - `dad4bc69cde4f9dd45e8605529b50c9b48924b57` — join client → `join_room_v2`.
-- `7f3a7db623c590354cc4b576d749514d85234b3e` — join UI gender selection.
+- `7f3a7db623c590354cc4b576d749514d85234b3e` — room-page join UI gender selection.
 - `26e8bee64ab9de7ae0eb473968291b4edfe62c97` — gender UI regression guard.
 - `ab515a700cbc6855439d8a1000c91a922580684b` — run gender UI guard in Game QA.
 
 ### Evidence / checks
 - prerequisite backend commit `08d7a7ac...`: `validate` ✅ و`qa` ✅.
-- checks على `ab515a70...` وقت إغلاق الجلسة: `validate` queued و`qa` queued؛ لا يوجد failure ظاهر بعد، لكن **لا تعتبر UI wiring مغلقًا أو deploy-safe حتى تصبح checks Green**.
+- final result for `ab515a70...`: `validate` ❌ و`qa` ❌ بسبب TypeScript failure في `app/join.tsx(24,13): Expected 3 arguments, but got 2`.
+- السبب: صفحة `/join` المستقلة لم تُحدث مع عقد `joinRoom(code, nickname, gender)`، والـguard كان يغطي join داخل صفحة الروم فقط.
 - لم يتم deploy إلى Production.
 
 ### Newly discovered risks
-- الـUI regression الحالي static contract guard؛ الـbackend gender behavior نفسه مغطى بالفعل بـSupabase E2E من Session 8. لو ظهر UI runtime-specific bug لاحقًا، أضف interaction-level regression بدل توسيع static guard بلا داعٍ.
+- عند وجود أكثر من entry point لنفس action لازم regression guard يغطي كل entry points؛ تغطية صفحة الروم وحدها لم تكن كافية.
 - `caseRole` ما زال غير مُعبأ، لذلك nickname ما زال يظهر بجانب legacy fictional character name في بعض أجزاء اللعبة.
 - Production parity blocker ما زال قائمًا ومستقلًا عن هذا التغيير.
+
+## Session 10 — 2026-09-10 — Fix standalone `/join` gender regression
+### نقطة البداية
+- قُرئ هذا handoff أولًا كمصدر الحقيقة.
+- آخر main عند البداية كان `c60e6beab3592daf3fae9255133abba471ae8e23`، والـgender UI commit `ab515a700cbc6855439d8a1000c91a922580684b` كان أحمر.
+- فحص GitHub Actions أثبت أن **أول failure** في `qa` هو TypeScript: `app/join.tsx(24,13): error TS2554: Expected 3 arguments, but got 2`.
+- طبقًا لقواعد الجلسة لم يبدأ أي بند nickname/caseRole/story جديد.
+
+### ما تم
+- [x] `app/join.tsx` أصبح يطلب `PlayerGender` باستخدام `GenderPicker` قبل submit.
+- [x] صفحة `/join` تمنع الدخول برسالة مصرية واضحة لو gender غير مختار.
+- [x] `/join` أصبحت تنادي `joinRoom(normalized, nickname, gender)` بدل العقد القديم ذي الباراميترين.
+- [x] أضيف regression مستقل `scripts/qa/standalone-join-gender-contract.mjs` يثبت import/state/picker/validation وتمرير gender.
+- [x] Game QA workflow أصبح يشغل `Standalone join gender contract` بعد الـgender UI guard الحالي.
+- [x] لم يتم أي Production deploy أو migration أو schema/data write.
+
+### Commits
+- `5ab0fbf5367fbaaedd81a5d217f35e800da1ad06` — fix standalone join screen gender contract.
+- `09b065db47bba9d5779d07663ca7cde4ca35e784` — standalone join regression guard.
+- `0278179096419e2fadbe06d4f3ef3362f405a189` — run standalone join regression in Game QA.
+
+### Evidence / checks
+- failure reproduced من GitHub Actions logs على `ab515a70...`: TypeScript وقف قبل باقي QA عند `/join` بسبب missing third argument.
+- checks على `0278179096419e2fadbe06d4f3ef3362f405a189` وقت إغلاق الجلسة: `validate` queued و`qa` queued؛ لا يوجد failure ظاهر بعد.
+- لذلك **لا تعتبر gender UI wiring مغلقًا أو deploy-safe حتى تصبح checks Green**.
+- لم يتم deploy إلى Production.
+
+### Newly discovered risks
+- الـgender UI contract موزع على create وroom join وstandalone join؛ أي entry point جديد للدخول لازم يدخل نفس contract/regression coverage.
+- الـstatic guards تثبت wiring، بينما السلوك backend نفسه ما زال مغطى بـSupabase gender RPC E2E من Session 8.
+- `caseRole` وlegacy fictional identity لم يتغيرا في هذه الجلسة.
 
 ## P1 — Player identity backlog
 - [x] تصميم `gender + caseRole` schema + snapshot/types/regression.
 - [x] إضافة gender إلى backend create/join contract مع regression tests.
-- [x] إضافة اختيار gender في create/join UI وربطه بالعقد الجديد — **pending final CI result for `ab515a70...`**.
+- [ ] إضافة اختيار gender في كل create/join UI وربطه بالعقد الجديد — **pending final CI result for `02781790...` after standalone `/join` fix**.
 - [ ] جعل nickname الاسم الأساسي الظاهر دائمًا.
 - [ ] تحويل story character إلى caseRole مرتبط باللاعب بدل fictional name.
 - [ ] تحديث case generator/install schema إلى roles/bios بدون fictional names.
@@ -95,7 +127,7 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [ ] منع clue واحد من كشف المافيا قبل المرحلة الأخيرة، وحتى الأخير يحتاج ربطًا بما قبله.
 
 ## الأولوية الدقيقة للجلسة التالية
-1. افحص checks للـcommit `ab515a700cbc6855439d8a1000c91a922580684b` ثم أحدث handoff commit.
+1. افحص checks للـcommit `0278179096419e2fadbe06d4f3ef3362f405a189` ثم أحدث handoff commit.
 2. لو أول failure ظهر: أصلح **أول failure فقط** مع regression مناسب، ولا تبدأ بندًا جديدًا.
-3. لو `validate` و`qa` Green: اعتبر gender UI wiring مغلقًا، ونفّذ **بندًا واحدًا فقط**: اجعل nickname هو الاسم الأساسي الظاهر دائمًا في player cards، مع regression يثبت أن fictional `characterName` لا يظهر كهوية اللاعب. لا تبدأ caseRole schema population أو story rewrite في نفس الجلسة.
+3. لو `validate` و`qa` Green: اعتبر gender UI wiring مغلقًا، ونفّذ **بندًا واحدًا فقط**: اجعل nickname هو الاسم الأساسي الظاهر دائمًا في player cards، مع regression يثبت أن fictional `characterName` لا يظهر كهوية اللاعب. لا تبدأ caseRole population أو story rewrite في نفس الجلسة.
 4. لا تلمس Production parity blocker إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
