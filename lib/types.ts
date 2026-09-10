@@ -2,6 +2,7 @@ export type SecretRole = 'mafia' | 'innocent';
 export type RoomStatus = 'lobby' | 'playing' | 'finished';
 export type Winner = 'mafia' | 'innocents' | null;
 export type CaseMode = 'ai' | 'preset';
+export type GamePhase = 'lobby' | 'voting' | 'round_resolved' | 'finished';
 
 export type PlayerState = {
   id: string;
@@ -46,6 +47,8 @@ export type RoomSnapshot = {
     timerDurationSeconds: number;
     timerEndsAt: string | null;
   };
+  phase: GamePhase;
+  canVote: boolean;
   isHost: boolean;
   me: {
     playerId: string;
