@@ -87,6 +87,25 @@ function voteEveryoneFor(game, targetId) {
   }
 }
 
+function forceTie(game) {
+  const living = alive(game);
+  assert(living.length >= 4 && living.length % 2 === 0, 'tie helper expects an even group of at least 4');
+  const a = living[0].id;
+  const b = living[1].id;
+  const votersForA = new Set(
+    living
+      .filter((voter) => voter.id !== a)
+      .slice(0, living.length / 2)
+      .map((voter) => voter.id),
+  );
+
+  // b is deliberately in votersForA, and a is necessarily in the other half,
+  // so neither candidate ever has to vote for themself.
+  for (const voter of living) {
+    castVote(game, voter.id, votersForA.has(voter.id) ? a : b);
+  }
+}
+
 function runScenario(playerCount, iteration) {
   const game = makeGame(playerCount);
   const boss = game.players[0];
@@ -95,13 +114,7 @@ function runScenario(playerCount, iteration) {
   // Force a deterministic tie once to prove the round reopens instead of deadlocking.
   const living = alive(game);
   if (living.length >= 4 && living.length % 2 === 0) {
-    const a = living[0].id;
-    const b = living[1].id;
-    living.forEach((voter, index) => {
-      let target = index < living.length / 2 ? a : b;
-      if (target === voter.id) target = target === a ? b : a;
-      castVote(game, voter.id, target);
-    });
+    forceTie(game);
     const tie = resolveVote(game);
     assert.equal(tie.status, 'tie');
     assert.equal(game.lastResolvedRound, -1, 'tie must not resolve round');
@@ -119,7 +132,7 @@ function runScenario(playerCount, iteration) {
     assert(!canVote(game, target), 'eliminated player must not vote');
 
     if (game.status === 'playing') {
-      // Host control survives even if Boss is the eliminated target in other scenarios.
+      // Host control survives even if Boss is the eliminated target.
       assert(game.players[0].isHost, 'Boss control capability must remain independent from elimination');
       revealNextRound(game);
       for (const p of alive(game)) assert(canVote(game, p), 'all living players must vote in next round');
