@@ -108,14 +108,43 @@
 - لا يوجد bug منتج جديد مثبت في هذه الجلسة حتى لحظة الإغلاق.
 - لو فشل الـQA الجديد، أول failure داخل reconnect/session restore هو الـP0 الوحيد للجلسة التالية ويجب إصلاحه قبل أي بند آخر.
 
+## Session 5 — 2026-09-10 — eliminated Boss retains admin control
+### نقطة البداية
+- تم فحص `d9fc187c3854961bfd575c0c4da025a09c631ddb` كما طلب handoff.
+- `validate` ✅ و`qa` ✅؛ بالتالي refresh/reconnect vote-state regression أصبح مقفولًا.
+- أعلى P0 التالي كان إثبات سلوك الـBoss بعد السجن بصورة مستقلة وغير incidental.
+
+### ما تم في هذه الجلسة
+- [x] أضيف `scripts/qa/boss-eliminated-e2e.mjs` كسيناريو deterministic مستقل على 6 لاعبين.
+- [x] السيناريو يجبر التصويت على الـBoss نفسه في الجولة الأولى بغض النظر عن دوره السري.
+- [x] يثبت أن الـBoss بعد السجن يرى `isEliminated=true` و`isHost=true` و`canVote=false`.
+- [x] يثبت أن `cast_vote` يرفض صوت الـBoss المسجون.
+- [x] يثبت أن الـBoss المسجون يستطيع `reveal_next_round`.
+- [x] بعد الجولة التالية، اللاعبون الأحياء فقط يصوتون، ثم الـBoss المسجون نفسه يستدعي `resolve_vote` بنجاح.
+- [x] أضيف السيناريو كخطوة مستقلة داخل `Game QA` بعد الـfull-game RPC E2E، ويخرج تقرير `qa/reports/boss-eliminated-e2e.json`.
+- [x] لم يتم تعديل product logic أو تخفيف أي اختبار قائم.
+
+### Commits المهمة في Session 5
+- `2fdd8462cf88f1c68ceaa7468cd63e50484739d3` — إضافة regression المستقل للـBoss المسجون.
+- `6cab1c56de726ddf0f97059d35883a0d046fb807` — تشغيل السيناريو ضمن Game QA.
+
+### نتيجة CI عند إغلاق Session 5
+- checks على `6cab1c56de726ddf0f97059d35883a0d046fb807` بدأت وكانت **queued** عند آخر فحص؛ لا يوجد failure ظاهر بعد.
+- لذلك هذا الـP0 **ليس مغلقًا نهائيًا بعد** حتى يمر `qa` الذي يشغّل local Supabase والسيناريو الجديد.
+- لم يتم أي Production migration أو deploy.
+
+### Bugs/مخاطر جديدة
+- لم يثبت bug منتج جديد حتى لحظة الإغلاق؛ التغيير الحالي يرفع مستوى اليقين حول قاعدة «Boss لاعب + مدير».
+- لو فشل السيناريو الجديد، أول failure فيه يصبح P0 الوحيد للجلسة التالية، ولا ننتقل للهوية أو القصص قبله.
+
 ## تشخيص التصويت الحالي
-المشكلة الأصلية كانت أن العميل يعيد استنتاج فتح التصويت من counters. السيرفر أصبح المصدر الصريح للحقيقة عبر `phase/canVote`، والواجهة تستهلكهما مباشرة. Session 4 أضافت regression يختبر نفس الحقيقة عبر client جديد بعد reconnect؛ لا تعتبر المسار مغلقًا نهائيًا إلا بعد Green للـcommit `d9fc187c3854961bfd575c0c4da025a09c631ddb`.
+المشكلة الأصلية كانت أن العميل يعيد استنتاج فتح التصويت من counters. السيرفر أصبح المصدر الصريح للحقيقة عبر `phase/canVote`، والواجهة تستهلكهما مباشرة. Session 4 أضافت regression يختبر نفس الحقيقة عبر client جديد بعد reconnect، وتم تأكيد Green له في Session 5.
 
 ## تشخيص القصص
 مثال «آخر بروفة» يحتوي على كلمات وتراكيب مثل: ريلاي، لسان قفل، تحليل الغبار، بصمة دخول للوحة الإضاءة. الهدف: **المعلومة تتفهم فورًا، معناها في اللغز هو الصعب.**
 
 ## Drift مكتشف
-Production كانت تحتوي على تغييرات `case_mode` / `story_template_id` / `create_room_v2` لم تكن موجودة في migrations داخل GitHub. تم توثيقها في versioned migration، لكن لا تدّعِ أن Production migrated بدون تطبيق موثق وsmoke test. Migration الـphase الجديدة لم تُطبق على Production حتى نهاية Session 4.
+Production كانت تحتوي على تغييرات `case_mode` / `story_template_id` / `create_room_v2` لم تكن موجودة في migrations داخل GitHub. تم توثيقها في versioned migration، لكن لا تدّعِ أن Production migrated بدون تطبيق موثق وsmoke test. Migration الـphase الجديدة لم تُطبق على Production حتى نهاية Session 5.
 
 ## Backlog مرتب بالأولوية
 
@@ -127,8 +156,8 @@ Production كانت تحتوي على تغييرات `case_mode` / `story_templa
 - [x] Server contract صريح `phase` + `canVote` في `room_snapshot` + regression tests.
 - [x] توصيل UI إلى `snapshot.phase` و`snapshot.canVote` بدل counters المحلية + CI guard.
 - [x] فحص Session 3 CI: `5287931...` أصبح `validate` ✅ و`qa` ✅.
-- [ ] **أعلى أولوية حالية:** افحص checks للـcommit `d9fc187c3854961bfd575c0c4da025a09c631ddb`. لو فشل أي check أصلح أول failure فقط. لو Green، علّم refresh/reconnect P0 كمغلق وانتقل للبند التالي.
-- [ ] ثبّت سيناريو Boss نفسه يُسجن ثم يظل قادرًا على resolve/reveal بينما لا يقدر يصوت بصورة مستقلة وواضحة في التقرير.
+- [x] refresh/reconnect vote-state regression أصبح Green على `d9fc187...`.
+- [ ] **أعلى أولوية حالية:** افحص checks للـcommit `6cab1c56de726ddf0f97059d35883a0d046fb807`. لو فشل أي check أصلح أول failure فقط. لو Green، علّم Boss-eliminated P0 كمغلق وانتقل للبند التالي.
 - [ ] طابق Production DB مع versioned migrations فقط بعد Green E2E + smoke test.
 
 ### P1 — Player identity
@@ -163,8 +192,9 @@ GitHub Action `Game QA` يعمل على push/PR ويستهدف:
 4. 60 full-game state simulations.
 5. Story critic report.
 6. Supabase CLI + clean local DB from migrations.
-7. Full-game RPC E2E لـ5/6/7 لاعبين، ويتضمن الآن reconnect vote-state coverage.
-8. JSON artifacts تحت `qa/reports/`.
+7. Full-game RPC E2E لـ5/6/7 لاعبين، ويتضمن reconnect vote-state coverage.
+8. Deterministic eliminated-Boss admin E2E يثبت منع التصويت مع استمرار reveal/resolve.
+9. JSON artifacts تحت `qa/reports/`.
 
 يوجد أيضًا ChatGPT hourly QA loop. كل تشغيل يبدأ من هذا الملف، يختار عنصرًا واحدًا فقط من أعلى أولوية، ينفذه/يختبره، ثم يحدث هذا الملف قبل أن ينتهي.
 
@@ -179,16 +209,17 @@ GitHub Action `Game QA` يعمل على push/PR ويستهدف:
 - كل قصة جاهزة تعدي Critic threshold.
 - كل شاشة أساسية تعدي mobile QA.
 
-## خطة Session 5
-1. اقرأ هذا الملف وافحص checks للـcommit `d9fc187c3854961bfd575c0c4da025a09c631ddb`.
+## خطة Session 6
+1. اقرأ هذا الملف وافحص checks للـcommit `6cab1c56de726ddf0f97059d35883a0d046fb807`.
 2. لو أي check فشل: أصلح أول failure فقط ولا تبدأ بندًا جديدًا.
-3. لو Green: اعتبر refresh/reconnect vote-state regression مقفولًا، ثم نفّذ P0 واحد فقط: سيناريو واضح يجبر الـBoss نفسه على السجن ويثبت أنه يفقد `canVote` لكن يحتفظ بقدرة `resolve_vote` و`reveal_next_round`.
-4. اجعل نتيجة Boss-eliminated ظاهرة بوضوح في تقرير `qa/reports/supabase-e2e.json` بدل أن تكون incidental coverage.
-5. افحص TypeScript + Game QA ثم حدّث هذا الملف.
-6. لا تبدأ gender/caseRole أو إعادة كتابة القصص قبل إغلاق هذا الـP0.
+3. لو Green: اعتبر Boss-eliminated admin P0 مقفولًا.
+4. بعدها نفّذ بندًا واحدًا فقط من أعلى أولوية فعلية: ابدأ Production DB/versioned migration parity كـread-only audit أولًا؛ لا تطبق أي migration قبل إثبات الـdrift ووجود smoke-test واضح.
+5. لو الـProduction audit غير متاح بالأدوات، وثّق blocker وانتقل في الجلسة التالية إلى أول P1 Player Identity: تصميم `gender` + `caseRole` schema مع regression tests قبل UI.
+6. لا تبدأ إعادة كتابة القصص في نفس الجلسة.
 
 ## سجل الجلسات
 - **2026-09-10 Session 1:** تأسيس نظام QA المستمر، hotfix للتصويت، simulations، critic، local RPC E2E، ومزامنة migrations.
 - **2026-09-10 Session 2:** تأكد أن الـRPC E2E الأساسي Green، ثم أضيف server-authoritative `phase/canVote` مع regression coverage كاملة عبر lobby/vote/submit/tie/resolve/reveal/finish. checks الجديدة كانت queued عند الإغلاق؛ Production لم تتغير.
 - **2026-09-10 Session 3:** تم التأكد أن عقد السيرفر Green، ثم توصيل واجهة التصويت بالكامل إلى `phase/canVote` مع regression guard في CI. checks الخاصة بالتغيير الجديد كانت in_progress عند الإغلاق؛ Production لم تتغير.
 - **2026-09-10 Session 4:** تم التأكد أن Session 3 Green، ثم أضيف reconnect regression حقيقي داخل local Supabase RPC E2E عبر fresh client لنفس session قبل/بعد cast وبعد tie وبعد resolve وبعد next round. checks الجديدة كانت in_progress عند الإغلاق؛ Production لم تتغير.
+- **2026-09-10 Session 5:** تم التأكد أن reconnect P0 Green، ثم أضيف deterministic E2E مستقل يجبر الـBoss على السجن ويثبت أنه يفقد التصويت ويحتفظ بـreveal/resolve. checks الجديدة كانت queued عند الإغلاق؛ Production لم تتغير.
