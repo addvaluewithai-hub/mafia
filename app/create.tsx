@@ -3,11 +3,12 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { GenderPicker } from '@/components/gender-picker';
 import { Body, Button, Card, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import { errorToMessage, suggestedMafiaCount } from '@/lib/game';
 import { STORY_CATALOG, storiesForPlayerCount } from '@/lib/story-catalog';
 import { ensureAnonymousSession, supabase } from '@/lib/supabase';
-import type { CaseMode } from '@/lib/types';
+import type { CaseMode, PlayerGender } from '@/lib/types';
 
 const difficulties = [
   { key: 'easy' as const, label: 'سهل', desc: 'مناسب لأول مرة' },
@@ -17,6 +18,7 @@ const difficulties = [
 
 export default function CreateRoomScreen() {
   const [bossName, setBossName] = useState('');
+  const [bossGender, setBossGender] = useState<PlayerGender | null>(null);
   const [players, setPlayers] = useState(6);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('hard');
   const [theme, setTheme] = useState('');
@@ -56,6 +58,10 @@ export default function CreateRoomScreen() {
       setError('اكتب اسمك الأول.');
       return;
     }
+    if (!bossGender) {
+      setError('اختار الجنس عشان صياغة القصة تبقى مظبوطة.');
+      return;
+    }
     if (caseMode === 'preset' && !availableStories.some((story) => story.id === storyTemplateId)) {
       setError('اختار قضية جاهزة مناسبة لعدد اللاعبين.');
       return;
@@ -65,8 +71,9 @@ export default function CreateRoomScreen() {
     setError('');
     try {
       await ensureAnonymousSession();
-      const { data, error: rpcError } = await supabase.rpc('create_room_v2', {
+      const { data, error: rpcError } = await supabase.rpc('create_room_v3', {
         p_boss_name: bossName.trim(),
+        p_boss_gender: bossGender,
         p_max_players: players,
         p_difficulty: caseMode === 'preset' ? 'hard' : difficulty,
         p_theme: caseMode === 'preset' ? 'قضية جاهزة محكمة' : theme.trim() || 'حفلة عائلية مصرية معاصرة',
@@ -105,6 +112,11 @@ export default function CreateRoomScreen() {
           <View className="gap-2">
             <SectionTitle title="اسمك" caption="هتظهر كـBoss وكلاعب ضمن المشتبه فيهم" />
             <Field value={bossName} onChangeText={setBossName} placeholder="مثلاً: شريف" maxLength={24} />
+          </View>
+
+          <View className="gap-2">
+            <SectionTitle title="الجنس" caption="للصياغة في القصة بس — ملوش أي تأثير على دورك أو فرصك" />
+            <GenderPicker value={bossGender} onChange={setBossGender} />
           </View>
         </View>
 
