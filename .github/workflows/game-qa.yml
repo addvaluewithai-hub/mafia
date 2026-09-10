@@ -33,6 +33,13 @@ jobs:
           version: latest
       - name: Start clean local Supabase
         run: supabase start
+      - name: Player identity schema contract
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          node scripts/qa/player-identity-schema-e2e.mjs
       - name: Full-game RPC E2E (5/6/7 players)
         shell: bash
         run: |
