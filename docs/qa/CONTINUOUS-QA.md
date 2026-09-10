@@ -39,11 +39,13 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [x] `gender + caseRole` schema + snapshot/types regression.
 - [x] gender-aware backend RPC contract: `create_room_v3` و`join_room_v2`.
 - [x] backend gender E2E: all-male / all-female / mixed، مع إثبات أن mafia count يعتمد على عدد اللاعبين فقط.
-- [x] gender create/join UI في create + room join + standalone `/join`، والـCI على `0278179096419e2fadbe06d4f3ef3362f405a189` أصبح `validate` ✅ و`qa` ✅.
-- [x] nickname-only PlayerCard identity؛ الـCI على `37978b63c6ba558b436c5079c62d70548459204c` أصبح `CI` ✅ و`Game QA` ✅.
-- [x] `caseRole` population في `install_case`؛ الـchecks على `0e5d5ad5039d6196ebbb89ec74d8bc520c37ac89` أصبحت `validate` ✅ و`qa` ✅.
-- [ ] AI generator contract تحول إلى `characters[{role,bio}]` في المسارين، مع regression guard على `3b25ae4d700eddae2949ba96564636016a2d55aa`؛ `validate` ✅ والـrole guard ✅، لكن full `qa` **pending final completion**.
-- [ ] `character_name` و`character_bio` ما زالا legacy story fields في schema/install path والقضايا الجاهزة ما زالت تستخدم أسماءها القديمة.
+- [x] gender create/join UI في create + room join + standalone `/join`.
+- [x] nickname-only PlayerCard identity.
+- [x] `caseRole` population في `install_case`.
+- [x] AI generator contract تحول إلى `characters[{role,bio}]` في المسارين؛ checks على `3b25ae4d700eddae2949ba96564636016a2d55aa`: `validate` ✅ و`qa` ✅.
+- [ ] gender-aware role/bio install contract: implemented على `21003ba17f107e019d469c97a855951b7e5f7b6c` باستخدام optional `roleByGender` / `bioByGender`; full checks ما زالت running عند إغلاق Session 14.
+- [ ] الـAI generator لا ينتج `roleByGender` / `bioByGender` بعد؛ لذلك الـbackend contract الجديد غير مستخدم في live generated cases حتى جلسة لاحقة.
+- [ ] `character_name` و`character_bio` ما زالا legacy story fields، والقضايا الجاهزة ما زالت legacy names.
 
 ## QA coverage الحالي
 - vote UI authoritative contract.
@@ -52,6 +54,7 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - player card identity contract.
 - generated case role identity contract للمسارين.
 - case role install E2E contract.
+- gender-aware case wording install E2E contract.
 - 60 deterministic full-game state simulations.
 - story critic report mode.
 - local Supabase player identity schema E2E.
@@ -59,83 +62,46 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - local Supabase full-game RPC E2E لـ5/6/7 لاعبين.
 - eliminated Boss admin-controls E2E.
 
-## Session 12 — 2026-09-10 — Populate caseRole during install_case
+## Sessions المغلقة المختصرة
+- Session 12: أضيف `caseRole` إلى `install_case` مع local Supabase regression؛ checks على `0e5d5ad5039d6196ebbb89ec74d8bc520c37ac89` Green.
+- Session 13: AI routes تحولت من fictional `name` إلى `role + bio`، مع guard يغطي `app/api/generate-case+api.ts` و`api/case-start.ts`. checks على `3b25ae4d700eddae2949ba96564636016a2d55aa` أصبحت `validate` ✅ و`qa` ✅. القضايا الجاهزة بقيت legacy عمدًا.
+
+## Session 14 — 2026-09-10 — Gender-aware case wording without changing mafia assignment
 ### نقطة البداية
-- قُرئ هذا handoff أولًا وتعاملنا معه كمصدر الحقيقة الوحيد.
-- تم فحص `37978b63c6ba558b436c5079c62d70548459204c`: `CI` و`Game QA` مكتملان بنجاح، لذلك nickname-only PlayerCard identity أصبح مغلقًا.
+- قُرئ هذا handoff من default branch أولًا وتعاملنا معه كمصدر الحقيقة.
+- أحدث main وقت البداية كان `96152a2915b46a082db58180c2f03b74cc90c251`، والـgenerator implementation المستهدف كان `3b25ae4d700eddae2949ba96564636016a2d55aa`.
+- فُحصت checks للـcommit `3b25ae4d...`: `validate` ✅ و`qa` ✅، لذلك Session 13 أُغلقت قبل بدء بند جديد.
 - Production parity بقي blocked ولم يُلمس.
-- تم اختيار البند المحدد التالي فقط: بدء `caseRole` population في backend/install path، بدون generator rewrite أو UI أو story rewrite.
 
-### Reproduction
-- `players.case_role` موجود في schema و`room_snapshot` لكنه لا يُملأ عند `install_case`.
-- `install_case` كان ينسخ فقط `character.name -> character_name` و`character.bio -> character_bio`، لذلك حتى case payload فيه role وصفي لا توجد له قناة تخزين.
-- أضيف `scripts/qa/case-role-install-e2e.mjs` لاختبار case payload يحتوي `role` و`bio` فقط بدون fictional `name`، ثم يتأكد أن nickname الحقيقي لم يتغير وأن `caseRole` اتخزن وظهر في snapshot بينما `characterName` يظل null.
-
-### ما تم
-- [x] أضيف migration `20260910203000_populate_case_role_on_install.sql` يعيد تعريف `install_case` بأقل تغيير: `case_role = nullif(trim(v_character->>'role'), '')`.
-- [x] أبقينا `character_name` و`character_bio` legacy-compatible؛ لم نحذف schema أو payload fields في هذه الجلسة.
-- [x] دعم `role` اختياري، لذلك الحالات القديمة التي لا ترسله لا تتكسر وتظل `caseRole = null` مؤقتًا.
-- [x] أضيف E2E يثبت أن أربعة nicknames حقيقية تظل كما هي، وأن أربعة roles وصفية تُملأ مرة واحدة لكل لاعب، وأن install ينجح بدون fictional characterName.
-- [x] أضيف `Case role install contract` إلى Game QA بعد local Supabase startup وقبل full-game RPC E2E.
-- [x] لم يتم حذف أو إضعاف أي اختبار موجود.
-- [x] لم يتم أي Production deploy أو migration أو DB write.
-
-### Commits
-- `c929619dd79aafa6f7e66d87b4d5048f759beb5d` — populate optional case role in `install_case`.
-- `1f79d31beea9f08080436c45b449816682c87138` — case-role install regression E2E.
-- `0e5d5ad5039d6196ebbb89ec74d8bc520c37ac89` — run case-role install regression in Game QA.
-
-### Evidence / checks
-- prerequisite `37978b63...`: `CI` ✅ و`Game QA` ✅.
-- checks على `0e5d5ad5039d6196ebbb89ec74d8bc520c37ac89` أصبحت `validate` ✅ و`qa` ✅؛ backend caseRole install support مغلق.
-- لم يتم deploy إلى Production.
-
-### Newly discovered risks
-- الـAI generator وJSON schema كانا يعرفان `characters[{name,bio}]` فقط ولا ينتجان `role`.
-- ما زال `character_name` legacy field يُملأ إذا وصل `name`.
-- ترتيب إسناد الشخصيات للاعبين داخل `install_case` عشوائي كما كان؛ الاختبار يثبت completeness/identity preservation وليس mapping ثابتًا إلى nickname معين.
-
-## Session 13 — 2026-09-10 — Generate caseRole instead of fictional names
-### نقطة البداية
-- قُرئ هذا handoff من default branch أولًا ولم يُستخدم chat memory كمصدر قرار.
-- تم فحص أحدث main والـchecks للـcommit `0e5d5ad5039d6196ebbb89ec74d8bc520c37ac89`: `validate` ✅ و`qa` ✅، لذلك backend install prerequisite مغلق.
-- Production parity ما زال blocked ولم يُلمس.
-- تم اختيار بند واحد فقط من الأولوية الدقيقة: تحديث AI generator + validation/JSON schema إلى `role,bio` بدل fictional `name`.
-
-### Reproduction
-- `app/api/generate-case+api.ts` كان Zod validator وJSON schema فيهما `characters[{name,bio}]`، والـprompt يطلب أسماء شخصيات مصرية.
-- `api/case-start.ts` كان JSON schema فيه `name,bio` أيضًا، ومرجع القصص المرسل للموديل يحتوي الأسماء القديمة.
-- بالتالي حتى مع دعم `install_case` لـ`case_role`، مسار AI الطبيعي كان سيستمر في إنتاج `character_name` ويترك `caseRole` فارغًا.
+### Reproduction / design finding
+- `install_case` كان يختار player order بـ`order by random()` ثم يربط character index باللاعب النهائي.
+- ربط character كامل بجنس محدد ثم اختيار mafia من `mafiaCharacterIndexes` كان ممكن يخلق اعتمادًا غير مقصود بين gender واحتمال المافيا.
+- لذلك لم نغيّر mapping أو player shuffle أو mafia indexes. بدل ذلك عرّفنا optional wording variants داخل **نفس character**: `roleByGender.{male,female}` و`bioByGender.{male,female}`. بعد الإسناد العشوائي الموجود أصلًا، `install_case` يختار الصياغة المطابقة لـ`player.gender` فقط.
+- legacy `role` و`bio` يظلان fallback، وبالتالي القضايا الحالية لا تتكسر.
 
 ### ما تم
-- [x] `app/api/generate-case+api.ts`: Zod validator وJSON schema أصبحا يطلبان `role + bio`، uniqueness أصبح على roles، والـprompt يمنع اسم شخصية بديل ويثبت أن nickname هو الهوية.
-- [x] `api/case-start.ts`: AI JSON schema أصبح `role + bio`، والـprompt يطلب role وصفيًا فقط؛ أسماء الشخصيات القديمة تُحذف من reference payload قبل إرسالها للموديل.
-- [x] أبقينا preset/curated compatibility: `GeneratedCase` يسمح مؤقتًا بـ`role?` و`name?`، وserver validator يقبل واحدًا منهما حتى لا نكسر القصص الجاهزة في نفس الجلسة.
-- [x] المساران يمران generated payload مباشرة إلى `install_case` بعد validation كما كانا؛ لا تغيير في mafia mechanics أو voting/game state.
-- [x] أضيف `scripts/qa/generated-case-role-contract.mjs` ليثبت أن كلا المسارين يطلب `role,bio`، لا يطلب `name,bio`، يمرر generated payload إلى `install_case`، وأن Expo validator نفسه لا يحتوي fictional name.
-- [x] أضيف regression الجديد إلى Game QA.
-- [x] لم يتم حذف أو إضعاف أي اختبار.
-- [x] لم يتم أي Production deploy أو migration أو DB write.
+- [x] migration `20260910233000_gender_case_text_variants.sql` يعيد تعريف `install_case` لاختيار role/bio variant حسب gender بعد الإسناد العشوائي.
+- [x] منطق `order by random()` لم يتغير.
+- [x] منطق `mafiaCharacterIndexes -> player_roles.role` لم يتغير.
+- [x] أضيف `scripts/qa/gender-case-text-install-e2e.mjs`: روم mixed gender، كل character يحمل male/female variants، ويثبت أن كل لاعب يستقبل الصياغة المناسبة وأن mafia count يظل المتوقع.
+- [x] أضيف `Gender-aware case wording install contract` إلى Game QA بعد local Supabase startup.
+- [x] لم يُحذف أو يُضعف أي اختبار.
+- [x] لم يحدث Production deploy أو migration أو DB write.
 
 ### Commits
-- `3754e3d8af410e8113d3c1861a363e264a759584` — GeneratedCase compatibility for role payloads.
-- `31156c09988568b0134090d04268266b63b6cf88` — Expo AI route generates roles instead of names.
-- `6958a288a4b0e05199b36c01d338bf545235065a` — server AI route aligns with role payload and strips legacy names from references.
-- `8c0e9ea866fa2c9343181db927810b45b2fb0fe9` — generated case role regression guard.
-- `3b25ae4d700eddae2949ba96564636016a2d55aa` — run generated case role guard in Game QA.
+- `22168281984f21564a524dab4fb434c07eff2dde` — gender-aware wording selection in `install_case`.
+- `49470b9d537d704d026f1c82a482bd53fbb333f5` — local Supabase regression for gender-specific role/bio wording.
+- `21003ba17f107e019d469c97a855951b7e5f7b6c` — run regression in Game QA.
 
 ### Evidence / checks
-- prerequisite `0e5d5ad5...`: `validate` ✅ و`qa` ✅.
-- على `3b25ae4d700eddae2949ba96564636016a2d55aa`: `validate` ✅.
-- Game QA: TypeScript ✅، Expo Doctor ✅، كل UI contracts السابقة ✅، `Generated case role identity contract` ✅، full-game state simulations ✅، story critic ✅؛ الـworkflow كان عند `Start clean local Supabase` وقت آخر فحص، لذلك full Supabase E2E ما زال pending.
-- لذلك **لا تعتبر AI role generator deploy-safe أو مغلقًا حتى يصبح full `qa` Green**.
-- لم يتم deploy إلى Production.
+- prerequisite `3b25ae4d700eddae2949ba96564636016a2d55aa`: `validate` ✅ و`qa` ✅.
+- checks على `21003ba17f107e019d469c97a855951b7e5f7b6c` عند آخر فحص: `validate` in_progress، `qa` in_progress، ولا يوجد failure ظاهر بعد.
+- لذلك التغيير **ليس deploy-safe بعد** ولا يوجد أي Production deploy.
 
 ### Newly discovered risks / bugs
-- يوجد مساران متوازيان لتوليد القضية (`app/api/generate-case+api.ts` و`api/case-start.ts`)؛ divergence بينهما ممكن، لذلك regression الجديد يغطي الاثنين معًا.
-- القضايا الجاهزة الست ما زالت legacy `name + bio`، ولم تُحوّل في هذه الجلسة عمدًا.
-- `install_case` يوزع character payloads عشوائيًا على اللاعبين. هذا لا يضر nickname identity، لكنه يعني أن **gender-aware role/bio لا يمكن ضمان مطابقته لجنس اللاعب** بمجرد تعديل prompt؛ نحتاج contract يربط payload باللاعب النهائي قبل صياغة gender-aware prose.
-- لا يوجد live Gemini generation في CI؛ regression الحالي يثبت contract/schema/install handoff، وليس جودة مخرجات موديل حقيقية. Story critic يبقى طبقة منفصلة لجودة النص.
+- الـbackend الآن يقدر يحافظ على mafia randomness ويختار الصياغة حسب gender، لكن AI schemas/prompts الحالية لا تنتج `roleByGender` / `bioByGender`؛ live AI cases ستستمر باستخدام `role` / `bio` المحايدين حتى تحديث generator في جلسة منفصلة.
+- `character_bio` ما زال اسم column legacy رغم أنه الآن قد يحمل bio صحيحًا حسب gender؛ إزالة/إعادة تسمية legacy schema ليست ضمن هذه الجلسة.
+- regression يثبت عدم تغير **mafia count** ويعتمد على بقاء shuffle/index logic نفسها structurally؛ لا يوجد statistical probability test لأنه سيكون flaky وغير مناسب للـCI.
 
 ## P1 — Player identity backlog
 - [x] تصميم `gender + caseRole` schema + snapshot/types/regression.
@@ -143,8 +109,8 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [x] إضافة اختيار gender في كل create/join UI وربطه بالعقد الجديد.
 - [x] جعل nickname الاسم الأساسي الظاهر دائمًا في PlayerCard.
 - [x] backend `caseRole` install support.
-- [ ] تحديث case generator إلى roles/bios بدون fictional names — **implemented on `3b25ae4d...`, validate + role contract Green, full QA pending**.
-- [ ] صياغة role/bio بحسب gender بدون تغيير mechanics؛ blocked منطقيًا على تثبيت mapping بين generated character payload واللاعب النهائي.
+- [x] تحديث case generator إلى roles/bios بدون fictional names.
+- [ ] إغلاق gender-aware install بعد Green CI، ثم تحديث generator ليولد male/female wording variants لنفس الدور بدون ربط mafia probability بالجنس.
 - [ ] إزالة legacy `character_name` بعد تحويل القضايا الجاهزة واختبارات compatibility في جلسة منفصلة.
 
 ## P1 — Story quality backlog
@@ -155,8 +121,8 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [ ] منع clue واحد من كشف المافيا قبل المرحلة الأخيرة، وحتى الأخير يحتاج ربطًا بما قبله.
 
 ## الأولوية الدقيقة للجلسة التالية
-1. افحص checks للـcommit `3b25ae4d700eddae2949ba96564636016a2d55aa` ثم حدّث handoff.
+1. افحص checks للـcommit `21003ba17f107e019d469c97a855951b7e5f7b6c` أولًا.
 2. لو ظهر failure: أصلح **أول failure فقط** مع regression مناسب، ولا تبدأ بندًا جديدًا.
-3. لو `validate` و`qa` Green: اعتبر AI `role,bio` generator contract مغلقًا، ونفّذ **بندًا واحدًا فقط**: أضف regression يثبت أن role/bio المخصصين لغويًا حسب gender يصلان للاعب الصحيح، ثم اعمل أصغر mapping change يلزم لذلك بدون تغيير mafia assignment/probability. لا تبدأ story rewrite شامل في نفس الجلسة.
-4. لو اتضح أن mapping الآمن يحتاج redesign أكبر: وثّق blocker واقترح contract واضح بدل التخمين.
+3. لو `validate` و`qa` Green: أغلق gender-aware install contract، ثم نفّذ **بندًا واحدًا فقط**: حدّث AI generator contract في المسارين ليولد `roleByGender` و`bioByGender` لنفس الدور الدلالي مع fallback compatibility، وأضف regression يثبت schema/prompt/install handoff. لا تغيّر mafia assignment ولا تبدأ story rewrite شامل.
+4. لو generator variants تحتاج إعادة تصميم أكبر أو تسبب schema incompatibility: وثّق blocker ولا تخمن.
 5. لا تلمس Production parity blocker إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
