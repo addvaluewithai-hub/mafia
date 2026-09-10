@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-import type { RoomSnapshot } from '@/lib/types';
+import type { PlayerGender, RoomSnapshot } from '@/lib/types';
 import { ensureAnonymousSession, supabase } from '@/lib/supabase';
 
 export function normalizeRoomCode(value: string) {
@@ -65,11 +65,12 @@ export async function createRoom(input: {
   return String(data);
 }
 
-export async function joinRoom(code: string, nickname: string) {
+export async function joinRoom(code: string, nickname: string, gender: PlayerGender) {
   await ensureAnonymousSession();
-  const { data, error } = await supabase.rpc('join_room', {
+  const { data, error } = await supabase.rpc('join_room_v2', {
     p_code: normalizeRoomCode(code),
     p_nickname: nickname.trim(),
+    p_gender: gender,
   });
 
   if (error) throw new Error(errorToMessage(error, 'تعذر دخول الروم'));
