@@ -64,18 +64,51 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 
 ### Evidence / checks
 - baseline `c59a2133...`: `validate` ✅ و`qa` ✅.
-- checks على `3c3e8768...` وقت إغلاق الجلسة: `validate` in_progress و`qa` in_progress، ولا يوجد failure ظاهر حتى آخر فحص.
-- لذلك **لا تعتبر Player identity schema مغلقة أو deploy-safe حتى تصبح checks Green**.
+- `3c3e8768...`: `validate` ✅ و`qa` ✅؛ identity schema contract مقفول Green.
 - لم يتم أي Production migration أو deploy أو schema/data write.
 
 ### Newly discovered risks
-- لا يوجد حتى الآن RPC يسمح بتسجيل gender؛ لذلك الحقل يظل null في مسار المنتج الحالي، وهذا مقصود في هذه الجلسة.
-- `character_name` و`character_bio` ما زالا legacy fields ويستمران في تمثيل القصة القديمة؛ لم يتم تغيير سلوك القصص في هذه الجلسة.
-- migration يعرض `caseRole` في snapshot لكنه لا يملؤه بعد؛ تعبئته يجب أن تأتي مع تحويل case generation/install contract وليس بقيمة مشتقة عشوائيًا.
+- `character_name` و`character_bio` ما زالا legacy fields ويستمران في تمثيل القصة القديمة.
+- `caseRole` موجود في snapshot لكنه لا يُملأ بعد؛ تعبئته يجب أن تأتي مع تحويل case generation/install contract وليس بقيمة مشتقة عشوائيًا.
+
+## Session 8 — 2026-09-10 — Gender-aware backend RPC contract
+### نقطة البداية
+- قرأت هذا handoff أولًا وتعاملت معه كمصدر الحقيقة.
+- آخر main وقت البداية كان handoff commit `f0346062a978c864df15bdce4851e8564b5b030f`، والـidentity contract المطلوب فحصه `3c3e8768...` صار `validate` ✅ و`qa` ✅.
+- Production parity ما زالت blocked ولم تُلمس.
+- أعلى أولوية قابلة للتنفيذ كانت backend create/join gender contract فقط، بدون UI.
+
+### ما تم
+- [x] أضيف migration جديد: `supabase/migrations/20260910141500_gender_rpc_contract.sql`.
+- [x] أضيف `create_room_v3` الذي يستقبل `p_boss_gender` ويحفظه على player row الخاصة بالـBoss.
+- [x] أضيف `join_room_v2` الذي يستقبل `p_gender` ويحفظه على اللاعب المنضم.
+- [x] يتم قبول `male | female` فقط؛ أي قيمة أخرى تُرفض على مستوى RPC، بالإضافة إلى constraint الجدول الموجود بالفعل.
+- [x] تم الحفاظ على `create_room`, `create_room_v2`, `join_room` بدون تغيير لتجنب كسر العملاء الحاليين أو خلق overload ambiguities في PostgREST.
+- [x] أضيف `scripts/qa/player-gender-rpc-e2e.mjs`.
+- [x] الـE2E يثبت حفظ gender في `room_snapshot.me` و`room_snapshot.players` قبل وبعد `install_case`.
+- [x] الـE2E يرفض unsupported gender.
+- [x] الـE2E يشغل ثلاث غرف 4 لاعبين: all-male وall-female وmixed، ويثبت أن كل واحدة تحصل على mafia واحدة فقط كما تحدد mechanics بعدد اللاعبين، وأن gender لا يتغير بعد role assignment.
+- [x] Game QA workflow يشغل `Player gender RPC contract` على Supabase محلي نظيف قبل full-game RPC E2E.
+
+### Commits
+- `342b0d1c816e8ddbd197b0f935466679d40c62ff` — gender-aware RPC migration.
+- `df714ed303dec1ceb0888d9a40f1e5809e4d0790` — gender RPC E2E.
+- `08d7a7ace8ed44202354da83a0148b1a0ab1bb35` — تشغيل regression في Game QA.
+
+### Evidence / checks
+- prerequisite `3c3e8768...`: `validate` ✅ و`qa` ✅.
+- checks على `08d7a7ac...` وقت إغلاق الجلسة: `validate` in_progress و`qa` in_progress، ولا يوجد failure ظاهر حتى آخر فحص.
+- لذلك **لا تعتبر gender RPC contract مغلقًا أو deploy-safe حتى تصبح checks Green**.
+- لم يتم أي Production migration أو deploy أو schema/data write.
+
+### Newly discovered risks
+- الـUI ما زالت تستعمل `create_room_v2` و`join_room`، لذلك gender لن يدخل من المنتج قبل UI wiring؛ هذا مقصود لأن هذه الجلسة backend-only.
+- اختبار role independence يثبت invariance للعدد المتوقع للمافيا عبر all-male/all-female/mixed rooms ويثبت بقاء gender ثابتًا بعد `install_case`; لا يعتمد على randomness لتقرير أي لاعب بعينه يصبح mafia.
+- `caseRole` ما زال nullable وغير مُعبأ؛ لم يُخلط مع هذه الجلسة حتى لا تتوسع عن بند واحد.
 
 ## P1 — Player identity backlog
-- [x] تصميم `gender + caseRole` schema + snapshot/types/regression — **pending final CI result for `3c3e8768...`**.
-- [ ] إضافة gender إلى create/join contract مع regression tests، بدون تأثير على secret role assignment.
+- [x] تصميم `gender + caseRole` schema + snapshot/types/regression.
+- [x] إضافة gender إلى backend create/join contract مع regression tests — **pending final CI result for `08d7a7ac...`**.
 - [ ] إضافة اختيار gender في create/join UI بعد ثبات backend contract.
 - [ ] جعل nickname الاسم الأساسي الظاهر دائمًا.
 - [ ] تحويل story character إلى caseRole مرتبط باللاعب بدل fictional name.
@@ -90,7 +123,7 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [ ] منع clue واحد من كشف المافيا قبل المرحلة الأخيرة، وحتى الأخير يحتاج ربطًا بما قبله.
 
 ## الأولوية الدقيقة للجلسة التالية
-1. افحص checks للـcommit `3c3e8768fa5476f6b18e30c3ea458459e50fe508`.
+1. افحص checks للـcommit `08d7a7ace8ed44202354da83a0148b1a0ab1bb35`.
 2. لو أي check فشل: أصلح **أول failure فقط** مع regression مناسب، ثم حدّث هذا الملف.
-3. لو `validate` و`qa` Green: اعتبر identity schema contract مغلقًا، ونفّذ **بندًا واحدًا فقط**: إضافة gender إلى backend create/join RPC contract مع E2E يثبت حفظه واسترجاعه وأن توزيع secret roles لا يعتمد عليه. لا تعمل UI في نفس الجلسة.
+3. لو `validate` و`qa` Green: اعتبر gender backend contract مغلقًا، ونفّذ **بندًا واحدًا فقط**: wiring اختيار gender في create/join UI إلى `create_room_v3` و`join_room_v2` مع regression contract يمنع الرجوع للـRPCs القديمة في المسار الجديد. لا تبدأ caseRole/story rewrite في نفس الجلسة.
 4. لا تلمس Production parity blocker إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
