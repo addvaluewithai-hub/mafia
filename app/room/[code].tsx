@@ -83,9 +83,6 @@ function PlayerCard({
             {player.isHost ? <Pill label="BOSS" tone="gold" /> : null}
             {player.isEliminated ? <Pill label="في السجن" tone="red" /> : selected ? <Pill label="اختيارك" tone="gold" /> : null}
           </View>
-          {!compact && player.characterName ? (
-            <Text selectable className="text-right text-xs font-black text-case-gold">{player.characterName}</Text>
-          ) : null}
           {!compact && player.characterBio ? (
             <Text selectable className="text-right text-xs leading-5 text-case-muted">{player.characterBio}</Text>
           ) : null}
