@@ -18,149 +18,95 @@
 10. ممنوع تخفيف اختبار فاشل لمجرد الحصول على CI أخضر؛ إما نصلح المنتج أو نصلح اختبارًا ثبت أنه نفسه غير صحيح مع توثيق السبب.
 
 ## ملاحظات المستخدم المؤكدة
-- التصويت يدخل في حالة يتوقف فيها اللعب ولا يستطيع اللاعبون التصويت.
+- التصويت كان يدخل في حالة يتوقف فيها اللعب ولا يستطيع اللاعبون التصويت.
 - اللعبة تعرض أسماء شخصيات القصة بدل أن تجعل أسماء اللاعبين أنفسهم مركز التجربة.
 - لا يوجد جنس للاعب، وبالتالي الصياغة قد تكون غير مناسبة للشخص.
 - القصص الجاهزة لغتها أصعب من اللازم وبعض تفاصيلها غير طبيعية للمصري العادي.
 - الحبكات والأدلة تحتاج إعادة تقييم نقدية، وليس مجرد زيادة صعوبة.
 - نحتاج محاكاة آلية للجيم الكامل وCritic مستقل للقصص.
 
-## Session 1 — 2026-09-10
-- [x] Hotfix دفاعي للتصويت — commit `36e81b221d05bb36374390d231a236940759e629`.
-- [x] 60 محاكاة state كاملة لـ5/6/7 لاعبين.
-- [x] إصلاح bug في اختبار tie نفسه بدل تخفيفه — commit `196b1c8f86ae1cfa0fdbaa0abe010600ad5bfac4`.
-- [x] Story critic أولي في `scripts/qa/story-critic.mjs`.
-- [x] Game QA workflow على push/PR: TypeScript + Expo Doctor + simulations + critic + local Supabase RPC E2E + artifacts.
-- [x] Local Supabase config مع anonymous auth للاختبارات.
-- [x] Full-game RPC E2E في `scripts/qa/supabase-e2e.mjs`.
-- [x] DB/repo drift جزئي اتقفل عبر `20260910074600_sync_case_mode_and_snapshot.sql`.
-- [x] Expo Doctor كشف RN patch drift واتصلح — commit `a50800e757c517ce8631b3b23b5f0adf48dc0aa5`.
+## ما اتقفل لحد الآن
+### Session 1 — QA foundation
+- Hotfix دفاعي للتصويت — `36e81b221d05bb36374390d231a236940759e629`.
+- 60 محاكاة state كاملة لـ5/6/7 لاعبين.
+- إصلاح bug في اختبار tie نفسه — `196b1c8f86ae1cfa0fdbaa0abe010600ad5bfac4`.
+- Story critic scaffold.
+- Game QA workflow: TypeScript + Expo Doctor + simulations + critic + local Supabase RPC E2E + artifacts.
+- Local Supabase config + full-game RPC E2E.
+- مزامنة جزء من DB/repo drift عبر `20260910074600_sync_case_mode_and_snapshot.sql`.
+- Expo Doctor drift fix — `a50800e757c517ce8631b3b23b5f0adf48dc0aa5`.
 
-## Session 2 — 2026-09-10 — server-authoritative vote phase
+### Session 2 — server-authoritative vote state
+- أضيف `phase` + `canVote` إلى `room_snapshot` عبر `20260910083000_server_authoritative_vote_phase.sql`.
+- أضيف TypeScript contract وRPC regression coverage.
+- الـlocal Supabase RPC E2E أصبح Green.
+
+### Session 3 — authoritative vote UI
+- واجهة التصويت أصبحت تعتمد على `snapshot.phase` و`snapshot.canVote` بدل counters محلية.
+- أضيف `scripts/qa/vote-ui-contract.mjs` كـregression guard.
+- CI للـwiring أصبح Green.
+
+### Session 4 — reconnect vote state
+- أضيف reconnect regression باستخدام fresh Supabase client لنفس anonymous session.
+- يغطي قبل cast، بعد cast، بعد tie reset، بعد resolve، وبعد next round.
+- `d9fc187c3854961bfd575c0c4da025a09c631ddb` أصبح `validate` ✅ و`qa` ✅.
+
+### Session 5 — eliminated Boss retains admin control
+- أضيف `scripts/qa/boss-eliminated-e2e.mjs`.
+- السيناريو يجبر الـBoss على السجن، يثبت `isEliminated=true`, `isHost=true`, `canVote=false`، ويرفض `cast_vote` منه.
+- يثبت أن الـBoss المسجون ما زال يقدر يعمل `reveal_next_round` و`resolve_vote`.
+- commits: `2fdd8462cf88f1c68ceaa7468cd63e50484739d3` و`6cab1c56de726ddf0f97059d35883a0d046fb807`.
+
+## Session 6 — 2026-09-10 — Production DB parity read-only audit
 ### نقطة البداية
-- أحدث main عند بداية الجلسة كان `3ffdc0af2736914bca8609074d9f9fe244fb37bd`.
-- `validate` ✅ و`qa` ✅ على هذا commit، وبالتالي الـlocal Supabase RPC E2E الذي كان pending في Session 1 أصبح مؤكد Green.
-- لذلك انتقلت الأولوية تلقائيًا من انتظار E2E إلى إزالة استنتاج مرحلة التصويت من counters في العميل.
+- تم فحص checks للـcommit `6cab1c56de726ddf0f97059d35883a0d046fb807`.
+- `validate` ✅ و`qa` ✅؛ بالتالي Boss-eliminated admin P0 مغلق رسميًا.
+- أعلى أولوية بعده حسب handoff كانت Production DB/versioned migration parity كـread-only audit فقط.
 
 ### ما تم في هذه الجلسة
-- [x] أضيف migration `20260910083000_server_authoritative_vote_phase.sql` ليجعل `room_snapshot` يرجع `phase` و`canVote` بشكل authoritative.
-- [x] أضيف `GamePhase` و`phase` و`canVote` إلى `RoomSnapshot` في `lib/types.ts`.
-- [x] تم توسيع `scripts/qa/supabase-e2e.mjs` ليختبر contract الجديد عبر الجيم الكامل.
-- [x] لم يتم تعطيل أو تخفيف أي اختبار قائم.
+- [x] تم اكتشاف مشروع Supabase المتصل باسم `mafia`.
+- [x] حالة المشروع وقت الفحص كانت `INACTIVE`.
+- [x] تم إجراء محاولة قراءة فقط من `supabase_migrations.schema_migrations` لمقارنة applied versions مع migrations الموجودة في GitHub.
+- [x] القراءة فشلت بـconnection timeout بسبب حالة المشروع غير النشطة.
+- [x] لم يتم عمل restore/wake للمشروع تلقائيًا، لأنه تغيير operational في Production وقد يكون له أثر تكلفة/availability.
+- [x] لم يتم تطبيق أي migration أو deploy أو schema/data write.
+- [x] تم توثيق نتيجة التدقيق في `docs/qa/production-db-parity-audit-2026-09-10.md` — commit `c4fae02639f5500fd0ad9913fcf6747379dc4086`.
 
-### Commits المهمة في Session 2
-- `e96da6df9f1da7a51ddb5676fb3461c7cbfc6bc1` — إضافة migration الأولى.
-- `60c241cee4b54065bde2c72b4e9f27f10b69ebfd` — تصحيح syntax في نفس migration قبل اعتبارها صالحة.
-- `dd48994f216f45df1563d750df4eb5d41568c1cb` — TypeScript contract.
-- `89788b429a3135097f35ad7eaa6787794f6fdfe1` — regression coverage للـphase/canVote في RPC E2E.
+### ما ثبت
+- eliminated-Boss P0 Green بالكامل على CI.
+- GitHub يحتوي versioned migrations مرتبة حتى `20260910083000_server_authoritative_vote_phase.sql`.
+- Production parity نفسها **غير مثبتة** لأن migration history لم يمكن قراءتها أثناء inactivity.
 
-## Session 3 — 2026-09-10 — authoritative vote UI wiring
-### نقطة البداية
-- handoff طلب أولًا فحص `89788b429a3135097f35ad7eaa6787794f6fdfe1`.
-- تم التأكد أن `validate` ✅ و`qa` ✅ على هذا commit، بما في ذلك الـlocal Supabase RPC E2E للـphase/canVote.
-- لذلك تم اختيار بند واحد فقط: توصيل واجهة التصويت بالعقد authoritative الموجود بالفعل على السيرفر.
+### ما لم يثبت بعد
+- هل `20260910074600_sync_case_mode_and_snapshot.sql` مسجل/مطبق في Production.
+- هل `20260910083000_server_authoritative_vote_phase.sql` مطبق في Production.
+- هل Production `room_snapshot` يرجع فعليًا `phase` + `canVote` مثل local QA.
 
-### ما تم في هذه الجلسة
-- [x] تحديث `app/room/[code].tsx` لإزالة اشتقاق `voteOpen` من `lastResolvedRound < roundIndex`.
-- [x] الواجهة الآن تستخدم `snapshot.phase === 'voting'` لإظهار timer وبطاقة التصويت وتحديد زر Boss.
-- [x] `submitVote` نفسه أصبح يرفض التنفيذ محليًا لو `snapshot.canVote=false`.
-- [x] targets وزر تثبيت الصوت يتعطلوا من `snapshot.canVote`، وليس من counters محلية.
-- [x] بطاقة التصويت تظل ظاهرة بعد submission داخل `phase=voting` وتعرض «صوتك اتحسب» كما هو مطلوب.
-- [x] زر Boss يعرض «اكشف الدليل اللي بعده» فقط عندما `phase === 'round_resolved'`.
-- [x] أضيف regression guard جديد `scripts/qa/vote-ui-contract.mjs` يمنع إعادة `safeLastResolvedRound`/`voteOpen` المشتق محليًا ويؤكد وجود `phase/canVote` wiring.
-- [x] أضيف guard إلى `Game QA` workflow قبل simulations وSupabase E2E.
-- [x] لم يتم تخفيف أو حذف أي اختبار.
-
-### Commits المهمة في Session 3
-- `5a46ee5f15f5c9993029c506376ec4577245876d` — توصيل UI بـ`phase/canVote`.
-- `f43d1e166461739a0a1d617268dd712629d5751e` — regression guard للـvote UI contract.
-- `5287931ae0345e704a3d89c2008888c8bf330724` — تشغيل guard ضمن Game QA workflow.
-
-### نتيجة CI عند إغلاق Session 3
-- checks على `5287931ae0345e704a3d89c2008888c8bf330724` بدأت بنجاح وكانت in_progress وقت الإغلاق.
-- التغيير لم يُعتبر deploy-safe وقتها، ولم يتم تطبيق migration أو deploy على Production.
-
-## Session 4 — 2026-09-10 — vote state across reconnects
-### نقطة البداية
-- تم فحص checks للـcommit `5287931ae0345e704a3d89c2008888c8bf330724` كما طلب handoff.
-- `validate` ✅ و`qa` ✅؛ بالتالي authoritative vote UI wiring مؤكد Green.
-- أعلى P0 التالي كان refresh/reconnect regression لحالة التصويت، وتم الالتزام بهذا البند فقط.
-
-### ما تم في هذه الجلسة
-- [x] توسعة `scripts/qa/supabase-e2e.mjs` باختبار reconnect حقيقي باستخدام Supabase client جديد يستعيد نفس anonymous session، بدل الاعتماد على نفس client instance.
-- [x] الاختبار يثبت أن هوية اللاعب نفسها محفوظة بعد reconnect.
-- [x] قبل cast: fresh client يرى `phase=voting`, `voteSubmitted=false`, `canVote=true`.
-- [x] بعد cast: fresh client يرى `phase=voting`, `voteSubmitted=true`, `canVote=false` ولا يستعيد حق التصويت خطأ.
-- [x] بعد tie reset: fresh client يرى أن التصويت اتمسح ويستعيد `canVote=true` في نفس الجولة.
-- [x] بعد resolve: fresh client يرى `phase=round_resolved` و`canVote=false`.
-- [x] بعد reveal next round: fresh client يرى `phase=voting`, `voteSubmitted=false`, `canVote=true` ولا يرث صوت الجولة السابقة.
-- [x] لم يتم تعديل product logic أو تخفيف أي اختبار؛ التغيير Regression coverage فقط.
-
-### Commit المهم في Session 4
-- `d9fc187c3854961bfd575c0c4da025a09c631ddb` — reconnect vote-state coverage داخل real local Supabase RPC E2E.
-
-### نتيجة CI عند إغلاق Session 4
-- `validate` و`qa` على `d9fc187c3854961bfd575c0c4da025a09c631ddb` انتقلا من queued إلى **in_progress** بدون failure ظاهر عند آخر فحص.
-- لا يتم اعتبار هذا الـP0 مغلقًا نهائيًا قبل نتيجة الـQA، لأن reconnect assertions نفسها تعمل داخل local Supabase E2E.
-- التغيير **ليس deploy-safe بعد**، ولم يتم أي Production migration أو deploy في هذه الجلسة.
-
-### Bugs/مخاطر جديدة
-- لا يوجد bug منتج جديد مثبت في هذه الجلسة حتى لحظة الإغلاق.
-- لو فشل الـQA الجديد، أول failure داخل reconnect/session restore هو الـP0 الوحيد للجلسة التالية ويجب إصلاحه قبل أي بند آخر.
-
-## Session 5 — 2026-09-10 — eliminated Boss retains admin control
-### نقطة البداية
-- تم فحص `d9fc187c3854961bfd575c0c4da025a09c631ddb` كما طلب handoff.
-- `validate` ✅ و`qa` ✅؛ بالتالي refresh/reconnect vote-state regression أصبح مقفولًا.
-- أعلى P0 التالي كان إثبات سلوك الـBoss بعد السجن بصورة مستقلة وغير incidental.
-
-### ما تم في هذه الجلسة
-- [x] أضيف `scripts/qa/boss-eliminated-e2e.mjs` كسيناريو deterministic مستقل على 6 لاعبين.
-- [x] السيناريو يجبر التصويت على الـBoss نفسه في الجولة الأولى بغض النظر عن دوره السري.
-- [x] يثبت أن الـBoss بعد السجن يرى `isEliminated=true` و`isHost=true` و`canVote=false`.
-- [x] يثبت أن `cast_vote` يرفض صوت الـBoss المسجون.
-- [x] يثبت أن الـBoss المسجون يستطيع `reveal_next_round`.
-- [x] بعد الجولة التالية، اللاعبون الأحياء فقط يصوتون، ثم الـBoss المسجون نفسه يستدعي `resolve_vote` بنجاح.
-- [x] أضيف السيناريو كخطوة مستقلة داخل `Game QA` بعد الـfull-game RPC E2E، ويخرج تقرير `qa/reports/boss-eliminated-e2e.json`.
-- [x] لم يتم تعديل product logic أو تخفيف أي اختبار قائم.
-
-### Commits المهمة في Session 5
-- `2fdd8462cf88f1c68ceaa7468cd63e50484739d3` — إضافة regression المستقل للـBoss المسجون.
-- `6cab1c56de726ddf0f97059d35883a0d046fb807` — تشغيل السيناريو ضمن Game QA.
-
-### نتيجة CI عند إغلاق Session 5
-- checks على `6cab1c56de726ddf0f97059d35883a0d046fb807` بدأت وكانت **queued** عند آخر فحص؛ لا يوجد failure ظاهر بعد.
-- لذلك هذا الـP0 **ليس مغلقًا نهائيًا بعد** حتى يمر `qa` الذي يشغّل local Supabase والسيناريو الجديد.
-- لم يتم أي Production migration أو deploy.
-
-### Bugs/مخاطر جديدة
-- لم يثبت bug منتج جديد حتى لحظة الإغلاق؛ التغيير الحالي يرفع مستوى اليقين حول قاعدة «Boss لاعب + مدير».
-- لو فشل السيناريو الجديد، أول failure فيه يصبح P0 الوحيد للجلسة التالية، ولا ننتقل للهوية أو القصص قبله.
+### Blocker
+Production Supabase كان `INACTIVE` وread-only SQL probe انتهى connection timeout. لا تعمل restore من QA loop بدون تصريح واضح أو بدون أن يكون المشروع active أصلًا.
 
 ## تشخيص التصويت الحالي
-المشكلة الأصلية كانت أن العميل يعيد استنتاج فتح التصويت من counters. السيرفر أصبح المصدر الصريح للحقيقة عبر `phase/canVote`، والواجهة تستهلكهما مباشرة. Session 4 أضافت regression يختبر نفس الحقيقة عبر client جديد بعد reconnect، وتم تأكيد Green له في Session 5.
+المشكلة الأصلية كانت أن العميل يعيد استنتاج فتح التصويت من counters. السيرفر أصبح المصدر الصريح للحقيقة عبر `phase/canVote`، والواجهة تستهلكهما مباشرة. reconnect regression وBoss-eliminated regression أصبحا Green.
 
 ## تشخيص القصص
 مثال «آخر بروفة» يحتوي على كلمات وتراكيب مثل: ريلاي، لسان قفل، تحليل الغبار، بصمة دخول للوحة الإضاءة. الهدف: **المعلومة تتفهم فورًا، معناها في اللغز هو الصعب.**
 
-## Drift مكتشف
-Production كانت تحتوي على تغييرات `case_mode` / `story_template_id` / `create_room_v2` لم تكن موجودة في migrations داخل GitHub. تم توثيقها في versioned migration، لكن لا تدّعِ أن Production migrated بدون تطبيق موثق وsmoke test. Migration الـphase الجديدة لم تُطبق على Production حتى نهاية Session 5.
+## Drift معروف
+Production كانت تحتوي على تغييرات `case_mode` / `story_template_id` / `create_room_v2` لم تكن موجودة في migrations داخل GitHub. تم توثيقها في versioned migration، لكن لا تدّعِ أن Production migrated بدون قراءة migration history + smoke test. Migration الـphase كذلك لا تعتبر Production-applied حتى يثبت العكس.
 
 ## Backlog مرتب بالأولوية
-
 ### P0 — Functionality / Deadlocks
-- [x] Hotfix دفاعي لـvote gating في الواجهة.
+- [x] Hotfix دفاعي لـvote gating.
 - [x] State-model full-game simulator لـ5/6/7 و60 تشغيلًا.
 - [x] Real RPC E2E runner ضد local Supabase.
-- [x] تأكيد Green للـRPC E2E الأساسي على main قبل Session 2.
-- [x] Server contract صريح `phase` + `canVote` في `room_snapshot` + regression tests.
-- [x] توصيل UI إلى `snapshot.phase` و`snapshot.canVote` بدل counters المحلية + CI guard.
-- [x] فحص Session 3 CI: `5287931...` أصبح `validate` ✅ و`qa` ✅.
-- [x] refresh/reconnect vote-state regression أصبح Green على `d9fc187...`.
-- [ ] **أعلى أولوية حالية:** افحص checks للـcommit `6cab1c56de726ddf0f97059d35883a0d046fb807`. لو فشل أي check أصلح أول failure فقط. لو Green، علّم Boss-eliminated P0 كمغلق وانتقل للبند التالي.
-- [ ] طابق Production DB مع versioned migrations فقط بعد Green E2E + smoke test.
+- [x] Server-authoritative `phase` + `canVote` + regression tests.
+- [x] UI wiring إلى `phase/canVote` + CI guard.
+- [x] refresh/reconnect vote-state regression Green.
+- [x] eliminated-Boss admin regression Green على `6cab1c56de726ddf0f97059d35883a0d046fb807`.
+- [ ] Production DB parity: **blocked until Production Supabase is active or restore is explicitly authorized**. لا تطبق migration قبل read-only parity + smoke-test plan.
 
 ### P1 — Player identity
+- [ ] **أعلى أولوية قابلة للتنفيذ حاليًا:** تصميم `gender` + `caseRole` schema مع regression tests قبل UI.
 - [ ] إضافة `gender` إلى player profile عند إنشاء/دخول الروم.
 - [ ] جعل `nickname` هو الاسم الأساسي الظاهر دائمًا.
 - [ ] تحويل شخصية القضية إلى `caseRole` بدل اسم خيالي يحل محل اسم اللاعب.
@@ -192,8 +138,8 @@ GitHub Action `Game QA` يعمل على push/PR ويستهدف:
 4. 60 full-game state simulations.
 5. Story critic report.
 6. Supabase CLI + clean local DB from migrations.
-7. Full-game RPC E2E لـ5/6/7 لاعبين، ويتضمن reconnect vote-state coverage.
-8. Deterministic eliminated-Boss admin E2E يثبت منع التصويت مع استمرار reveal/resolve.
+7. Full-game RPC E2E لـ5/6/7 لاعبين + reconnect coverage.
+8. Deterministic eliminated-Boss admin E2E.
 9. JSON artifacts تحت `qa/reports/`.
 
 يوجد أيضًا ChatGPT hourly QA loop. كل تشغيل يبدأ من هذا الملف، يختار عنصرًا واحدًا فقط من أعلى أولوية، ينفذه/يختبره، ثم يحدث هذا الملف قبل أن ينتهي.
@@ -209,17 +155,18 @@ GitHub Action `Game QA` يعمل على push/PR ويستهدف:
 - كل قصة جاهزة تعدي Critic threshold.
 - كل شاشة أساسية تعدي mobile QA.
 
-## خطة Session 6
-1. اقرأ هذا الملف وافحص checks للـcommit `6cab1c56de726ddf0f97059d35883a0d046fb807`.
-2. لو أي check فشل: أصلح أول failure فقط ولا تبدأ بندًا جديدًا.
-3. لو Green: اعتبر Boss-eliminated admin P0 مقفولًا.
-4. بعدها نفّذ بندًا واحدًا فقط من أعلى أولوية فعلية: ابدأ Production DB/versioned migration parity كـread-only audit أولًا؛ لا تطبق أي migration قبل إثبات الـdrift ووجود smoke-test واضح.
-5. لو الـProduction audit غير متاح بالأدوات، وثّق blocker وانتقل في الجلسة التالية إلى أول P1 Player Identity: تصميم `gender` + `caseRole` schema مع regression tests قبل UI.
-6. لا تبدأ إعادة كتابة القصص في نفس الجلسة.
+## خطة Session 7
+1. اقرأ هذا الملف أولًا.
+2. لا تحاول restore لـProduction Supabase من نفسك. لو وجدته active وقتها، يمكن إعادة read-only parity audit؛ غير ذلك اترك blocker كما هو.
+3. نفّذ بندًا واحدًا فقط: **P1 Player Identity schema design + regression coverage لـ`gender` و`caseRole` قبل أي UI**.
+4. ابدأ باختبار schema/RPC يثبت أن الاسم الحقيقي يظل الهوية الأساسية، وأن `caseRole` منفصل، وأن gender لا يؤثر إطلاقًا على role assignment أو الفوز.
+5. اعمل أصغر migration/type/test changes اللازمة فقط؛ لا تعيد كتابة القصص ولا تعمل UI في نفس الجلسة.
+6. افحص CI للتغيير الجديد، ثم حدّث هذا الملف بالنتيجة وأولوية Session 8.
 
 ## سجل الجلسات
-- **2026-09-10 Session 1:** تأسيس نظام QA المستمر، hotfix للتصويت، simulations، critic، local RPC E2E، ومزامنة migrations.
-- **2026-09-10 Session 2:** تأكد أن الـRPC E2E الأساسي Green، ثم أضيف server-authoritative `phase/canVote` مع regression coverage كاملة عبر lobby/vote/submit/tie/resolve/reveal/finish. checks الجديدة كانت queued عند الإغلاق؛ Production لم تتغير.
-- **2026-09-10 Session 3:** تم التأكد أن عقد السيرفر Green، ثم توصيل واجهة التصويت بالكامل إلى `phase/canVote` مع regression guard في CI. checks الخاصة بالتغيير الجديد كانت in_progress عند الإغلاق؛ Production لم تتغير.
-- **2026-09-10 Session 4:** تم التأكد أن Session 3 Green، ثم أضيف reconnect regression حقيقي داخل local Supabase RPC E2E عبر fresh client لنفس session قبل/بعد cast وبعد tie وبعد resolve وبعد next round. checks الجديدة كانت in_progress عند الإغلاق؛ Production لم تتغير.
-- **2026-09-10 Session 5:** تم التأكد أن reconnect P0 Green، ثم أضيف deterministic E2E مستقل يجبر الـBoss على السجن ويثبت أنه يفقد التصويت ويحتفظ بـreveal/resolve. checks الجديدة كانت queued عند الإغلاق؛ Production لم تتغير.
+- **2026-09-10 Session 1:** تأسيس QA المستمر، hotfix للتصويت، simulations، critic، local RPC E2E، ومزامنة migrations.
+- **2026-09-10 Session 2:** server-authoritative `phase/canVote` + regression coverage.
+- **2026-09-10 Session 3:** توصيل UI بالكامل إلى `phase/canVote` + CI guard.
+- **2026-09-10 Session 4:** reconnect/session-restore vote-state regression.
+- **2026-09-10 Session 5:** deterministic eliminated-Boss admin E2E.
+- **2026-09-10 Session 6:** تأكد أن Boss-eliminated P0 Green، ثم نفذ read-only Production parity audit؛ المشروع كان inactive والقراءة timeout، فتم توثيق blocker ولم يحدث أي Production change. الأولوية التالية: Player Identity schema + regression tests.
