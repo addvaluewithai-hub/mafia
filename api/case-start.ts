@@ -54,7 +54,8 @@ function validateCase(value: any, playerCount: number, mafiaCount: number): Gene
   if (new Set(value.mafiaCharacterIndexes).size !== mafiaCount) throw new Error('أدوار المافيا مكررة.');
   if (!Array.isArray(value.rounds) || value.rounds.length !== 4) throw new Error('القضية لازم يكون فيها 4 أدلة.');
   for (const character of value.characters) {
-    if (typeof character?.name !== 'string' || typeof character?.bio !== 'string' || character.bio.length < 30) throw new Error('في شخصية بياناتها ناقصة.');
+    const hasCaseIdentity = typeof character?.role === 'string' || typeof character?.name === 'string';
+    if (!hasCaseIdentity || typeof character?.bio !== 'string' || character.bio.length < 30) throw new Error('في شخصية بياناتها ناقصة.');
   }
   for (const round of value.rounds) {
     if (typeof round?.clue !== 'string' || round.clue.length < 30 || typeof round?.discussionPrompt !== 'string') throw new Error('في دليل ناقص.');
@@ -67,7 +68,12 @@ function referenceCases(playerCount: number) {
   const matching = entries.filter(([, item]) => item.playerCount === playerCount);
   const fallbackCount = playerCount <= 5 ? 5 : 7;
   const picked = matching.length ? matching : entries.filter(([, item]) => item.playerCount === fallbackCount).slice(0, 2);
-  return picked.map(([id, item]) => ({ id, playerCount: item.playerCount, ...item.case }));
+  return picked.map(([id, item]) => ({
+    id,
+    playerCount: item.playerCount,
+    ...item.case,
+    characters: item.case.characters.map((character) => ({ bio: character.bio })),
+  }));
 }
 
 function jsonSchema(playerCount: number, mafiaCount: number) {
@@ -79,7 +85,7 @@ function jsonSchema(playerCount: number, mafiaCount: number) {
       title: { type: 'string' }, premise: { type: 'string' }, crime: { type: 'string' }, solution: { type: 'string' },
       characters: {
         type: 'array', minItems: playerCount, maxItems: playerCount,
-        items: { type: 'object', additionalProperties: false, required: ['name', 'bio'], properties: { name: { type: 'string' }, bio: { type: 'string' } } },
+        items: { type: 'object', additionalProperties: false, required: ['role', 'bio'], properties: { role: { type: 'string' }, bio: { type: 'string' } } },
       },
       mafiaCharacterIndexes: { type: 'array', minItems: mafiaCount, maxItems: mafiaCount, items: { type: 'integer', minimum: 0, maximum: playerCount - 1 } },
       rounds: {
@@ -103,10 +109,12 @@ function buildPrompt(input: { playerCount: number; mafiaCount: number; theme: st
 الهدف الأهم: القضية لازم تكون صعبة وعادلة، مش متوقعة. اللاعب الذكي يقدر يبني نظرية غلط قوية في أول جولتين، وبعدها الاحتمالات تضيق بتقاطع الأدلة.
 
 قواعد إلزامية:
+- هوية كل لاعب هي الـnickname الحقيقي بتاعه. ممنوع اختراع اسم شخصية بديل.
+- كل عنصر في characters لازم يحتوي role وصفي قصير وbio فقط، بدون name. الـrole زي "أمين المخزن" أو "منظم الحفلة" ويرتبط بصاحب الـnickname بدل ما يستبدله.
 - الـbio علني بالكامل، والسر الوحيد للاعب هو Mafia أو Innocent.
-- كل شخصية عندها دافع أو فرصة أو تفصيلة مريبة حقيقية.
+- كل role عنده دافع أو فرصة أو تفصيلة مريبة حقيقية.
 - كل أثر اتهام مهم في أول 3 جولات لازم يكون له تفسير بريء معقول لشخص آخر على الأقل.
-- الدليل الأول يورط 3 شخصيات أو أكثر.
+- الدليل الأول يورط 3 لاعبين أو أكثر.
 - بعد الدليل الثاني يظل أكثر من حل معقول، ولا يتحدد أي مافيوزو منفردًا.
 - الدليل الثالث يسمح بنظريتين قويتين متعارضتين.
 - الدليل الرابع يثبت قطعة من السلسلة فقط؛ لا يكفي وحده من غير الأدلة السابقة.
@@ -118,10 +126,10 @@ function buildPrompt(input: { playerCount: number; mafiaCount: number; theme: st
 - premise افتتاحية من غير spoilers. discussionPrompt سؤال للنقاش من غير تلميح للحل.
 - JSON خام فقط بلا Markdown.
 
-دي قضايا مرجعية معمولة يدويًا. اتعلم منها هندسة الصعوبة والتدرج فقط، وممنوع نسخ الأسماء أو المكان أو الشيء محل الجريمة أو التوقيت أو نفس الحل أو صياغة الأدلة:
+دي قضايا مرجعية معمولة يدويًا. اتعلم منها هندسة الصعوبة والتدرج فقط، وممنوع نسخ المكان أو الشيء محل الجريمة أو التوقيت أو نفس الحل أو صياغة الأدلة. أسماء الشخصيات القديمة متشالة عمدًا لأن الـnickname الحقيقي هو الهوية:
 ${JSON.stringify(referenceCases(input.playerCount))}
 
-راجع داخليًا قبل الإجابة: هل أول دليل يورط 3؟ هل بعد الثاني فيه نظرية بريئة قوية؟ هل كل مافيوزو يحتاج 3 أدلة؟ هل الرابع وحده غير كافٍ؟ لو لأ، أعد التصميم.
+راجع داخليًا قبل الإجابة: هل كل character فيه role وbio بدون name؟ هل أول دليل يورط 3؟ هل بعد الثاني فيه نظرية بريئة قوية؟ هل كل مافيوزو يحتاج 3 أدلة؟ هل الرابع وحده غير كافٍ؟ لو لأ، أعد التصميم.
 أرجع JSON مطابق للـschema فقط.`;
 }
 
