@@ -21,6 +21,22 @@ async function signedClient() {
   return c;
 }
 
+async function reconnectedSnapshot(c, code) {
+  const { data: sessionData, error: sessionError } = await c.auth.getSession();
+  if (sessionError || !sessionData.session) throw sessionError ?? new Error('session missing before reconnect');
+
+  const fresh = client();
+  const { data: restored, error: restoreError } = await fresh.auth.setSession({
+    access_token: sessionData.session.access_token,
+    refresh_token: sessionData.session.refresh_token,
+  });
+  if (restoreError || !restored.session) throw restoreError ?? new Error('session restore failed during reconnect');
+
+  const snap = await rpc(fresh, 'room_snapshot', { p_code: code });
+  assert.equal(restored.session.user.id, sessionData.session.user.id, 'reconnect must preserve player identity');
+  return snap;
+}
+
 function mafiaCountFor(n) {
   if (n >= 10) return 3;
   if (n >= 6) return 2;
@@ -90,6 +106,15 @@ async function forceTieSix(clients, snaps, code) {
   assert.equal(living.length, 6, 'tie scenario expects six living players');
   const a = living[0].me.playerId;
   const b = living[1].me.playerId;
+  const probePlayerId = living[2].me.playerId;
+  const probeIndex = snaps.findIndex((s) => s.me?.playerId === probePlayerId);
+  assert(probeIndex >= 0, 'reconnect probe player must exist');
+
+  const beforeCastReconnect = await reconnectedSnapshot(clients[probeIndex], code);
+  assert.equal(beforeCastReconnect.phase, 'voting', 'fresh client before cast must see voting phase');
+  assert.equal(beforeCastReconnect.voteSubmitted, false, 'fresh client before cast must see no submitted vote');
+  assert.equal(beforeCastReconnect.canVote, true, 'fresh client before cast must retain vote permission');
+
   const voterIdsForA = new Set(
     living
       .filter((s) => s.me.playerId !== a)
@@ -103,7 +128,16 @@ async function forceTieSix(clients, snaps, code) {
       p_code: code,
       p_target_player_id: voterIdsForA.has(snap.me.playerId) ? a : b,
     });
+
+    if (i === probeIndex) {
+      const afterCastReconnect = await reconnectedSnapshot(clients[i], code);
+      assert.equal(afterCastReconnect.phase, 'voting', 'fresh client after cast must remain in voting phase');
+      assert.equal(afterCastReconnect.voteSubmitted, true, 'fresh client after cast must see submitted vote');
+      assert.equal(afterCastReconnect.canVote, false, 'fresh client after cast must not regain vote permission');
+    }
   }
+
+  return probeIndex;
 }
 
 async function runGame(playerCount) {
@@ -137,8 +171,9 @@ async function runGame(playerCount) {
   }
   assertVotingContract(snaps);
 
+  let reconnectProbeIndex = null;
   if (playerCount === 6) {
-    await forceTieSix(players, snaps, code);
+    reconnectProbeIndex = await forceTieSix(players, snaps, code);
     const tie = await rpc(boss, 'resolve_vote', { p_code: code });
     assert.equal(tie.status, 'tie');
     snaps = await snapshots(players, code);
@@ -146,6 +181,11 @@ async function runGame(playerCount) {
     assert.equal(snaps[0].room.lastResolvedRound, -1, 'tie must leave round unresolved');
     assertVotingContract(snaps);
     for (const snap of snaps) if (!snap.me.isEliminated) assert.equal(snap.voteSubmitted, false);
+
+    const afterTieReconnect = await reconnectedSnapshot(players[reconnectProbeIndex], code);
+    assert.equal(afterTieReconnect.phase, 'voting', 'fresh client after tie must stay in voting phase');
+    assert.equal(afterTieReconnect.voteSubmitted, false, 'fresh client after tie must see cleared vote');
+    assert.equal(afterTieReconnect.canVote, true, 'fresh client after tie must regain vote permission exactly once');
   }
 
   let eliminatedBossWhileStillHost = false;
@@ -174,6 +214,14 @@ async function runGame(playerCount) {
     if (snaps[0].room.status === 'playing') {
       for (const snap of snaps) assert.equal(snap.phase, 'round_resolved', 'resolved round must be explicit before next clue');
 
+      const livingProbeIndex = reconnectProbeIndex !== null && !snaps[reconnectProbeIndex].me.isEliminated
+        ? reconnectProbeIndex
+        : snaps.findIndex((s) => s.me && !s.me.isEliminated);
+      assert(livingProbeIndex >= 0, 'living reconnect probe required after resolve');
+      const afterResolveReconnect = await reconnectedSnapshot(players[livingProbeIndex], code);
+      assert.equal(afterResolveReconnect.phase, 'round_resolved', 'fresh client after resolve must see round_resolved');
+      assert.equal(afterResolveReconnect.canVote, false, 'fresh client must not vote after round resolution');
+
       const { error: eliminatedVoteError } = await players[targetIndex].rpc('cast_vote', {
         p_code: code,
         p_target_player_id: snaps.find((s) => !s.me.isEliminated && s.me.playerId !== targetId).me.playerId,
@@ -187,6 +235,11 @@ async function runGame(playerCount) {
       for (const snap of snaps) {
         if (!snap.me.isEliminated) assert.equal(snap.voteSubmitted, false, 'new round must reopen vote');
       }
+
+      const afterRevealReconnect = await reconnectedSnapshot(players[livingProbeIndex], code);
+      assert.equal(afterRevealReconnect.phase, 'voting', 'fresh client after next clue must see voting phase');
+      assert.equal(afterRevealReconnect.voteSubmitted, false, 'fresh client in new round must not inherit old vote');
+      assert.equal(afterRevealReconnect.canVote, true, 'fresh client in new round must regain vote permission');
     }
   }
 
@@ -216,8 +269,10 @@ const report = {
   coverage: [
     'anonymous auth', 'Boss auto-player', 'join room', 'install case', 'private roles',
     'server-authoritative phase', 'server-authoritative canVote', 'canVote closes after submit',
-    'cast vote', 'six-player tie', 'tie reset', 'resolve vote', 'round_resolved phase', 'elimination',
-    'eliminated voter rejection', 'Boss control after elimination', 'reveal next clue', 'winner and solution',
+    'reconnect preserves player identity', 'reconnect before cast', 'reconnect after cast',
+    'cast vote', 'six-player tie', 'tie reset', 'reconnect after tie', 'resolve vote',
+    'round_resolved phase', 'reconnect after resolve', 'elimination', 'eliminated voter rejection',
+    'Boss control after elimination', 'reveal next clue', 'reconnect after next clue', 'winner and solution',
   ],
 };
 fs.writeFileSync(path.join(reportDir, 'supabase-e2e.json'), JSON.stringify(report, null, 2));
