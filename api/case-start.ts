@@ -46,7 +46,16 @@ function parseJson(raw: string) {
   return JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim());
 }
 
-function validateCase(value: any, playerCount: number, mafiaCount: number): GeneratedCase {
+function hasGenderText(value: any, minLength: number) {
+  return value
+    && typeof value === 'object'
+    && typeof value.male === 'string'
+    && value.male.length >= minLength
+    && typeof value.female === 'string'
+    && value.female.length >= minLength;
+}
+
+function validateCase(value: any, playerCount: number, mafiaCount: number, requireGenderVariants = false): GeneratedCase {
   if (!value || typeof value !== 'object') throw new Error('القضية الناتجة مش JSON صحيح.');
   if (typeof value.title !== 'string' || typeof value.premise !== 'string' || typeof value.solution !== 'string') throw new Error('القضية ناقصها نصوص أساسية.');
   if (!Array.isArray(value.characters) || value.characters.length !== playerCount) throw new Error('عدد الشخصيات غير صحيح.');
@@ -56,6 +65,11 @@ function validateCase(value: any, playerCount: number, mafiaCount: number): Gene
   for (const character of value.characters) {
     const hasCaseIdentity = typeof character?.role === 'string' || typeof character?.name === 'string';
     if (!hasCaseIdentity || typeof character?.bio !== 'string' || character.bio.length < 30) throw new Error('في شخصية بياناتها ناقصة.');
+    if (requireGenderVariants) {
+      if (typeof character.role !== 'string' || !hasGenderText(character.roleByGender, 2) || !hasGenderText(character.bioByGender, 30)) {
+        throw new Error('في شخصية ناقصها صياغة male/female لنفس الدور.');
+      }
+    }
   }
   for (const round of value.rounds) {
     if (typeof round?.clue !== 'string' || round.clue.length < 30 || typeof round?.discussionPrompt !== 'string') throw new Error('في دليل ناقص.');
@@ -76,6 +90,15 @@ function referenceCases(playerCount: number) {
   }));
 }
 
+function genderTextJsonSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['male', 'female'],
+    properties: { male: { type: 'string' }, female: { type: 'string' } },
+  };
+}
+
 function jsonSchema(playerCount: number, mafiaCount: number) {
   return {
     type: 'object',
@@ -85,7 +108,17 @@ function jsonSchema(playerCount: number, mafiaCount: number) {
       title: { type: 'string' }, premise: { type: 'string' }, crime: { type: 'string' }, solution: { type: 'string' },
       characters: {
         type: 'array', minItems: playerCount, maxItems: playerCount,
-        items: { type: 'object', additionalProperties: false, required: ['role', 'bio'], properties: { role: { type: 'string' }, bio: { type: 'string' } } },
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['role', 'bio', 'roleByGender', 'bioByGender'],
+          properties: {
+            role: { type: 'string' },
+            bio: { type: 'string' },
+            roleByGender: genderTextJsonSchema(),
+            bioByGender: genderTextJsonSchema(),
+          },
+        },
       },
       mafiaCharacterIndexes: { type: 'array', minItems: mafiaCount, maxItems: mafiaCount, items: { type: 'integer', minimum: 0, maximum: playerCount - 1 } },
       rounds: {
@@ -110,7 +143,10 @@ function buildPrompt(input: { playerCount: number; mafiaCount: number; theme: st
 
 قواعد إلزامية:
 - هوية كل لاعب هي الـnickname الحقيقي بتاعه. ممنوع اختراع اسم شخصية بديل.
-- كل عنصر في characters لازم يحتوي role وصفي قصير وbio فقط، بدون name. الـrole زي "أمين المخزن" أو "منظم الحفلة" ويرتبط بصاحب الـnickname بدل ما يستبدله.
+- كل عنصر في characters يحتوي role وصفي قصير وbio كـfallback محايد، ومعهم roleByGender وbioByGender وكل واحد لازم يحتوي male وfemale.
+- صياغتا male وfemale لنفس character لازم يكونوا نفس الدور الدلالي ونفس الحقائق والدافع والفرصة ودرجة الاشتباه؛ الاختلاف فقط في التذكير والتأنيث وصياغة المصري الطبيعي.
+- ممنوع تغيير أو إضافة معلومة حسب الجنس، وممنوع استخدام gender في اختيار mafiaCharacterIndexes؛ توزيع المافيا مستقل تمامًا عن الصياغة.
+- ممنوع name. الـrole يرتبط بصاحب الـnickname بدل ما يستبدله.
 - الـbio علني بالكامل، والسر الوحيد للاعب هو Mafia أو Innocent.
 - كل role عنده دافع أو فرصة أو تفصيلة مريبة حقيقية.
 - كل أثر اتهام مهم في أول 3 جولات لازم يكون له تفسير بريء معقول لشخص آخر على الأقل.
@@ -129,7 +165,7 @@ function buildPrompt(input: { playerCount: number; mafiaCount: number; theme: st
 دي قضايا مرجعية معمولة يدويًا. اتعلم منها هندسة الصعوبة والتدرج فقط، وممنوع نسخ المكان أو الشيء محل الجريمة أو التوقيت أو نفس الحل أو صياغة الأدلة. أسماء الشخصيات القديمة متشالة عمدًا لأن الـnickname الحقيقي هو الهوية:
 ${JSON.stringify(referenceCases(input.playerCount))}
 
-راجع داخليًا قبل الإجابة: هل كل character فيه role وbio بدون name؟ هل أول دليل يورط 3؟ هل بعد الثاني فيه نظرية بريئة قوية؟ هل كل مافيوزو يحتاج 3 أدلة؟ هل الرابع وحده غير كافٍ؟ لو لأ، أعد التصميم.
+راجع داخليًا قبل الإجابة: هل كل character فيه role وbio وroleByGender وbioByGender بدون name؟ هل male/female متطابقين في المعنى والحقائق؟ هل أول دليل يورط 3؟ هل بعد الثاني فيه نظرية بريئة قوية؟ هل كل مافيوزو يحتاج 3 أدلة؟ هل الرابع وحده غير كافٍ؟ لو لأ، أعد التصميم.
 أرجع JSON مطابق للـschema فقط.`;
 }
 
@@ -196,7 +232,7 @@ export default async function handler(req: any, res: any) {
             : { maxOutputTokens: 8192, temperature: 0.92 },
         });
         if (!response.text) throw new Error('Model returned empty response');
-        generated = validateCase(parseJson(response.text), playerCount, mafiaCount);
+        generated = validateCase(parseJson(response.text), playerCount, mafiaCount, true);
         usedModel = model;
         break;
       } catch (error) {

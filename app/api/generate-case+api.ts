@@ -25,6 +25,12 @@ function mafiaCountFor(playerCount: number) {
 }
 
 function schemaFor(playerCount: number, mafiaCount: number) {
+  const genderText = (min: number, max: number) =>
+    z.object({
+      male: z.string().min(min).max(max),
+      female: z.string().min(min).max(max),
+    });
+
   return z
     .object({
       title: z.string().min(3).max(80),
@@ -35,6 +41,8 @@ function schemaFor(playerCount: number, mafiaCount: number) {
           z.object({
             role: z.string().min(2).max(70),
             bio: z.string().min(30).max(330),
+            roleByGender: genderText(2, 70),
+            bioByGender: genderText(30, 330),
           }),
         )
         .length(playerCount),
@@ -62,6 +70,18 @@ function schemaFor(playerCount: number, mafiaCount: number) {
     });
 }
 
+function genderTextJsonSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['male', 'female'],
+    properties: {
+      male: { type: 'string' },
+      female: { type: 'string' },
+    },
+  };
+}
+
 function jsonSchema(playerCount: number, mafiaCount: number) {
   return {
     type: 'object',
@@ -78,10 +98,12 @@ function jsonSchema(playerCount: number, mafiaCount: number) {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['role', 'bio'],
+          required: ['role', 'bio', 'roleByGender', 'bioByGender'],
           properties: {
             role: { type: 'string' },
             bio: { type: 'string' },
+            roleByGender: genderTextJsonSchema(),
+            bioByGender: genderTextJsonSchema(),
           },
         },
       },
@@ -134,6 +156,9 @@ function buildPrompt(input: {
 قواعد أساسية لا يجوز كسرها:
 - كل لاعب يظل معروفًا بالـnickname الحقيقي بتاعه. ممنوع اختراع اسم شخصية بديل للاعب.
 - لكل لاعب role وصفي قصير داخل القضية (زي: أمين المخزن، منظم الحفلة، المصور)، والـbio يشرح علاقته بالقضية من غير ما يغير هويته.
+- لكل character أرجع role وbio كصياغة fallback محايدة، ومعهم roleByGender وbioByGender وفي كل واحد male وfemale.
+- male وfemale لازم يعبّروا عن نفس الدور ونفس الحقائق ونفس درجة الاشتباه بالضبط؛ الاختلاف لغوي فقط لضبط التذكير والتأنيث في المصري، وممنوع إضافة معلومة أو دافع أو فرصة مختلفة حسب الجنس.
+- gender لا يدخل إطلاقًا في اختيار mafiaCharacterIndexes؛ اختار فهارس المافيا من تصميم القضية فقط، مستقلًا عن الصياغة.
 - كل معلومات الـbio علنية يسمعها كل اللاعبين. لا توجد أسرار شخصية خاصة.
 - السر الوحيد الذي يراه اللاعب على هاتفه هو هل هو Mafia أم Innocent.
 - المافيوزو لا يعرفون بعضهم. اجعل تعاونهم في الجريمة ممكنًا بدون معرفة الهوية: فرصة صنعها شخص مجهول واستغلها الآخر، تعليمات مجهولة، أو خطتان التقتا بالصدفة.
@@ -152,7 +177,7 @@ function buildPrompt(input: {
 - discussionPrompt سؤال قصير يساعد النقاش بعد كل دليل من غير تلميح للإجابة.
 - لا تضع Markdown ولا code fences. أرجع JSON خام فقط.
 
-أرجع JSON فقط مطابقًا للـschema، وداخل characters استخدم role وbio فقط، بدون name.
+أرجع JSON فقط مطابقًا للـschema، وداخل characters استخدم role وbio وroleByGender وbioByGender فقط، بدون name.
 `;
 }
 
@@ -211,8 +236,6 @@ export async function POST(request: Request) {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
 
-    // room_snapshot itself is authenticated and tells us whether this exact user is the Boss.
-    // Avoid a second auth round-trip here; the RPC is the source of truth for game permissions.
     const { data: snapshot, error: snapshotError } = await supabase.rpc('room_snapshot', { p_code: roomCode });
     if (snapshotError || !snapshot) {
       const message = errorMessage(snapshotError ?? 'Room not found');
