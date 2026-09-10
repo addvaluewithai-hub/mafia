@@ -69,19 +69,36 @@ export type RoomSnapshot = {
   voteSubmitted: boolean;
 };
 
+export type GenderedCaseText = {
+  male: string;
+  female: string;
+};
+
+export type GeneratedCaseCharacter = {
+  role?: string;
+  name?: string;
+  bio: string;
+  roleByGender?: GenderedCaseText;
+  bioByGender?: GenderedCaseText;
+};
+
 export type GeneratedCase = {
   title: string;
   premise: string;
   crime: string;
-  characters: Array<{
-    role?: string;
-    name?: string;
-    bio: string;
-  }>;
+  characters: GeneratedCaseCharacter[];
   mafiaCharacterIndexes: number[];
   rounds: Array<{
     clue: string;
     discussionPrompt: string;
   }>;
   solution: string;
+};
+
+export type GeneratedAiCase = Omit<GeneratedCase, 'characters'> & {
+  characters: Array<GeneratedCaseCharacter & {
+    role: string;
+    roleByGender: GenderedCaseText;
+    bioByGender: GenderedCaseText;
+  }>;
 };
