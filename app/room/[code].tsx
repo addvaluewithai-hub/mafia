@@ -23,6 +23,7 @@ import QRCode from 'react-native-qrcode-svg';
 import Animated, { FadeInDown, FadeInUp, LinearTransition, ZoomIn } from 'react-native-reanimated';
 
 import { DiscussionTimer } from '@/components/discussion-timer';
+import { GenderPicker } from '@/components/gender-picker';
 import { Body, Button, Card, Divider, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import {
   castVote,
@@ -38,7 +39,7 @@ import {
 } from '@/lib/game';
 import { playGameSfx } from '@/lib/game-sfx';
 import { subscribeToRoomEvents } from '@/lib/supabase';
-import type { PlayerState, RoomSnapshot } from '@/lib/types';
+import type { PlayerGender, PlayerState, RoomSnapshot } from '@/lib/types';
 
 function PlayerCard({
   player,
@@ -131,6 +132,7 @@ export default function RoomScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [nickname, setNickname] = useState('');
+  const [joinGender, setJoinGender] = useState<PlayerGender | null>(null);
   const [roleVisible, setRoleVisible] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -262,8 +264,12 @@ export default function RoomScreen() {
       setError('اكتب اسمك الأول.');
       return;
     }
+    if (!joinGender) {
+      setError('اختار الجنس عشان صياغة القصة تبقى مظبوطة.');
+      return;
+    }
     await doAction(async () => {
-      await joinRoom(code, nickname);
+      await joinRoom(code, nickname, joinGender);
       void playGameSfx('success');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     });
@@ -329,6 +335,10 @@ export default function RoomScreen() {
             ) : (
               <>
                 <Field value={nickname} onChangeText={setNickname} placeholder="اكتب اسمك" maxLength={24} />
+                <View className="gap-2">
+                  <SectionTitle title="الجنس" caption="للصياغة في القصة بس — مش بيغير دورك أو فرصك" />
+                  <GenderPicker value={joinGender} onChange={setJoinGender} />
+                </View>
                 <Button label="انضم للروم" onPress={submitJoin} loading={actionLoading} icon={<UserRound size={18} color="#050507" strokeWidth={2.3} />} />
               </>
             )}
