@@ -33,7 +33,7 @@ function schemaFor(playerCount: number, mafiaCount: number) {
       characters: z
         .array(
           z.object({
-            name: z.string().min(2).max(45),
+            role: z.string().min(2).max(70),
             bio: z.string().min(30).max(330),
           }),
         )
@@ -55,9 +55,9 @@ function schemaFor(playerCount: number, mafiaCount: number) {
       if (new Set(value.mafiaCharacterIndexes).size !== mafiaCount) {
         context.addIssue({ code: 'custom', message: 'mafia indexes must be unique' });
       }
-      const names = value.characters.map((item) => item.name.trim().toLowerCase());
-      if (new Set(names).size !== names.length) {
-        context.addIssue({ code: 'custom', message: 'character names must be unique' });
+      const roles = value.characters.map((item) => item.role.trim().toLowerCase());
+      if (new Set(roles).size !== roles.length) {
+        context.addIssue({ code: 'custom', message: 'case roles must be unique' });
       }
     });
 }
@@ -78,9 +78,9 @@ function jsonSchema(playerCount: number, mafiaCount: number) {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['name', 'bio'],
+          required: ['role', 'bio'],
           properties: {
-            name: { type: 'string' },
+            role: { type: 'string' },
             bio: { type: 'string' },
           },
         },
@@ -132,26 +132,27 @@ function buildPrompt(input: {
 الصعوبة: ${difficultyInstruction}
 
 قواعد أساسية لا يجوز كسرها:
-- كل معلومات الشخصيات في bio معلومات علنية يسمعها كل اللاعبين. لا توجد أسرار شخصية خاصة.
+- كل لاعب يظل معروفًا بالـnickname الحقيقي بتاعه. ممنوع اختراع اسم شخصية بديل للاعب.
+- لكل لاعب role وصفي قصير داخل القضية (زي: أمين المخزن، منظم الحفلة، المصور)، والـbio يشرح علاقته بالقضية من غير ما يغير هويته.
+- كل معلومات الـbio علنية يسمعها كل اللاعبين. لا توجد أسرار شخصية خاصة.
 - السر الوحيد الذي يراه اللاعب على هاتفه هو هل هو Mafia أم Innocent.
 - المافيوزو لا يعرفون بعضهم. اجعل تعاونهم في الجريمة ممكنًا بدون معرفة الهوية: فرصة صنعها شخص مجهول واستغلها الآخر، تعليمات مجهولة، أو خطتان التقتا بالصدفة.
-- اختر mafiaCharacterIndexes من فهارس الشخصيات ابتداءً من صفر، ولا تذكر في النصوص العلنية من هم.
-- كل شخصية لازم يكون عندها دافع أو فرصة أو تفصيلة مريبة تجعل اتهامها منطقيًا.
+- اختر mafiaCharacterIndexes من فهارس الأدوار ابتداءً من صفر، ولا تذكر في النصوص العلنية من هم.
+- كل role لازم يكون عنده دافع أو فرصة أو تفصيلة مريبة تجعل اتهام صاحبه منطقيًا.
 - لازم توجد تفاصيل مضللة حقيقية تخص الأبرياء، لكنها ليست كذبًا من الراوي.
 - ممنوع أن يقول أي دليل بشكل مباشر وظيفة أو صفة لا تنطبق إلا على مافيوزو واحد.
-- الدليل الأول يورط على الأقل 3 شخصيات منطقيًا.
+- الدليل الأول يورط على الأقل 3 لاعبين منطقيًا.
 - الدليل الثاني يضيف زاوية مختلفة ولا يحسم الأول.
 - الدليل الثالث يسمح بعمل نظريات قوية متعارضة.
 - الدليل الرابع قوي، لكنه لا يحدد المجرمين وحده إلا لو اتربط بالأدلة السابقة.
 - الحل النهائي يشرح الجريمة خطوة بخطوة ويشرح لماذا الأدلة المضللة لم تكن دليل إدانة.
 - القضية عائلية وآمنة: لا تفاصيل دموية أو جنسية أو مخدرات.
 - لا تستخدم أسماء برامج أو ألعاب أو شخصيات مشهورة، ولا تقلد نصوصًا أو مقدمات معروفة.
-- اجعل أسماء الشخصيات مصرية خفيفة ومضحكة قليلًا لكن غير مهينة.
 - premise هي القصة الافتتاحية التي سيقرأها الـBoss للجميع، بدون كشف الحل.
 - discussionPrompt سؤال قصير يساعد النقاش بعد كل دليل من غير تلميح للإجابة.
 - لا تضع Markdown ولا code fences. أرجع JSON خام فقط.
 
-أرجع JSON فقط مطابقًا للـschema.
+أرجع JSON فقط مطابقًا للـschema، وداخل characters استخدم role وbio فقط، بدون name.
 `;
 }
 
