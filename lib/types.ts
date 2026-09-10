@@ -74,7 +74,8 @@ export type GeneratedCase = {
   premise: string;
   crime: string;
   characters: Array<{
-    name: string;
+    role?: string;
+    name?: string;
     bio: string;
   }>;
   mafiaCharacterIndexes: number[];
