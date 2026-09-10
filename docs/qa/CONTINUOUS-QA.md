@@ -42,7 +42,7 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [x] gender create/join UI في create + room join + standalone `/join`، والـCI على `0278179096419e2fadbe06d4f3ef3362f405a189` أصبح `validate` ✅ و`qa` ✅.
 - [x] nickname-only PlayerCard identity؛ الـCI على `37978b63c6ba558b436c5079c62d70548459204c` أصبح `CI` ✅ و`Game QA` ✅.
 - [x] `caseRole` population في `install_case`؛ الـchecks على `0e5d5ad5039d6196ebbb89ec74d8bc520c37ac89` أصبحت `validate` ✅ و`qa` ✅.
-- [ ] AI generator contract تحول إلى `characters[{role,bio}]` في المسارين، مع regression guard على `3b25ae4d700eddae2949ba96564636016a2d55aa`، لكن **pending final CI**.
+- [ ] AI generator contract تحول إلى `characters[{role,bio}]` في المسارين، مع regression guard على `3b25ae4d700eddae2949ba96564636016a2d55aa`؛ `validate` ✅ والـrole guard ✅، لكن full `qa` **pending final completion**.
 - [ ] `character_name` و`character_bio` ما زالا legacy story fields في schema/install path والقضايا الجاهزة ما زالت تستخدم أسماءها القديمة.
 
 ## QA coverage الحالي
@@ -126,9 +126,9 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 
 ### Evidence / checks
 - prerequisite `0e5d5ad5...`: `validate` ✅ و`qa` ✅.
-- على `3b25ae4d700eddae2949ba96564636016a2d55aa` وقت handoff: `validate` = `in_progress` و`qa` = `in_progress`، ولم يظهر failure بعد.
-- Game QA workflow يعرض خطوة مستقلة باسم `Generated case role identity contract` قبل full-game simulations وSupabase E2E.
-- لذلك **لا تعتبر AI role generator deploy-safe أو مغلقًا حتى تصبح checks Green**.
+- على `3b25ae4d700eddae2949ba96564636016a2d55aa`: `validate` ✅.
+- Game QA: TypeScript ✅، Expo Doctor ✅، كل UI contracts السابقة ✅، `Generated case role identity contract` ✅، full-game state simulations ✅، story critic ✅؛ الـworkflow كان عند `Start clean local Supabase` وقت آخر فحص، لذلك full Supabase E2E ما زال pending.
+- لذلك **لا تعتبر AI role generator deploy-safe أو مغلقًا حتى يصبح full `qa` Green**.
 - لم يتم deploy إلى Production.
 
 ### Newly discovered risks / bugs
@@ -143,7 +143,7 @@ Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` 
 - [x] إضافة اختيار gender في كل create/join UI وربطه بالعقد الجديد.
 - [x] جعل nickname الاسم الأساسي الظاهر دائمًا في PlayerCard.
 - [x] backend `caseRole` install support.
-- [ ] تحديث case generator إلى roles/bios بدون fictional names — **implemented on `3b25ae4d...`, pending final CI**.
+- [ ] تحديث case generator إلى roles/bios بدون fictional names — **implemented on `3b25ae4d...`, validate + role contract Green, full QA pending**.
 - [ ] صياغة role/bio بحسب gender بدون تغيير mechanics؛ blocked منطقيًا على تثبيت mapping بين generated character payload واللاعب النهائي.
 - [ ] إزالة legacy `character_name` بعد تحويل القضايا الجاهزة واختبارات compatibility في جلسة منفصلة.
 
