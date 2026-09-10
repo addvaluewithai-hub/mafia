@@ -64,7 +64,20 @@ assert.match(installMigration, /order by random\(\)/i, 'install_case must retain
 assert.match(installMigration, /mafiaCharacterIndexes/, 'install_case must retain mafiaCharacterIndexes assignment');
 
 const types = readFileSync('lib/types.ts', 'utf8');
+assert.match(
+  types,
+  /export type GenderedCaseText = \{\s*male: string;\s*female: string;\s*\};/s,
+  'Shared types must model the complete male/female wording pair',
+);
+assert.match(types, /export type GeneratedCaseCharacter = \{/, 'GeneratedCase must use a named character contract');
 assert.match(types, /role\?: string;/, 'GeneratedCase must support neutral role fallback');
 assert.match(types, /name\?: string;/, 'GeneratedCase must remain compatible with curated legacy cases');
+assert.match(types, /roleByGender\?: GenderedCaseText;/, 'Legacy-compatible cases may optionally carry gender-aware role wording');
+assert.match(types, /bioByGender\?: GenderedCaseText;/, 'Legacy-compatible cases may optionally carry gender-aware bio wording');
+assert.match(
+  types,
+  /export type GeneratedAiCase = Omit<GeneratedCase, 'characters'> & \{[\s\S]*role: string;[\s\S]*roleByGender: GenderedCaseText;[\s\S]*bioByGender: GenderedCaseText;/,
+  'GeneratedAiCase must make role and both gender wording variants mandatory',
+);
 
-console.log('Generated case gender wording contract passed for schema, prompt, and install handoff.');
+console.log('Generated case gender wording contract passed for schema, prompt, typed contract, and install handoff.');
