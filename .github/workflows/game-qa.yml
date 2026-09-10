@@ -27,6 +27,8 @@ jobs:
         run: node scripts/qa/gender-ui-contract.mjs
       - name: Standalone join gender contract
         run: node scripts/qa/standalone-join-gender-contract.mjs
+      - name: Player card identity contract
+        run: node scripts/qa/player-card-identity-contract.mjs
       - name: Full-game state simulations
         run: node scripts/qa/game-state-sim.mjs
       - name: Story critic (report mode)
