@@ -250,10 +250,7 @@ export default function RoomScreen() {
   }
 
   const { room } = snapshot;
-  // Defensive fallback: older/stale snapshots may omit lastResolvedRound.
-  // A missing value must never deadlock the vote UI.
-  const safeLastResolvedRound = Number.isFinite(room.lastResolvedRound) ? room.lastResolvedRound : -1;
-  const voteOpen = room.status === 'playing' && safeLastResolvedRound < room.roundIndex;
+  const votePhaseOpen = snapshot.phase === 'voting';
   const isOutsider = !snapshot.isHost && !snapshot.me;
   const requiredToStart = room.caseMode === 'preset' ? room.maxPlayers : 4;
   const lobbyReady = snapshot.playerCount >= requiredToStart;
@@ -282,7 +279,7 @@ export default function RoomScreen() {
   };
 
   const submitVote = async () => {
-    if (!selectedVote) return;
+    if (!selectedVote || !snapshot.canVote) return;
     await doAction(async () => {
       await castVote(code, selectedVote);
       void playGameSfx('vote');
@@ -487,7 +484,7 @@ export default function RoomScreen() {
             </Card>
           ) : null}
 
-          {voteOpen ? (
+          {votePhaseOpen ? (
             <DiscussionTimer
               endsAt={room.timerEndsAt}
               durationSeconds={room.timerDurationSeconds}
@@ -529,7 +526,7 @@ export default function RoomScreen() {
             </Animated.View>
           ) : null}
 
-          {voteOpen && snapshot.me && !snapshot.me.isEliminated ? (
+          {votePhaseOpen && snapshot.me && !snapshot.me.isEliminated ? (
             <Card>
               <View className="flex-row-reverse items-center gap-2"><Vote size={19} color="#f2c14e" /><SectionTitle title="مين يدخل السجن؟" caption="اختار مشتبه واحد وثبّت صوتك" /></View>
               <View className="w-full min-w-0 gap-2 md:flex-row-reverse md:flex-wrap">
@@ -540,12 +537,12 @@ export default function RoomScreen() {
                       compact
                       selected={selectedVote === player.id}
                       onPress={() => { setSelectedVote(player.id); void Haptics.selectionAsync(); }}
-                      disabled={snapshot.voteSubmitted}
+                      disabled={!snapshot.canVote}
                     />
                   </View>
                 ))}
               </View>
-              <Button label={snapshot.voteSubmitted ? 'صوتك اتحسب' : 'ثبّت صوتي'} onPress={submitVote} disabled={!selectedVote || snapshot.voteSubmitted} loading={actionLoading} icon={snapshot.voteSubmitted ? <CheckCircle2 size={18} color="#050507" /> : <Vote size={18} color="#050507" />} />
+              <Button label={snapshot.voteSubmitted ? 'صوتك اتحسب' : 'ثبّت صوتي'} onPress={submitVote} disabled={!selectedVote || !snapshot.canVote} loading={actionLoading} icon={snapshot.voteSubmitted ? <CheckCircle2 size={18} color="#050507" /> : <Vote size={18} color="#050507" />} />
             </Card>
           ) : null}
 
@@ -558,11 +555,11 @@ export default function RoomScreen() {
                 </View>
                 <Pill label={`${snapshot.votesCast}/${snapshot.eligibleVoters} أصوات`} tone="gold" />
               </View>
-              {voteOpen ? (
+              {snapshot.phase === 'voting' ? (
                 <Button label="احسم التصويت" onPress={settleVote} loading={actionLoading} tone="red" icon={<Gavel size={18} color="#fff6dc" />} />
-              ) : (
+              ) : snapshot.phase === 'round_resolved' ? (
                 <Button label="اكشف الدليل اللي بعده" onPress={() => void doAction(() => revealNextRound(code))} loading={actionLoading} icon={<Sparkles size={18} color="#050507" />} />
-              )}
+              ) : null}
             </Card>
           ) : null}
 
