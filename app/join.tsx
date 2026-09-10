@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Body, Button, Card, ErrorText, Eyebrow, Field, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
+import { GenderPicker } from '@/components/gender-picker';
 import { joinRoom, normalizeRoomCode } from '@/lib/game';
+import type { PlayerGender } from '@/lib/types';
 
 export default function JoinRoomScreen() {
   const [code, setCode] = useState('');
   const [nickname, setNickname] = useState('');
+  const [gender, setGender] = useState<PlayerGender | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,10 +21,14 @@ export default function JoinRoomScreen() {
       setError('اكتب كود الروم المكوّن من 6 حروف واسمك.');
       return;
     }
+    if (!gender) {
+      setError('اختار ذكر أو أنثى عشان صياغة الكلام تبقى مظبوطة.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      await joinRoom(normalized, nickname);
+      await joinRoom(normalized, nickname, gender);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace(`/room/${normalized}`);
     } catch (err) {
@@ -68,6 +75,11 @@ export default function JoinRoomScreen() {
           <View className="gap-3">
             <SectionTitle title="اسمك في اللعبة" caption="اختار اسم قصير وواضح" />
             <Field value={nickname} onChangeText={setNickname} placeholder="مثلاً: مهند" maxLength={24} />
+          </View>
+
+          <View className="gap-3">
+            <SectionTitle title="الجنس" caption="للصياغة بس — مش بيغير دورك ولا فرص الفوز" />
+            <GenderPicker value={gender} onChange={setGender} />
           </View>
 
           {error ? <ErrorText message={error} /> : null}
