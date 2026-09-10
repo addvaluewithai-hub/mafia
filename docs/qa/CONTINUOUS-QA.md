@@ -47,15 +47,7 @@
   - `phase`: `lobby | voting | round_resolved | finished`.
   - `canVote`: صلاحية فعلية خاصة باللاعب الحالي، وتكون false لو خرج من اللعب أو صوّت بالفعل أو الجولة ليست في التصويت.
 - [x] أضيف `GamePhase` و`phase` و`canVote` إلى `RoomSnapshot` في `lib/types.ts`.
-- [x] تم توسيع `scripts/qa/supabase-e2e.mjs` ليختبر contract الجديد عبر الجيم الكامل:
-  - lobby → `phase=lobby`, `canVote=false`.
-  - بداية الجولة → `phase=voting`, وكل لاعب حي لم يصوّت `canVote=true`.
-  - بعد تصويت اللاعب → `voteSubmitted=true`, `canVote=false` بينما phase تظل voting.
-  - tie → الأصوات تتمسح و`canVote=true` يرجع لكل لاعب حي.
-  - بعد resolve → `phase=round_resolved`.
-  - بعد reveal next clue → `phase=voting` وحق التصويت يرجع للأحياء.
-  - المسجون → `canVote=false` دائمًا.
-  - النهاية → `phase=finished`, `canVote=false`.
+- [x] تم توسيع `scripts/qa/supabase-e2e.mjs` ليختبر contract الجديد عبر الجيم الكامل.
 - [x] لم يتم تعطيل أو تخفيف أي اختبار قائم.
 
 ### Commits المهمة في Session 2
@@ -64,23 +56,45 @@
 - `dd48994f216f45df1563d750df4eb5d41568c1cb` — TypeScript contract.
 - `89788b429a3135097f35ad7eaa6787794f6fdfe1` — regression coverage للـphase/canVote في RPC E2E.
 
-### نتيجة CI عند إغلاق Session 2
-- checks الخاصة بـ`89788b429a3135097f35ad7eaa6787794f6fdfe1` تم إنشاؤها بنجاح لكن كانت **queued** وقت الإغلاق (`validate` و`qa`).
-- هذا يعني أن التغيير **ليس deploy-safe بعد** حتى تظهر نتيجة الـlocal Supabase E2E الجديدة Green.
-- لا تطبق migration الجديدة على Production قبل Green واضح + smoke test.
+## Session 3 — 2026-09-10 — authoritative vote UI wiring
+### نقطة البداية
+- handoff طلب أولًا فحص `89788b429a3135097f35ad7eaa6787794f6fdfe1`.
+- تم التأكد أن `validate` ✅ و`qa` ✅ على هذا commit، بما في ذلك الـlocal Supabase RPC E2E للـphase/canVote.
+- لذلك تم اختيار بند واحد فقط: توصيل واجهة التصويت بالعقد authoritative الموجود بالفعل على السيرفر.
 
-### ما لم يتم عمدًا في Session 2
-- لم يتم توصيل واجهة `app/room/[code].tsx` بعد إلى `snapshot.phase` و`snapshot.canVote`. الواجهة ما زالت تستخدم `voteOpen` المبني على counters مع defensive fallback القديم. فصلنا server contract + regression أولًا حتى لا نغير DB وUI معًا بدون إثبات.
-- لم نبدأ gender/caseRole أو إعادة كتابة القصص لأن P0 game-loop ما زال أعلى.
+### ما تم في هذه الجلسة
+- [x] تحديث `app/room/[code].tsx` لإزالة اشتقاق `voteOpen` من `lastResolvedRound < roundIndex`.
+- [x] الواجهة الآن تستخدم `snapshot.phase === 'voting'` لإظهار timer وبطاقة التصويت وتحديد زر Boss.
+- [x] `submitVote` نفسه أصبح يرفض التنفيذ محليًا لو `snapshot.canVote=false`.
+- [x] targets وزر تثبيت الصوت يتعطلوا من `snapshot.canVote`، وليس من counters محلية.
+- [x] بطاقة التصويت تظل ظاهرة بعد submission داخل `phase=voting` وتعرض «صوتك اتحسب» كما هو مطلوب.
+- [x] زر Boss يعرض «اكشف الدليل اللي بعده» فقط عندما `phase === 'round_resolved'`.
+- [x] أضيف regression guard جديد `scripts/qa/vote-ui-contract.mjs` يمنع إعادة `safeLastResolvedRound`/`voteOpen` المشتق محليًا ويؤكد وجود `phase/canVote` wiring.
+- [x] أضيف guard إلى `Game QA` workflow قبل simulations وSupabase E2E.
+- [x] لم يتم تخفيف أو حذف أي اختبار.
+
+### Commits المهمة في Session 3
+- `5a46ee5f15f5c9993029c506376ec4577245876d` — توصيل UI بـ`phase/canVote`.
+- `f43d1e166461739a0a1d617268dd712629d5751e` — regression guard للـvote UI contract.
+- `5287931ae0345e704a3d89c2008888c8bf330724` — تشغيل guard ضمن Game QA workflow.
+
+### نتيجة CI عند إغلاق Session 3
+- checks على `5287931ae0345e704a3d89c2008888c8bf330724` بدأت بنجاح.
+- `validate` و`qa` كانا **in_progress** عند آخر فحص في هذه الجلسة، لذلك لا يوجد ادعاء Green للتغيير الجديد بعد.
+- التغيير **ليس deploy-safe بعد**، ولم يتم تطبيق migration أو deploy على Production.
+
+### Bugs/مخاطر جديدة
+- لا يوجد bug جديد مثبت حتى الآن من هذه الجلسة.
+- الخطر المتبقي الأعلى هو refresh/reconnect أثناء تبدل `canVote` و`phase`: نحتاج regression يثبت أن snapshot جديد قبل/بعد cast وبعد tie لا يعيد حالة UI قديمة أو يفقد حق التصويت.
 
 ## تشخيص التصويت الحالي
-المشكلة الأصلية أن العميل كان يعيد استنتاج فتح التصويت من `lastResolvedRound < roundIndex`. هذا هش عند snapshot drift أو قيمة ناقصة. الـhotfix القديم منع deadlock بسبب undefined، وSession 2 أضاف الآن المصدر الصحيح للحقيقة على السيرفر. الخطوة التالية هي جعل الواجهة تستهلك `phase/canVote` مباشرة، ثم حذف الاستنتاج القديم بعد نجاح CI.
+المشكلة الأصلية كانت أن العميل يعيد استنتاج فتح التصويت من counters. السيرفر أصبح المصدر الصريح للحقيقة عبر `phase/canVote`، والواجهة أصبحت تستهلكهما مباشرة في Session 3. لا تعتبر هذا المسار مغلقًا نهائيًا حتى يمر CI الجديد ثم refresh/reconnect regression.
 
 ## تشخيص القصص
 مثال «آخر بروفة» يحتوي على كلمات وتراكيب مثل: ريلاي، لسان قفل، تحليل الغبار، بصمة دخول للوحة الإضاءة. الهدف: **المعلومة تتفهم فورًا، معناها في اللغز هو الصعب.**
 
 ## Drift مكتشف
-Production كانت تحتوي على تغييرات `case_mode` / `story_template_id` / `create_room_v2` لم تكن موجودة في migrations داخل GitHub. تم توثيقها في versioned migration، لكن لا تدّعِ أن Production migrated بدون تطبيق موثق وsmoke test. Migration الـphase الجديدة أيضًا لم تُطبق على Production في Session 2.
+Production كانت تحتوي على تغييرات `case_mode` / `story_template_id` / `create_room_v2` لم تكن موجودة في migrations داخل GitHub. تم توثيقها في versioned migration، لكن لا تدّعِ أن Production migrated بدون تطبيق موثق وsmoke test. Migration الـphase الجديدة لم تُطبق على Production حتى نهاية Session 3.
 
 ## Backlog مرتب بالأولوية
 
@@ -90,8 +104,8 @@ Production كانت تحتوي على تغييرات `case_mode` / `story_templa
 - [x] Real RPC E2E runner ضد local Supabase.
 - [x] تأكيد Green للـRPC E2E الأساسي على main قبل Session 2.
 - [x] Server contract صريح `phase` + `canVote` في `room_snapshot` + regression tests.
-- [ ] **أعلى أولوية حالية:** افحص checks للـcommit `89788b429a3135097f35ad7eaa6787794f6fdfe1`. لو فشل `qa` أصلح أول failure فقط. لو Green، وصّل `app/room/[code].tsx` إلى `snapshot.phase` و`snapshot.canVote` بدل `voteOpen` المشتق من counters، مع الحفاظ على حالة "صوتك اتحسب" بعد submission.
-- [ ] بعد توصيل UI: أضف refresh/reconnect regression في كل مرحلة، خصوصًا قبل/بعد cast vote وبعد tie.
+- [x] توصيل UI إلى `snapshot.phase` و`snapshot.canVote` بدل counters المحلية + CI guard.
+- [ ] **أعلى أولوية حالية:** افحص checks للـcommit `5287931ae0345e704a3d89c2008888c8bf330724`. لو فشل `validate` أو `qa` أصلح أول failure فقط. لو Green، أضف refresh/reconnect regression في كل مرحلة، خصوصًا قبل/بعد cast vote وبعد tie.
 - [ ] ثبّت سيناريو Boss نفسه يُسجن ثم يظل قادرًا على resolve/reveal بينما لا يقدر يصوت بصورة مستقلة وواضحة في التقرير.
 - [ ] طابق Production DB مع versioned migrations فقط بعد Green E2E + smoke test.
 
@@ -123,11 +137,12 @@ Production كانت تحتوي على تغييرات `case_mode` / `story_templa
 GitHub Action `Game QA` يعمل على push/PR ويستهدف:
 1. TypeScript.
 2. Expo Doctor.
-3. 60 full-game state simulations.
-4. Story critic report.
-5. Supabase CLI + clean local DB from migrations.
-6. Full-game RPC E2E لـ5/6/7 لاعبين.
-7. JSON artifacts تحت `qa/reports/`.
+3. Vote UI authoritative contract guard.
+4. 60 full-game state simulations.
+5. Story critic report.
+6. Supabase CLI + clean local DB from migrations.
+7. Full-game RPC E2E لـ5/6/7 لاعبين.
+8. JSON artifacts تحت `qa/reports/`.
 
 يوجد أيضًا ChatGPT hourly QA loop. كل تشغيل يبدأ من هذا الملف، يختار عنصرًا واحدًا فقط من أعلى أولوية، ينفذه/يختبره، ثم يحدث هذا الملف قبل أن ينتهي.
 
@@ -142,14 +157,15 @@ GitHub Action `Game QA` يعمل على push/PR ويستهدف:
 - كل قصة جاهزة تعدي Critic threshold.
 - كل شاشة أساسية تعدي mobile QA.
 
-## خطة Session 3
-1. اقرأ هذا الملف وافحص checks للـcommit `89788b429a3135097f35ad7eaa6787794f6fdfe1`.
-2. لو `qa` فشل: أصلح أول failure فقط، ولا تبدأ أي feature أخرى.
-3. لو Green: اجعل واجهة الروم تعتمد على `snapshot.phase` كحقيقة فتح/حسم التصويت وعلى `snapshot.canVote` لتعطيل الاختيار/الإرسال بعد تصويت اللاعب أو خروجه.
-4. حافظ على بطاقة التصويت ظاهرة بعد submission داخل phase=voting حتى يرى اللاعب «صوتك اتحسب»؛ لا تستخدم `canVote` لإخفاء البطاقة نفسها.
-5. شغّل/افحص TypeScript + Game QA، ثم حدّث هذا الملف.
-6. لا تبدأ gender/caseRole قبل إغلاق هذا الـP0.
+## خطة Session 4
+1. اقرأ هذا الملف وافحص checks للـcommit `5287931ae0345e704a3d89c2008888c8bf330724`.
+2. لو أي check فشل: أصلح أول failure فقط ولا تبدأ بندًا جديدًا.
+3. لو Green: نفّذ refresh/reconnect regression واحد مركز على vote state عبر: قبل cast → بعد cast → tie reset → round resolved → reveal next round.
+4. أثبت أن snapshot الجديد هو المصدر الوحيد للحالة وأن اللاعب لا يفقد أو يستعيد `canVote` غلطًا بعد refresh.
+5. افحص TypeScript + Game QA ثم حدّث هذا الملف.
+6. لا تبدأ gender/caseRole أو إعادة كتابة القصص قبل إغلاق هذا الـP0.
 
 ## سجل الجلسات
 - **2026-09-10 Session 1:** تأسيس نظام QA المستمر، hotfix للتصويت، simulations، critic، local RPC E2E، ومزامنة migrations.
 - **2026-09-10 Session 2:** تأكد أن الـRPC E2E الأساسي Green، ثم أضيف server-authoritative `phase/canVote` مع regression coverage كاملة عبر lobby/vote/submit/tie/resolve/reveal/finish. checks الجديدة كانت queued عند الإغلاق؛ Production لم تتغير.
+- **2026-09-10 Session 3:** تم التأكد أن عقد السيرفر Green، ثم توصيل واجهة التصويت بالكامل إلى `phase/canVote` مع regression guard في CI. checks الخاصة بالتغيير الجديد كانت in_progress عند الإغلاق؛ Production لم تتغير.
