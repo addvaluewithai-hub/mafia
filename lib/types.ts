@@ -3,10 +3,13 @@ export type RoomStatus = 'lobby' | 'playing' | 'finished';
 export type Winner = 'mafia' | 'innocents' | null;
 export type CaseMode = 'ai' | 'preset';
 export type GamePhase = 'lobby' | 'voting' | 'round_resolved' | 'finished';
+export type PlayerGender = 'male' | 'female';
 
 export type PlayerState = {
   id: string;
   nickname: string;
+  gender: PlayerGender | null;
+  caseRole: string | null;
   characterName: string | null;
   characterBio: string | null;
   isEliminated: boolean;
@@ -54,6 +57,8 @@ export type RoomSnapshot = {
     playerId: string;
     role: SecretRole | null;
     isEliminated: boolean;
+    gender: PlayerGender | null;
+    caseRole: string | null;
   } | null;
   players: PlayerState[];
   rounds: EvidenceRound[];
