@@ -9,7 +9,7 @@ on:
 jobs:
   qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,6 +25,19 @@ jobs:
         run: node scripts/qa/game-state-sim.mjs
       - name: Story critic (report mode)
         run: node scripts/qa/story-critic.mjs
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start clean local Supabase
+        run: supabase start
+      - name: Full-game RPC E2E (5/6/7 players)
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          node scripts/qa/supabase-e2e.mjs
       - name: Upload QA reports
         if: always()
         uses: actions/upload-artifact@v4
