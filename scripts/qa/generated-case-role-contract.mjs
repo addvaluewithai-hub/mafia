@@ -53,8 +53,13 @@ assert.match(
 assert.match(serverRoute, /بدون name|ممنوع name/, 'Server generator prompt must explicitly forbid fictional names');
 assert.match(
   serverRoute,
-  /characters:\s*item\.case\.characters\.map\(\(character\) => \(\{ bio: character\.bio \}\)\)/,
-  'AI reference payload must strip legacy fictional names before prompting',
+  /characters:\s*item\.characters\.map\(\(character\) => \(\{ bio: character\.bio \}\)\)/,
+  'AI reference payload must strip role/name identity fields and expose only neutral bios before prompting',
+);
+assert.doesNotMatch(
+  serverRoute,
+  /characters:\s*item\.characters\.map\([^\n]*name\s*:/,
+  'AI reference payload must never reintroduce fictional names from curated references',
 );
 
 const installMigration = readFileSync('supabase/migrations/20260910233000_gender_case_text_variants.sql', 'utf8');
