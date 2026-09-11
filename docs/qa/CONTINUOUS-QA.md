@@ -10,16 +10,15 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- أحدث `main` قبل هذا checkpoint: `62509fd60dfab0769c648ed304925979dcb9c42c` (`docs: record gender contract CI repair`).
-- latest `main` checks: `validate` completed/success ✅ و`qa` completed/success ✅؛ Session 38 gender-contract repair أصبح Green بالكامل.
-- Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 gameplay معروف في أحدث Green QA.
+- بداية Session 40 كانت على `bda2176b2eba6685247021f14c9b430fdff94f4b` (`docs: checkpoint launch-safety priorities`) مع `validate` completed/success ✅ و`qa` completed/success ✅.
+- Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 gameplay معروف في آخر Green baseline.
 - Identity/story: nickname-only visible identity + gender wording + caseRole + curated/AI semantic-role contracts Green.
-- Curated library: 14 قضية، قصتان لكل عدد 4–10؛ fairness review الحالية PASS لكل القضايا بعد الإصلاحات الموثقة. 11–12 AI-only؛ 13–15 غير مستهدفة حاليًا.
-- Solo/AI Players MVP live in Production، لكن snapshot identity + browser/live UX evidence ما زال gap قبل أي توسع AI discussion.
-- AI generation abuse guard وroom create/join abuse guard موجودان حاليًا per authenticated identity فقط؛ churn عبر إنشاء anonymous identities جديدة ما زال launch-risk حقيقيًا.
-- Production observability code موجود مع privacy-safe allowlist وrelease correlation، لكنه غير مثبت كـdeployed runtime في handoff حالي.
-- آخر Production DB evidence من Session 34: Supabase كان `ACTIVE_HEALTHY` ومهاجر حتى `20260911180000_ai_players_mvp`; لا نفترض parity مستقبلية بدون release preflight.
-- Production web الحالي Vercel؛ لا يوجد Production deploy موثق بعد Sessions 35–38.
+- Curated library: 14 قضية، قصتان لكل عدد 4–10؛ fairness review الحالية PASS؛ لا دليل يبرر 11–15 الآن.
+- Solo/AI Players MVP live in Production؛ snapshot identity + browser/live UX evidence ما زال gap قبل أي توسع AI discussion.
+- Session 40 أضاف second abuse boundary ضد anonymous-auth churn عبر random locally persisted installation key؛ الـDB يخزن SHA-256 فقط. create/join/generation/telemetry wired، مع بقاء quotas القديمة per `auth.uid()` كطبقة إضافية.
+- limitation مقصودة: clearing app/site storage يمكنه تدوير installation key؛ هذا perimeter ضد routine auth churn وليس fraud-proof device fingerprint، ولا يستخدم PII أو gameplay identity.
+- Production observability code موجود مع privacy-safe allowlist + release correlation + telemetry churn guard، لكنه غير مثبت كـdeployed runtime.
+- آخر Production DB evidence من Session 34: Supabase `ACTIVE_HEALTHY` ومهاجر حتى `20260911180000_ai_players_mvp`; migration الجديدة `20260911204500_public_abuse_perimeter.sql` **لم تُطبّق Production**.
 
 ## Roadmap status
 - [x] Core/full-game 4–10 stable.
@@ -31,61 +30,79 @@
 - [x] Release parity + Vercel deployment guardrails.
 - [x] Production observability implementation.
 - [x] Session 38 gender contract repair Green.
-- [ ] Anonymous-identity churn / public-launch abuse perimeter.
-- [ ] Fresh production parity + guarded release evidence for current launch-safety code; observability runtime remains undeployed until explicitly released.
+- [~] Anonymous-identity churn / public-launch abuse perimeter implemented in Session 40; final Green CI still required before closure.
+- [ ] Fresh production parity + guarded release evidence for current launch-safety stack; observability + churn perimeter remain undeployed until explicitly released.
 - [ ] AI Players snapshot identity + browser/live UX evidence; then decide LLM discussion scope.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 39 — 2026-09-11 — Launch-safety checkpoint after Sessions 36–38
+## Session 39 — 2026-09-11 — Launch-safety checkpoint
+Checkpoint/planning only. Starting SHA `62509fd60dfab0769c648ed304925979dcb9c42c` had `validate` + `qa` success. Audit found no P0 gameplay regression and made anonymous-auth churn the next exact priority, followed by fresh release readiness, AI Players live UX evidence, then an AI scope decision checkpoint. No Production write/deploy/migration.
+
+## Session 40 — 2026-09-11 — Anonymous-identity churn / public-launch abuse perimeter
 ### Session type
-Checkpoint/planning — exactly one bounded checkpoint objective. No product feature implementation, schema migration, Production deploy, or Production DB write.
+Delivery — exactly one coherent launch-safety objective. No unrelated gameplay/story feature, Production deploy, Production migration, or Production DB write.
 
 ### Starting evidence
 - Read `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff from default branch.
-- Last checkpoint preceded three implementation/repair sessions (36 release guardrails, 37 observability, 38 CI contract repair), so the default 3–4-session checkpoint cadence is due.
-- Starting `main`: `62509fd60dfab0769c648ed304925979dcb9c42c`.
-- `validate`: completed/success ✅.
-- `qa`: completed/success ✅.
-- Current Game QA still covers TypeScript, Expo doctor, vote/gender/identity/story contracts, deterministic full-game state sims, local Supabase identity/gender/caseRole/gender-wording E2E, AI-generation abuse guard, room create/join abuse guard, AI Players E2E, full-game RPC E2E 4–10, eliminated Boss admin controls, and rematch E2E.
+- Starting latest `main`: `bda2176b2eba6685247021f14c9b430fdff94f4b`.
+- Starting `validate`: completed/success ✅.
+- Starting `qa`: completed/success ✅.
+- Therefore there was no prerequisite CI failure to repair before the handoff priority.
 
 ### Exact objective
-Audit what is truly Green after Sessions 36–38 and reset the next 3–4 substantial objectives around launch risk, without forcing another implementation slice during a due checkpoint.
+Close the routine anonymous-auth churn gap with a second least-identifying practical abuse boundary across create/join/AI generation/telemetry, server-authoritative where practical, while preserving existing per-auth quotas and keeping nickname/gender/room/player/story/role/mafia data out of the abuse identity.
 
-### Checkpoint findings
-1. **Core/full-game confidence remains Green.** Latest full `qa` completed successfully, so there is no evidence requiring a P0 gameplay repair before launch-safety work.
-2. **Session 38 repair is closed.** The gender UI contract now follows the real UI→helper→RPC boundary and the full downstream QA suite also completed, restoring fresh evidence beyond the previously failing static step.
-3. **Anonymous-identity churn is now the highest practical launch risk.** Existing DB guards key create/join and AI-generation budgets by `auth.uid()`. A user can obtain a new anonymous identity and reset those budgets. Observability explicitly documents public endpoint churn as a separate unresolved objective. The next implementation should add a second server-authoritative, non-PII abuse key/perimeter rather than weakening gameplay or storing nickname/gender/room/story data.
-4. **Production parity is historical, not current release evidence.** The runbook correctly requires exact-SHA `validate` + `qa`, read-only migration parity, preflight, and explicit deploy-safe before release. Current latest Green does not by itself prove Production DB parity or that observability is deployed.
-5. **Story/content status is healthy.** The current human fairness review covers all 14 curated 4–10 cases and concludes PASS; no fixed-cadence rewrite is justified. Story work should react to regression/new-content evidence rather than manufacture activity.
-6. **Curated coverage should stay 4–10 for now.** Two curated cases exist for each count 4–10; the documented review explicitly says expansion beyond 10 is not justified by current evidence.
-7. **AI Players needs evidence before scope expansion.** MVP has E2E and production rollout evidence, but browser/live snapshot identity and UX behavior should be verified before adding LLM discussion or broader bot behavior.
-8. **Technical-debt watch:** static source-contract tests can become location-coupled during refactors. New contracts should prefer semantic boundaries, as fixed in Session 38.
+### Reproduction / design finding
+- Existing `room_action_rate_limits` and `case_generation_rate_limits` are keyed by `auth.uid()`, so a fresh anonymous Supabase identity gets a fresh budget.
+- A durable IP/device fingerprint would add privacy and platform complexity. The bounded design chosen here is a random installation key persisted in app/site local storage, unrelated to product identity.
+- The DB stores only `SHA-256(installation key)` and action/window counters. Changing anonymous auth alone does not reset the installation budget; clearing local storage still can, and that limitation is documented explicitly.
+- Existing per-auth quotas remain in force, so this is a second boundary rather than a replacement/weaker limiter.
 
 ### Code / database / tests / docs changes
-- Checkpoint only: no runtime code, schema, migration, test, or Production change.
-- Updated this rolling handoff with current Green evidence, launch risks, reordered milestones, and one exact next-session priority.
+- Added migration `20260911204500_public_abuse_perimeter.sql`:
+  - private `public_abuse_rate_limits(key_hash, action, window, attempts)` table;
+  - `claim_public_abuse_slot` with explicit budgets for create/join/generate/telemetry;
+  - only SHA-256 digest persisted;
+  - `create_room_v4` and `join_room_v3` wrappers claim installation budget then call the existing v3/v2 RPCs, preserving per-auth protection;
+  - `claim_case_generation_slot_v2` claims installation budget then existing per-auth generation budget.
+- Added `getAbuseInstallationKey()` in `lib/supabase.ts`, persisted through the already-installed cross-platform `localStorage` adapter.
+- Main create/join client path now calls `create_room_v4` / `join_room_v3` with the installation key.
+- AI generation request sends the key and server uses `claim_case_generation_slot_v2` before model work.
+- Telemetry sends the key only in `X-Abuse-Key`; telemetry JSON schema/log payload remains free of the key. Endpoint checks the DB-backed telemetry budget and returns 429/503 without blocking gameplay callers.
+- Added deterministic/local-Supabase `public-abuse-perimeter-e2e.mjs`: alternates two different anonymous auth identities against one installation key and proves the ninth create claim is still blocked, verifies a different key has an independent budget, private limiter state, digest-only storage, and wiring across create/join/generation/telemetry.
+- Added the new E2E to `Game QA` after the existing per-auth abuse tests.
+- Updated `docs/operations/OBSERVABILITY.md` with privacy model and explicit storage-reset limitation.
 
 ### Commits
-- This handoff checkpoint commit: `docs: checkpoint launch-safety priorities`.
+- `e21edc21ffe52ff64e9c5afad851f9acf1ca5a73` — migration / DB perimeter.
+- `5d3928f4ee20645ef0b8a2152e3cfd3e92a4a56a` — persisted installation key.
+- `b4a1182676120b9b85ea88c6ca794cdd704d30c9` — create/join/generation client wiring.
+- `734f422a748e3d950323faf0cbf6e8a3b825ce45` — telemetry client header.
+- `3cf919c912e3d904312c0804b1808ae3ba76774a` — telemetry server guard.
+- `4f6faec096574c169c47041a398da877b809e701` — generation server guard.
+- `770082a3e9c4f8ffdb3311a8a03889e44ae738a3`, `d3dbd230e986c1638d276ac2422eb26796e6314d` — churn E2E + privacy assertion refinement.
+- `6fa4fe332850d865cc16f34e36841fb2a043ecf3` — Game QA wiring.
+- `970157ef84a4e60a3fc0a38dfa26f0cfe5f46582` — observability docs.
+- This handoff commit: `docs: record anonymous churn perimeter session`.
 
 ### Check/test results
-- Starting SHA `62509fd60dfab0769c648ed304925979dcb9c42c`: `validate` success ✅ and `qa` success ✅.
-- This docs-only checkpoint commit will trigger checks; inspect them next session before any new implementation and fix any real failure first.
+- Starting checkpoint SHA: `validate` success ✅, `qa` success ✅.
+- Latest implementation/docs SHA inspected before this handoff (`970157ef84a4e60a3fc0a38dfa26f0cfe5f46582`): both `validate` and `qa` were **in progress** at inspection time.
+- This handoff commit will trigger fresh checks. Do not treat Session 40 as Green/deploy-safe until latest `main` `validate` + full `qa` both complete successfully; if either fails, next session fixes the first meaningful failure before release work.
 
 ### Newly discovered bugs / risks
-- No new P0 gameplay bug found.
-- Confirmed architectural abuse gap: per-`auth.uid()` quotas do not survive anonymous identity churn.
-- Production observability remains an implementation claim, not a deployed-runtime claim, until an exact-SHA guarded release is explicitly made and recorded.
-- Production DB parity must be re-proven for the release candidate; Session 34 evidence is not sufficient for a future deploy.
+- No new P0 gameplay bug found before implementation.
+- Installation key is pseudonymous operational state, not identity; storage reset remains a bypass. Do not silently evolve it into PII/device fingerprinting without a separate privacy/product decision.
+- Public claim RPC is intentionally callable by anon/authenticated because telemetry can arrive without auth; the raw high-entropy installation key is never logged or stored. Rate state table remains unreadable by clients.
+- Production DB does not yet contain the new migration; current Production clients therefore must not be pointed at these new RPCs until guarded release parity/migration sequencing is proven.
 
 ### Deploy-safety status
-**Not deploy-safe for a new Production release from this checkpoint alone.** Core checks are Green, but no fresh release preflight/migration parity was executed for a deployment candidate and no deploy was requested. No Production write occurred.
+**Not deploy-safe yet.** Relevant CI was still running at handoff time, and Production migration parity has not been re-proven. No Production deploy, migration, restore, or DB write occurred.
 
-### Roadmap impact — next 4 substantial objectives
-1. **Anonymous-identity churn / public-launch abuse perimeter** — add the least-identifying practical second abuse boundary across create/join/generation/telemetry, server-authoritative where possible, with deterministic regression/E2E. Do not use nickname, gender, room code, player ID, story text, or mafia assignment as an abuse identity.
-2. **Fresh release readiness for launch-safety stack** — once objective 1 is Green, run exact-SHA read-only preflight/parity and close any production/migration drift; only mark deploy-safe when the handoff records the exact Green candidate. Do not deploy automatically.
-3. **AI Players snapshot identity + browser/live UX evidence** — verify bot identity, refresh/reconnect visibility, Boss add/remove flow, vote resolution, and solo completion in browser/live conditions; repair regressions before considering new AI behavior.
-4. **AI Players scope decision checkpoint** — based on objective 3 evidence, decide whether LLM discussion adds enough product value without harming latency/cost/fairness. Keep 11–15 and unrelated polish deferred unless evidence changes priorities.
+### Roadmap impact
+- The highest checkpoint launch-risk is now implemented pending Green CI.
+- The next milestone remains fresh exact-SHA release readiness/parity; do not skip directly to Production rollout.
+- AI Players UX evidence remains after release readiness; unrelated features and 11–15 expansion stay deferred.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص checks لأحدث `main` أولًا. إذا ظهر failure حقيقي، أصلح أول failure meaningful فقط. إذا بقي `validate` + full `qa` Green، نفّذ **Anonymous-identity churn / public-launch abuse perimeter** كـvertical slice واحد: second abuse boundary غير معتمد على `auth.uid()` وحده، لا يخزن PII أو gameplay identity، يغطي create/join/generation/telemetry بقدر عملي server-authoritative، ويضيف deterministic regression/E2E. لا Production migration/deploy إلا بعد Green + parity/preflight + `deploy-safe` صريح لاحقًا.
+افحص أحدث `main` أولًا. إذا Session 40 `validate` أو full `qa` فشل، أصلح **أول failure meaningful فقط** داخل نفس objective ولا تبدأ release scope. إذا كلاهما Green، نفّذ **Fresh release readiness for the launch-safety stack** كـvertical slice واحد read-only أولًا: exact-SHA checks + migration parity/preflight للـcandidate الحالي، وثّق أي Production/DB drift وأفضل next action، ولا تطبق migration أو deploy إلا إذا relevant E2E Green والهاند أوف يسجل التغيير المحدد `deploy-safe` صراحة.
