@@ -17,11 +17,7 @@ for (const playerCount of [4, 5, 6, 7, 8, 9, 10]) {
   for (const entry of matching) {
     assert(
       registrySource.includes(`'${entry.id}': { playerCount: ${playerCount}, case:`),
-      `server story registry missing ${entry.id} for ${playerCount} players`,
-    );
-    assert(
-      apiSource.includes(`'${entry.id}': { playerCount: ${playerCount}, case:`),
-      `case-start preset registry missing ${entry.id} for ${playerCount} players`,
+      `shared curated registry missing ${entry.id} for ${playerCount} players`,
     );
     assert(fs.existsSync(`lib/server-stories/${entry.id}.ts`), `missing curated story file: ${entry.id}`);
   }
@@ -39,9 +35,18 @@ assert(
   registrySource.includes('.filter(([, item]) => item.playerCount === playerCount)'),
   'AI reference cases must use exact player-count matching',
 );
-assert(!registrySource.includes('matching.length ? matching : entries'), 'server story references must not fall back to unrelated player counts');
-assert(!apiSource.includes('fallbackCount'), 'case-start AI references must not fall back to unrelated player counts');
-assert(createSource.includes("'متاحة حاليًا من 4 لـ10 لاعبين.'"), 'create-room copy must describe current curated range accurately');
-assert(createSource.includes('storiesForPlayerCount(players)'), 'create-room preset selection must remain player-count aware');
+assert(!registrySource.includes('matching.length ? matching : entries'), 'shared story references must not fall back to unrelated player counts');
 
-console.log('Curated player-count contract passed: exact 4–10 coverage, two cases each, no unsupported fallback.');
+assert(
+  apiSource.includes("import { getCuratedCase, referenceCasesFor } from '../lib/server-stories';"),
+  'server API must consume the shared curated registry',
+);
+assert(apiSource.includes('getCuratedCase(String(snapshot.room.storyTemplateId'), 'preset lookup must go through shared getCuratedCase');
+assert(apiSource.includes('referenceCasesFor(input.playerCount)'), 'AI prompt references must come from the shared exact-count registry');
+assert(!apiSource.includes('const CASES = {'), 'server API must not reintroduce a duplicate curated registry');
+assert(!apiSource.includes('fallbackCount'), 'case-start AI references must not fall back to unrelated player counts');
+
+assert(createSource.includes("'متاحة حاليًا من 4 لـ10 لاعبين.'"), 'create-room copy must describe current curated range accurately');
+assert(createSource.includes('storiesForPlayerCount(players)'), 'Expo create-room preset selection must remain player-count aware');
+
+console.log('Curated player-count contract passed: one shared registry, exact 4–10 coverage, two cases each, no unsupported fallback.');
