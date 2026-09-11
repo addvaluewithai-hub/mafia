@@ -99,8 +99,6 @@ function forceTie(game) {
       .map((voter) => voter.id),
   );
 
-  // b is deliberately in votersForA, and a is necessarily in the other half,
-  // so neither candidate ever has to vote for themself.
   for (const voter of living) {
     castVote(game, voter.id, votersForA.has(voter.id) ? a : b);
   }
@@ -111,7 +109,6 @@ function runScenario(playerCount, iteration) {
   const boss = game.players[0];
   assert(canVote(game, boss), 'Boss must be both host and eligible voter at game start');
 
-  // Force a deterministic tie once to prove the round reopens instead of deadlocking.
   const living = alive(game);
   if (living.length >= 4 && living.length % 2 === 0) {
     forceTie(game);
@@ -122,7 +119,6 @@ function runScenario(playerCount, iteration) {
     assert(canVote(game, boss), 'vote must reopen after tie');
   }
 
-  // Eliminate mafia one by one where possible, proving next-round transitions.
   while (game.status === 'playing') {
     const target = alive(game).find((p) => p.role === 'mafia') ?? alive(game).find((p) => !p.isHost);
     assert(target, 'must have a target');
@@ -132,7 +128,6 @@ function runScenario(playerCount, iteration) {
     assert(!canVote(game, target), 'eliminated player must not vote');
 
     if (game.status === 'playing') {
-      // Host control survives even if Boss is the eliminated target.
       assert(game.players[0].isHost, 'Boss control capability must remain independent from elimination');
       revealNextRound(game);
       for (const p of alive(game)) assert(canVote(game, p), 'all living players must vote in next round');
@@ -143,15 +138,16 @@ function runScenario(playerCount, iteration) {
   return { playerCount, iteration, winner: game.winner, roundsReached: game.roundIndex + 1 };
 }
 
+const supportedCounts = [4, 5, 6, 7, 8, 9, 10];
 const results = [];
-for (const count of [4, 5, 6, 7]) {
+for (const count of supportedCounts) {
   for (let i = 1; i <= 20; i += 1) results.push(runScenario(count, i));
 }
 
 const report = {
   ok: true,
   simulations: results.length,
-  playerCounts: [4, 5, 6, 7],
+  playerCounts: supportedCounts,
   assertions: [
     'Boss can vote while retaining host capability',
     'Tie clears votes and reopens the same round',
