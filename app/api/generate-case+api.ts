@@ -26,124 +26,52 @@ function mafiaCountFor(playerCount: number) {
 
 function schemaFor(playerCount: number, mafiaCount: number) {
   const genderText = (min: number, max: number) =>
-    z.object({
-      male: z.string().min(min).max(max),
-      female: z.string().min(min).max(max),
-    });
+    z.object({ male: z.string().min(min).max(max), female: z.string().min(min).max(max) });
 
-  return z
-    .object({
-      title: z.string().min(3).max(80),
-      premise: z.string().min(80).max(1100),
-      crime: z.string().min(10).max(180),
-      characters: z
-        .array(
-          z.object({
-            role: z.string().min(2).max(70),
-            bio: z.string().min(30).max(330),
-            roleByGender: genderText(2, 70),
-            bioByGender: genderText(30, 330),
-          }),
-        )
-        .length(playerCount),
-      mafiaCharacterIndexes: z
-        .array(z.number().int().min(0).max(playerCount - 1))
-        .length(mafiaCount),
-      rounds: z
-        .array(
-          z.object({
-            clue: z.string().min(30).max(650),
-            discussionPrompt: z.string().min(10).max(220),
-          }),
-        )
-        .length(4),
-      solution: z.string().min(100).max(1600),
-    })
-    .superRefine((value, context) => {
-      if (new Set(value.mafiaCharacterIndexes).size !== mafiaCount) {
-        context.addIssue({ code: 'custom', message: 'mafia indexes must be unique' });
-      }
-      const roles = value.characters.map((item) => item.role.trim().toLowerCase());
-      if (new Set(roles).size !== roles.length) {
-        context.addIssue({ code: 'custom', message: 'case roles must be unique' });
-      }
-    });
+  return z.object({
+    title: z.string().min(3).max(80),
+    premise: z.string().min(80).max(1100),
+    crime: z.string().min(10).max(180),
+    characters: z.array(z.object({
+      role: z.string().min(2).max(70),
+      bio: z.string().min(30).max(330),
+      roleByGender: genderText(2, 70),
+      bioByGender: genderText(30, 330),
+    })).length(playerCount),
+    mafiaCharacterIndexes: z.array(z.number().int().min(0).max(playerCount - 1)).length(mafiaCount),
+    rounds: z.array(z.object({ clue: z.string().min(30).max(650), discussionPrompt: z.string().min(10).max(220) })).length(4),
+    solution: z.string().min(100).max(1600),
+  }).superRefine((value, context) => {
+    if (new Set(value.mafiaCharacterIndexes).size !== mafiaCount) context.addIssue({ code: 'custom', message: 'mafia indexes must be unique' });
+    const roles = value.characters.map((item) => item.role.trim().toLowerCase());
+    if (new Set(roles).size !== roles.length) context.addIssue({ code: 'custom', message: 'case roles must be unique' });
+  });
 }
 
 function genderTextJsonSchema() {
-  return {
-    type: 'object',
-    additionalProperties: false,
-    required: ['male', 'female'],
-    properties: {
-      male: { type: 'string' },
-      female: { type: 'string' },
-    },
-  };
+  return { type: 'object', additionalProperties: false, required: ['male', 'female'], properties: { male: { type: 'string' }, female: { type: 'string' } } };
 }
 
 function jsonSchema(playerCount: number, mafiaCount: number) {
   return {
-    type: 'object',
-    additionalProperties: false,
+    type: 'object', additionalProperties: false,
     required: ['title', 'premise', 'crime', 'characters', 'mafiaCharacterIndexes', 'rounds', 'solution'],
     properties: {
-      title: { type: 'string' },
-      premise: { type: 'string' },
-      crime: { type: 'string' },
-      characters: {
-        type: 'array',
-        minItems: playerCount,
-        maxItems: playerCount,
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['role', 'bio', 'roleByGender', 'bioByGender'],
-          properties: {
-            role: { type: 'string' },
-            bio: { type: 'string' },
-            roleByGender: genderTextJsonSchema(),
-            bioByGender: genderTextJsonSchema(),
-          },
-        },
-      },
-      mafiaCharacterIndexes: {
-        type: 'array',
-        minItems: mafiaCount,
-        maxItems: mafiaCount,
-        items: { type: 'integer', minimum: 0, maximum: playerCount - 1 },
-      },
-      rounds: {
-        type: 'array',
-        minItems: 4,
-        maxItems: 4,
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['clue', 'discussionPrompt'],
-          properties: {
-            clue: { type: 'string' },
-            discussionPrompt: { type: 'string' },
-          },
-        },
-      },
+      title: { type: 'string' }, premise: { type: 'string' }, crime: { type: 'string' },
+      characters: { type: 'array', minItems: playerCount, maxItems: playerCount, items: { type: 'object', additionalProperties: false, required: ['role', 'bio', 'roleByGender', 'bioByGender'], properties: { role: { type: 'string' }, bio: { type: 'string' }, roleByGender: genderTextJsonSchema(), bioByGender: genderTextJsonSchema() } } },
+      mafiaCharacterIndexes: { type: 'array', minItems: mafiaCount, maxItems: mafiaCount, items: { type: 'integer', minimum: 0, maximum: playerCount - 1 } },
+      rounds: { type: 'array', minItems: 4, maxItems: 4, items: { type: 'object', additionalProperties: false, required: ['clue', 'discussionPrompt'], properties: { clue: { type: 'string' }, discussionPrompt: { type: 'string' } } } },
       solution: { type: 'string' },
     },
   };
 }
 
-function buildPrompt(input: {
-  playerCount: number;
-  mafiaCount: number;
-  theme: string;
-  difficulty: string;
-}) {
-  const difficultyInstruction =
-    input.difficulty === 'hard'
-      ? 'صعب: الأدلة لا تصبح حاسمة إلا عند ربط 3 أدلة أو أكثر.'
-      : input.difficulty === 'easy'
-        ? 'سهل نسبيًا: الحل منطقي وواضح بعد الدليل الثالث، لكن لا يوجد دليل منفرد يفضح المجرم.'
-        : 'متوسط: كل دليل يفتح أكثر من تفسير، والحل يظهر من ربط الأدلة معًا.';
+function buildPrompt(input: { playerCount: number; mafiaCount: number; theme: string; difficulty: string }) {
+  const difficultyInstruction = input.difficulty === 'hard'
+    ? 'صعب: الأدلة لا تصبح حاسمة إلا عند ربط 3 أدلة أو أكثر.'
+    : input.difficulty === 'easy'
+      ? 'سهل نسبيًا: الحل منطقي وواضح بعد الدليل الثالث، لكن لا يوجد دليل منفرد يفضح المجرم.'
+      : 'متوسط: كل دليل يفتح أكثر من تفسير، والحل يظهر من ربط الأدلة معًا.';
 
   return `
 أنت كاتب لعبة تحقيق اجتماعية أصلية للعائلة والأصدقاء. اكتب قضية جديدة بالكامل باللهجة المصرية الطبيعية.
@@ -188,22 +116,13 @@ function errorMessage(error: unknown) {
     const record = error as Record<string, unknown>;
     if (typeof record.message === 'string') return record.message;
     if (typeof record.error === 'string') return record.error;
-    try {
-      return JSON.stringify(error);
-    } catch {
-      return 'Unknown error';
-    }
+    try { return JSON.stringify(error); } catch { return 'Unknown error'; }
   }
   return String(error);
 }
 
 function parseModelJson(raw: string) {
-  const trimmed = raw.trim();
-  const withoutFence = trimmed
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-  return JSON.parse(withoutFence);
+  return JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim());
 }
 
 export async function POST(request: Request) {
@@ -211,21 +130,16 @@ export async function POST(request: Request) {
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? DEFAULT_SUPABASE_URL;
     const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) {
-      return Response.json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' }, { status: 500, headers: corsHeaders() });
-    }
+    if (!geminiKey) return Response.json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' }, { status: 500, headers: corsHeaders() });
 
-    const body = (await request.json().catch(() => ({}))) as {
-      roomCode?: string;
-      sessionToken?: string;
-    };
+    const body = (await request.json().catch(() => ({}))) as { roomCode?: string; sessionToken?: string; abuseKey?: string };
     const roomCode = body.roomCode?.trim().toUpperCase();
+    const abuseKey = body.abuseKey?.trim();
     const headerToken = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '').trim();
     const token = headerToken || body.sessionToken?.trim();
 
-    if (!roomCode) {
-      return Response.json({ error: 'كود الروم ناقص.' }, { status: 400, headers: corsHeaders() });
-    }
+    if (!roomCode) return Response.json({ error: 'كود الروم ناقص.' }, { status: 400, headers: corsHeaders() });
+    if (!abuseKey || abuseKey.length < 32 || abuseKey.length > 128) return Response.json({ error: 'مفتاح الحماية ناقص.' }, { status: 400, headers: corsHeaders() });
     if (!token) {
       console.warn('generate-case rejected: no session token received');
       return Response.json({ error: 'جلسة الـBoss مش واصلة للسيرفر. اعمل Refresh وجرب تاني.' }, { status: 401, headers: corsHeaders() });
@@ -241,77 +155,38 @@ export async function POST(request: Request) {
       const message = errorMessage(snapshotError ?? 'Room not found');
       const unauthorized = message.toLowerCase().includes('unauthorized') || message.toLowerCase().includes('jwt');
       console.warn('generate-case snapshot rejected:', message);
-      return Response.json(
-        { error: unauthorized ? 'جلسة الـBoss انتهت. اعمل Refresh وجرب تاني.' : message },
-        { status: unauthorized ? 401 : 404, headers: corsHeaders() },
-      );
+      return Response.json({ error: unauthorized ? 'جلسة الـBoss انتهت. اعمل Refresh وجرب تاني.' : message }, { status: unauthorized ? 401 : 404, headers: corsHeaders() });
     }
-    if (!snapshot.isHost) {
-      return Response.json({ error: 'الـBoss فقط يقدر يبدأ القضية.' }, { status: 403, headers: corsHeaders() });
-    }
-    if (snapshot.room.status !== 'lobby') {
-      return Response.json({ error: 'القضية بدأت بالفعل.' }, { status: 409, headers: corsHeaders() });
-    }
+    if (!snapshot.isHost) return Response.json({ error: 'الـBoss فقط يقدر يبدأ القضية.' }, { status: 403, headers: corsHeaders() });
+    if (snapshot.room.status !== 'lobby') return Response.json({ error: 'القضية بدأت بالفعل.' }, { status: 409, headers: corsHeaders() });
 
     const playerCount = Number(snapshot.playerCount);
-    if (playerCount < 4 || playerCount > 12) {
-      return Response.json({ error: 'عدد اللاعبين لازم يكون من 4 لـ12.' }, { status: 400, headers: corsHeaders() });
-    }
+    if (playerCount < 4 || playerCount > 12) return Response.json({ error: 'عدد اللاعبين لازم يكون من 4 لـ12.' }, { status: 400, headers: corsHeaders() });
 
-    const { data: generationSlot, error: generationSlotError } = await supabase.rpc('claim_case_generation_slot', {
-      p_code: roomCode,
-    });
-    if (generationSlotError) {
-      return Response.json({ error: errorMessage(generationSlotError) }, { status: 500, headers: corsHeaders() });
-    }
+    const { data: generationSlot, error: generationSlotError } = await supabase.rpc('claim_case_generation_slot_v2', { p_code: roomCode, p_abuse_key: abuseKey });
+    if (generationSlotError) return Response.json({ error: errorMessage(generationSlotError) }, { status: 500, headers: corsHeaders() });
     if (!generationSlot?.allowed) {
       const retryAfterSeconds = Math.max(1, Number(generationSlot?.retryAfterSeconds ?? 20));
-      return Response.json(
-        { error: `استنى ${retryAfterSeconds} ثانية قبل ما تطلب قضية AI جديدة.`, retryAfterSeconds },
-        { status: 429, headers: { ...corsHeaders(), 'Retry-After': String(retryAfterSeconds) } },
-      );
+      return Response.json({ error: `استنى ${retryAfterSeconds} ثانية قبل ما تطلب قضية AI جديدة.`, retryAfterSeconds }, { status: 429, headers: { ...corsHeaders(), 'Retry-After': String(retryAfterSeconds) } });
     }
 
     const mafiaCount = mafiaCountFor(playerCount);
     const validator = schemaFor(playerCount, mafiaCount);
     const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const models = (
-      process.env.GEMINI_MODELS ??
-      'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it'
-    )
-      .split(',')
-      .map((model) => model.trim())
-      .filter(Boolean);
-
-    const prompt = buildPrompt({
-      playerCount,
-      mafiaCount,
-      theme: snapshot.room.theme,
-      difficulty: snapshot.room.difficulty,
-    });
+    const models = (process.env.GEMINI_MODELS ?? 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it').split(',').map((model) => model.trim()).filter(Boolean);
+    const prompt = buildPrompt({ playerCount, mafiaCount, theme: snapshot.room.theme, difficulty: snapshot.room.difficulty });
 
     let generated: z.infer<typeof validator> | null = null;
     let usedModel = '';
     let lastError = '';
-
     for (const model of models) {
       try {
         const isGemini = model.startsWith('gemini-');
         const response = await ai.models.generateContent({
           model,
           contents: prompt,
-          config: isGemini
-            ? {
-                responseMimeType: 'application/json',
-                responseJsonSchema: jsonSchema(playerCount, mafiaCount),
-                maxOutputTokens: 8192,
-              }
-            : {
-                maxOutputTokens: 8192,
-                temperature: 0.7,
-              },
+          config: isGemini ? { responseMimeType: 'application/json', responseJsonSchema: jsonSchema(playerCount, mafiaCount), maxOutputTokens: 8192 } : { maxOutputTokens: 8192, temperature: 0.7 },
         });
-
         const raw = response.text;
         if (!raw) throw new Error('Model returned an empty response.');
         generated = validator.parse(parseModelJson(raw));
@@ -323,20 +198,10 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!generated) {
-      return Response.json(
-        { error: `موديلات التوليد مش متاحة مؤقتًا. ${lastError}` },
-        { status: 503, headers: corsHeaders() },
-      );
-    }
+    if (!generated) return Response.json({ error: `موديلات التوليد مش متاحة مؤقتًا. ${lastError}` }, { status: 503, headers: corsHeaders() });
 
-    const { error: installError } = await supabase.rpc('install_case', {
-      p_code: roomCode,
-      p_case: generated,
-    });
-    if (installError) {
-      return Response.json({ error: errorMessage(installError) }, { status: 500, headers: corsHeaders() });
-    }
+    const { error: installError } = await supabase.rpc('install_case', { p_code: roomCode, p_case: generated });
+    if (installError) return Response.json({ error: errorMessage(installError) }, { status: 500, headers: corsHeaders() });
 
     return Response.json({ ok: true, model: usedModel }, { headers: corsHeaders() });
   } catch (error) {
