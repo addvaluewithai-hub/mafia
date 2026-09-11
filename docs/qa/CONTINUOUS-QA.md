@@ -14,9 +14,10 @@
 - Identity/story contract: gender + caseRole + nickname-only identity + curated/AI semantic roles Green. Legacy audit: `character_name` compatibility-only و`character_bio` runtime-required.
 - Curated library: قصتان لكل عدد 4–10، fairness review مكتمل، packs: `home-social`, `stage-events`, `work-records`. 11–12 AI-only؛ 13–15 غير مستهدفة.
 - Solo/AI Players MVP: live in Production بعد Session 34؛ Human Boss + 3 server-side bots + normal secret roles/votes/round resolution.
-- Production Supabase `bwxgzcppxdrfcaorobpm`: `ACTIVE_HEALTHY` بعد restore، ومهاجر حتى `20260911180000_ai_players_mvp`.
+- Production Supabase `bwxgzcppxdrfcaorobpm`: آخر durable production evidence من Session 34 أنه `ACTIVE_HEALTHY` ومهاجر حتى `20260911180000_ai_players_mvp`; لا نفترض parity مستقبلية بدون pre-deploy verification.
 - Production Vercel stable domain: `https://akher-kheit.vercel.app`، deployment Session 34 `dpl_So7A51KxPVdmh1eGbRsrB1Uzwagb` READY.
-- Known non-blocking drift/debt: README roadmap متأخر؛ production deploy bootstrap الحالي يسحب public `main` أثناء Vercel build لأن المشروع غير مربوط Git integration ويستحق runbook/automation cleanup في checkpoint لاحق.
+- Session 35 checkpoint: latest `main` قبل checkpoint كان `e3b86ad91b57997df2f23afcbc3cf8ff38547a04` وCI + Game QA كلاهما completed/success. لا P0 جديد ظهر من repo evidence.
+- Launch-safety debt الآن أعلى من توسيع AI features: production migration parity/deploy guardrails غير مؤتمتة، Vercel Git integration غير موثقة/مفعلة، observability محدود، وREADME ما زال يصف EAS Hosting بدل production Vercel الحالي.
 
 ## Recent milestones
 - Sessions 18–21 Story Quality + curated 4–10: Green.
@@ -32,6 +33,7 @@
 - Session 32 repair: `24c78e3bf09bad67dac9bc3f21461196f9f83b0c` أصبح `validate` ✅ و`qa` ✅.
 - Session 33 Solo/AI Players MVP: code + local Supabase E2E + Game QA integration، Green.
 - Session 34 Production rollout: Supabase restore/parity + AI Players migration + Vercel deploy + live smoke، Green.
+- Session 35 Checkpoint: core/CI Green؛ launch-safety guardrails أصبحت الأولوية قبل AI discussion expansion.
 
 ## Session 32 — 2026-09-11 — Repair legacy Boss identity regression
 ### Session type
@@ -151,6 +153,61 @@ Restore production service parity, apply only missing repo migrations through AI
 ### Roadmap impact
 Production blocker is closed for the current MVP. Solo/AI Players is now usable on the live stable domain. The next session should not immediately widen bot scope; checkpoint is due to reassess launch safety, observability, deployment automation, and whether LLM discussion is the next highest-value feature.
 
+## Session 35 — 2026-09-11 — Launch-safety / roadmap checkpoint
+### Session type
+Checkpoint / planning only. لم يتم تنفيذ feature جديدة أو migration أو production write.
+
+### Starting evidence
+- تم اتباع ترتيب القراءة الإلزامي: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → هذا الهاند أوف من default branch.
+- latest `main` عند بدء الجلسة: `e3b86ad91b57997df2f23afcbc3cf8ff38547a04` (`docs: record AI players production rollout`).
+- CI على نفس SHA: completed/success ✅.
+- Game QA على نفس SHA: completed/success ✅.
+- لا handoff prerequisite pending ولا failing check مرتبط بالهدف.
+
+### Exact objective
+مراجعة ما هو Green فعليًا بعد Production rollout وتحديد مخاطر launch-safety التالية: production migration parity guardrails، deployment automation/Git integration، observability/error telemetry، residual abuse risks، AI Players UX evidence، full-game health، وdocs drift؛ ثم ترتيب 3–4 milestones تالية بدون تنفيذ scope منتجي جديد.
+
+### Audit findings
+- **Full-game health:** Game QA ما زال يضم TypeScript/Expo validation، identity/story contracts، curated player-count validation، deterministic full-game simulations، clean-local Supabase E2E للـ4–10، eliminated-Boss، rematch، abuse regressions، وAI-player E2E. latest main Green؛ لا P0 gameplay deadlock معروف.
+- **Production parity:** Session 34 أعطى durable evidence أن production Supabase أصبح `ACTIVE_HEALTHY` ومهاجر حتى `20260911180000_ai_players_mvp`. لكن لا يوجد repo-native pre-deploy parity gate يثبت في كل release أن production migration history == migrations المطلوبة من release SHA؛ لذلك parity الحالية evidence وليست guardrail دائم.
+- **Deployment path:** repo يحتوي `.eas/workflows/deploy.yml` وREADME ما زال يشرح EAS Hosting، بينما production الفعلي Session 34 على Vercel عبر bootstrap يدوي لأن Git integration غير مربوط. هذا docs/operations drift واضح ويجعل reproducibility أضعف من QA نفسها.
+- **Observability:** لا توجد Sentry/telemetry integration ظاهرة في repo search. `generate-case` يستخدم `console.warn`/error responses للحالات المعروفة، لكن لا يوجد structured production error/event pipeline أو release-correlated alerting لمسارات create/join/start/generation/vote/resolve/reconnect.
+- **Residual abuse:** DB guards قوية لكل authenticated identity: AI generation 3 attempts/10m + 20s cooldown، room create 5/10m، join 8/10m. لأن auth Anonymous، identity churn/device/IP-level abuse ليس محميًا بهذه الجداول وحدها؛ هذا launch risk منفصل، وليس سببًا لإضعاف الـDB guards الحالية.
+- **AI Players UX evidence:** local Supabase E2E يثبت lifecycle وعدم التعليق، والـlive smoke يثبت route/rendering. لكن لا يوجد automated browser production journey أو user-session telemetry؛ كذلك UI يعرّف bots عبر أسماء `AI ...` بينما `is_bot` ليس جزءًا من snapshot UI contract بعد. قبل LLM discussion، نحتاج evidence أوضح أن MVP مفهوم ومستقر للمستخدم.
+- **Docs drift:** README يحتوي assumptions قديمة (`Boss خارج عدد المشتبه فيهم`, EAS Hosting, 4–12 product description، TODOs انتهت مثل rematch/case packs/abuse protection). هذا يزيد خطر تشغيل/deploy غير صحيح.
+
+### Code / database / test / doc changes
+- Code: لا شيء — checkpoint intentionally لم يفتح implementation scope.
+- Database/production: لا writes ولا migrations.
+- Tests: لم تُعدّل؛ تم تدقيق latest CI/Game QA results الموجودة فقط.
+- Docs: هذا الهاند أوف فقط لتثبيت evidence وإعادة ترتيب roadmap.
+
+### Commits
+- لا implementation commits في هذا checkpoint.
+- handoff documentation commit: `docs: record launch-safety checkpoint`.
+
+### Checks / test results
+- Starting SHA `e3b86ad91b57997df2f23afcbc3cf8ff38547a04`: CI completed/success ✅.
+- Starting SHA `e3b86ad91b57997df2f23afcbc3cf8ff38547a04`: Game QA completed/success ✅.
+- لا checks جديدة مطلوبة لعدم وجود code/schema change؛ documentation commit يخضع للـmain workflows بعد الكتابة ويجب عدم اعتباره سببًا لنشر production.
+
+### Newly discovered bugs / risks
+- لا gameplay bug جديد مثبت.
+- P1 launch-safety: لا automated production migration parity/preflight gate.
+- P1 operations: production Vercel path لا يطابق README/EAS workflow ولا توجد Git integration موثقة.
+- P1 observability: failures المهمة غير مرتبطة telemetry/alerts/release metadata.
+- P1/P2 abuse: anonymous identity churn يمكن أن يتجاوز per-user rate budgets من خارج نفس identity.
+- P2 AI UX: bot identity/runtime evidence يحتاج contract/telemetry أو browser-level smoke قبل توسيع الذكاء.
+
+### Deploy-safety status
+**No new deployment.** Existing Session 34 production state remains the last deploy-safe/deployed evidence. هذا checkpoint لا يغيّر production ولا يمنح أي future commit deploy-safe تلقائيًا؛ كل release لاحق يحتاج relevant Green QA + parity verification صريح.
+
+### Roadmap impact — next 4 substantial objectives
+1. **Release parity + deployment guardrails (next):** repo-native pre-deploy/release preflight يثبت required CI/Game QA SHA، يقارن migration state قبل release بطريقة read-only، ويوثق/يثبت Vercel production path؛ حدّث README/runbook ضمن نفس vertical slice لإزالة EAS drift.
+2. **Production observability:** structured error/event telemetry للمسارات الحرجة مع release correlation وprivacy-safe context، وبداية alerting قابلة للتحقق بدون تسريب secrets/solution.
+3. **Public-launch abuse perimeter:** أبقِ DB per-identity limits، ثم أضف طبقة مناسبة ضد anonymous identity churn خصوصًا expensive AI generation/create/join، مع regression واضح وسياسة retries مفهومة.
+4. **AI Players UX evidence + contract:** أضف `isBot`/bot identity للsnapshot/UI contract واختبار browser/smoke أو telemetry يكشف نجاح/فشل رحلة solo، ثم فقط قرر هل LLM discussion/reasoning أعلى قيمة من polish.
+
 ## Backlog / roadmap
 - [x] Core/full-game 4–10 stable.
 - [x] Identity/story contract + curated 4–10 + fairness + packs.
@@ -159,12 +216,15 @@ Production blocker is closed for the current MVP. Solo/AI Players is now usable 
 - [x] Room creation/join abuse protection + legacy Boss regression repair.
 - [x] Solo/AI Players MVP implementation + relevant E2E Green.
 - [x] Production restore/parity + Solo/AI Players rollout + live smoke.
-- [ ] Checkpoint: audit production parity guardrails, deployment automation/Git integration, observability, residual abuse risks, AI-player UX evidence, and docs drift.
-- [ ] بعد checkpoint فقط: decide whether AI discussion/reasoning agents outrank launch-safety/observability work.
+- [x] Checkpoint: audit production parity guardrails, deployment automation/Git integration, observability, residual abuse risks, AI-player UX evidence, and docs drift.
+- [ ] Release parity + Vercel deployment guardrails + README/runbook truth.
+- [ ] Production observability/error telemetry on critical paths.
+- [ ] Anonymous-identity churn / public-launch abuse perimeter.
+- [ ] AI Players snapshot identity + browser/live UX evidence; then decide LLM discussion scope.
 - [ ] 11–15 فقط إذا gameplay/UX evidence لاحقًا يبرر.
 
 ## اتجاه المنتج
 **Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-نفّذ **Checkpoint/Planning session فقط**: راجع Production migration parity بعد restore، طريقة Vercel deployment/Git integration، observability/error telemetry، residual abuse risks، AI Players live UX evidence، full-game health، وdocs drift؛ ثم حدد 3–4 أهداف تالية وأولوية تنفيذية واحدة. لا تبدأ feature جديدة في نفس الـcheckpoint.
+نفّذ **Release parity + deployment guardrails vertical slice**: ابنِ repo-native read-only pre-deploy verification يربط release SHA بنجاح CI/Game QA ويكشف migration drift قبل أي production write، وثّق/وحّد مسار Vercel الحالي، وحدّث README/runbook ليطابق production truth. لا تنشر Production في نفس الجلسة إلا إذا الهاند أوف الجديد أثبت relevant E2E Green وسمّى التغيير نفسه `deploy-safe` صراحة.
