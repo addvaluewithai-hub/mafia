@@ -19,3 +19,5 @@ jobs:
         run: npx expo-doctor
       - name: TypeScript
         run: npm run typecheck
+      - name: Release preflight contract
+        run: npm run qa:release-preflight
