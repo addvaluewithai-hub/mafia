@@ -29,6 +29,8 @@ jobs:
         run: node scripts/qa/standalone-join-gender-contract.mjs
       - name: Player card identity contract
         run: node scripts/qa/player-card-identity-contract.mjs
+      - name: Legacy identity compatibility contract
+        run: node scripts/qa/legacy-identity-contract.mjs
       - name: Generated case role identity contract
         run: node scripts/qa/generated-case-role-contract.mjs
       - name: Curated player-count contract
