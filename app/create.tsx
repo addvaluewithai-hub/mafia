@@ -5,9 +5,8 @@ import { Pressable, Text, View } from 'react-native';
 
 import { GenderPicker } from '@/components/gender-picker';
 import { Body, Button, Card, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
-import { errorToMessage, suggestedMafiaCount } from '@/lib/game';
+import { createRoomV3, errorToMessage, suggestedMafiaCount } from '@/lib/game';
 import { packsForPlayerCount, storiesForPlayerCount, STORY_CATALOG, type StoryPackId } from '@/lib/story-catalog';
-import { ensureAnonymousSession, supabase } from '@/lib/supabase';
 import type { CaseMode, PlayerGender } from '@/lib/types';
 
 const difficulties = [
@@ -81,20 +80,18 @@ export default function CreateRoomScreen() {
     setLoading(true);
     setError('');
     try {
-      await ensureAnonymousSession();
-      const { data, error: rpcError } = await supabase.rpc('create_room_v3', {
-        p_boss_name: bossName.trim(),
-        p_boss_gender: bossGender,
-        p_max_players: players,
-        p_difficulty: caseMode === 'preset' ? 'hard' : difficulty,
-        p_theme: caseMode === 'preset' ? 'قضية جاهزة محكمة' : theme.trim() || 'حفلة عائلية مصرية معاصرة',
-        p_case_mode: caseMode,
-        p_story_template_id: caseMode === 'preset' ? storyTemplateId : null,
+      const data = await createRoomV3({
+        bossName,
+        bossGender,
+        maxPlayers: players,
+        difficulty: caseMode === 'preset' ? 'hard' : difficulty,
+        theme: caseMode === 'preset' ? 'قضية جاهزة محكمة' : theme.trim() || 'حفلة عائلية مصرية معاصرة',
+        caseMode,
+        storyTemplateId: caseMode === 'preset' ? storyTemplateId : null,
       });
-      if (rpcError) throw rpcError;
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace(`/room/${String(data)}`);
+      router.replace(`/room/${data}`);
     } catch (err) {
       setError(errorToMessage(err, 'حصلت مشكلة أثناء إنشاء الروم'));
     } finally {
