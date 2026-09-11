@@ -1,41 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 
-import { ARCHIVE_SEAL } from '../lib/server-stories/archive-seal';
-import { BACKSTAGE_PASS } from '../lib/server-stories/backstage-pass';
-import { BALCONY_KEY } from '../lib/server-stories/balcony-key';
-import { BLUE_NOTEBOOK } from '../lib/server-stories/blue-notebook';
-import { CLOCK_1117 } from '../lib/server-stories/clock-1117';
-import { FOURTH_FLOOR } from '../lib/server-stories/fourth-floor';
-import { GALLERY_LEDGER } from '../lib/server-stories/gallery-ledger';
-import { GARDEN_LOCKER } from '../lib/server-stories/garden-locker';
-import { LAST_REHEARSAL } from '../lib/server-stories/last-rehearsal';
-import { LAST_TRAY } from '../lib/server-stories/last-tray';
-import { MIDNIGHT_MENU } from '../lib/server-stories/midnight-menu';
-import { ROOFTOP_ENVELOPE } from '../lib/server-stories/rooftop-envelope';
-import { ROOM_312 } from '../lib/server-stories/room-312';
-import { SILENT_AUCTION } from '../lib/server-stories/silent-auction';
+import { getCuratedCase, referenceCasesFor } from '../lib/server-stories';
 import type { GeneratedCase } from '../lib/types';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://bwxgzcppxdrfcaorobpm.supabase.co';
 const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_76VPHfV-oe9rexR8B80Vkw_M0LhqckV';
-
-const CASES = {
-  'last-tray': { playerCount: 4, case: LAST_TRAY },
-  'balcony-key': { playerCount: 4, case: BALCONY_KEY },
-  'clock-1117': { playerCount: 5, case: CLOCK_1117 },
-  'room-312': { playerCount: 5, case: ROOM_312 },
-  'last-rehearsal': { playerCount: 6, case: LAST_REHEARSAL },
-  'blue-notebook': { playerCount: 6, case: BLUE_NOTEBOOK },
-  'fourth-floor': { playerCount: 7, case: FOURTH_FLOOR },
-  'silent-auction': { playerCount: 7, case: SILENT_AUCTION },
-  'rooftop-envelope': { playerCount: 8, case: ROOFTOP_ENVELOPE },
-  'backstage-pass': { playerCount: 8, case: BACKSTAGE_PASS },
-  'gallery-ledger': { playerCount: 9, case: GALLERY_LEDGER },
-  'garden-locker': { playerCount: 9, case: GARDEN_LOCKER },
-  'midnight-menu': { playerCount: 10, case: MIDNIGHT_MENU },
-  'archive-seal': { playerCount: 10, case: ARCHIVE_SEAL },
-} as const;
 
 function mafiaCountFor(count: number) {
   if (count >= 10) return 3;
@@ -81,27 +51,14 @@ function validateCase(value: any, playerCount: number, mafiaCount: number, requi
   for (const character of value.characters) {
     const hasCaseIdentity = typeof character?.role === 'string' || typeof character?.name === 'string';
     if (!hasCaseIdentity || typeof character?.bio !== 'string' || character.bio.length < 30) throw new Error('في شخصية بياناتها ناقصة.');
-    if (requireGenderVariants) {
-      if (typeof character.role !== 'string' || !hasGenderText(character.roleByGender, 2) || !hasGenderText(character.bioByGender, 30)) {
-        throw new Error('في شخصية ناقصها صياغة male/female لنفس الدور.');
-      }
+    if (requireGenderVariants && (typeof character.role !== 'string' || !hasGenderText(character.roleByGender, 2) || !hasGenderText(character.bioByGender, 30))) {
+      throw new Error('في شخصية ناقصها صياغة male/female لنفس الدور.');
     }
   }
   for (const round of value.rounds) {
     if (typeof round?.clue !== 'string' || round.clue.length < 30 || typeof round?.discussionPrompt !== 'string') throw new Error('في دليل ناقص.');
   }
   return value as GeneratedCase;
-}
-
-function referenceCases(playerCount: number) {
-  return Object.entries(CASES)
-    .filter(([, item]) => item.playerCount === playerCount)
-    .map(([id, item]) => ({
-      id,
-      playerCount: item.playerCount,
-      ...item.case,
-      characters: item.case.characters.map((character) => ({ bio: character.bio })),
-    }));
 }
 
 function genderTextJsonSchema() {
@@ -123,14 +80,11 @@ function jsonSchema(playerCount: number, mafiaCount: number) {
       characters: {
         type: 'array', minItems: playerCount, maxItems: playerCount,
         items: {
-          type: 'object',
-          additionalProperties: false,
+          type: 'object', additionalProperties: false,
           required: ['role', 'bio', 'roleByGender', 'bioByGender'],
           properties: {
-            role: { type: 'string' },
-            bio: { type: 'string' },
-            roleByGender: genderTextJsonSchema(),
-            bioByGender: genderTextJsonSchema(),
+            role: { type: 'string' }, bio: { type: 'string' },
+            roleByGender: genderTextJsonSchema(), bioByGender: genderTextJsonSchema(),
           },
         },
       },
@@ -177,7 +131,10 @@ function buildPrompt(input: { playerCount: number; mafiaCount: number; theme: st
 - JSON خام فقط بلا Markdown.
 
 دي قضايا مرجعية معمولة يدويًا. اتعلم منها هندسة الصعوبة والتدرج فقط، وممنوع نسخ المكان أو الشيء محل الجريمة أو التوقيت أو نفس الحل أو صياغة الأدلة. أسماء الشخصيات القديمة متشالة عمدًا لأن الـnickname الحقيقي هو الهوية:
-${JSON.stringify(referenceCases(input.playerCount))}
+${JSON.stringify(referenceCasesFor(input.playerCount).map((item) => ({
+  ...item,
+  characters: item.characters.map((character) => ({ bio: character.bio })),
+})))}
 
 راجع داخليًا قبل الإجابة: هل كل character فيه role وbio وroleByGender وbioByGender بدون name؟ هل male/female متطابقين في المعنى والحقائق؟ هل أول دليل يورط 3؟ هل بعد الثاني فيه نظرية بريئة قوية؟ هل كل مافيوزو يحتاج 3 أدلة؟ هل الرابع وحده غير كافٍ؟ لو لأ، أعد التصميم.
 أرجع JSON مطابق للـschema فقط.`;
@@ -203,7 +160,6 @@ export default async function handler(req: any, res: any) {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
-
     const { data: snapshot, error: snapshotError } = await supabase.rpc('room_snapshot', { p_code: roomCode });
     if (snapshotError || !snapshot) return res.status(404).json({ error: errorMessage(snapshotError ?? 'الروم مش موجود') });
     if (!snapshot.isHost) return res.status(403).json({ error: 'الـBoss فقط يقدر يبدأ القضية.' });
@@ -214,8 +170,7 @@ export default async function handler(req: any, res: any) {
     const mafiaCount = mafiaCountFor(playerCount);
 
     if (snapshot.room.caseMode === 'preset') {
-      const id = String(snapshot.room.storyTemplateId ?? '') as keyof typeof CASES;
-      const selected = CASES[id];
+      const selected = getCuratedCase(String(snapshot.room.storyTemplateId ?? ''));
       if (!selected) return res.status(400).json({ error: 'القضية الجاهزة المختارة مش موجودة.' });
       if (selected.playerCount !== playerCount) return res.status(409).json({ error: `القضية دي معمولة لـ${selected.playerCount} لاعبين، والموجودين ${playerCount}.` });
       const curated = validateCase(selected.case, playerCount, mafiaCount);
@@ -226,7 +181,6 @@ export default async function handler(req: any, res: any) {
 
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) return res.status(500).json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' });
-
     const models = (process.env.GEMINI_MODELS ?? 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it')
       .split(',').map((x) => x.trim()).filter(Boolean);
     const ai = new GoogleGenAI({ apiKey: geminiKey });
