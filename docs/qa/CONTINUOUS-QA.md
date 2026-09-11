@@ -16,7 +16,8 @@
 - [x] reconnect: before/after cast → tie reset → resolve → next round.
 - [x] eliminated Boss admin controls + eliminated-player vote rejection.
 - [x] deterministic + local Supabase full-game RPC coverage لـ4–10 لاعبين.
-- [ ] Production DB parity blocked لأن Production Supabase كان `INACTIVE`; لا write/migration قبل read-only parity + smoke plan أو تصريح restore صريح.
+- [x] same-room rematch E2E Green: finish → Boss-only reset → preserved players → clean lobby → fresh second case.
+- [ ] Production DB parity blocked: Supabase project `bwxgzcppxdrfcaorobpm` was rechecked read-only in Session 28 and is still `INACTIVE`; no restore/write/migration بدون تصريح صريح، وبعد restore المطلوب أولًا read-only schema/RPC/migration parity + smoke plan.
 
 ## Identity / story contract
 - [x] gender + caseRole schema/backend/UI/E2E.
@@ -49,7 +50,8 @@
 - deterministic full-game simulations: 140 complete games، 20 لكل 4/5/6/7/8/9/10.
 - local Supabase full-game RPC E2E: 4/5/6/7/8/9/10.
 - eliminated Boss admin E2E + six-player tie/reconnect regression ضمن suite.
-- same-room rematch E2E مضاف في Session 27 ويغطي finish → Boss-only reset → lobby state cleanup → preserved players → fresh second case؛ نتيجة CI ما زالت pending وقت handoff.
+- same-room rematch E2E Green ويغطي finish → Boss-only reset → lobby state cleanup → preserved players → fresh second case.
+- Known QA/docs drift: اسم خطوة `Full-game RPC E2E (4/5/6/7 players)` في `.github/workflows/game-qa.yml` قديم رغم أن script يغطي 4–10؛ cleanup مطلوب لكن ليس product blocker.
 
 ## Recent milestones
 - Session 18 — Story Quality Baseline: `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4`; Green.
@@ -61,6 +63,7 @@
 - Session 24 — Single Source of Truth for Curated Registry; runtime refactor Green after Session 25 repaired one stale QA shape assertion.
 - Session 25 — QA repair: `70efab2a87a9ba27b3548845e7748ee0d8db5d21`; `validate` ✅ and `qa` ✅.
 - Session 26 — Legacy DB Identity Compatibility Audit: code/QA commit `28fe8870accaa1f33a6a17c11cb56d393a65e1eb`; `validate` ✅ and `qa` ✅.
+- Session 27 — Same-room Rematch: code/QA commit `51183f896368d0a568dd22b569c4c5a520811269`; `validate` ✅ and `qa` ✅. Handoff commit `d33dadd40ddd81f2d4174108a534e9b96bfdc8ec` also `validate` ✅ and `qa` ✅.
 
 ## Session 27 — 2026-09-11 — Same-room Rematch
 ### Session type
@@ -88,7 +91,7 @@ Implement **Rematch in the same room** end-to-end while preserving real player i
   - resets room to lobby: title/premise/round/winner/solution/timer state cleared.
   - emits `room_rematched` so connected clients refresh through existing realtime flow.
 - Added `rematchRoom()` to `lib/game.ts`.
-- Finished-room UI now gives the Boss a clear "العبوا قضية جديدة بنفس الروم" action; non-host players are told the Boss can reopen the same room.
+- Finished-room UI gives the Boss a clear "العبوا قضية جديدة بنفس الروم" action; non-host players are told the Boss can reopen the same room.
 - Client resets local role/vote reveal state on rematch and then uses the existing lobby/start-case path.
 
 ### Regression / E2E
@@ -102,21 +105,68 @@ Implement **Rematch in the same room** end-to-end while preserving real player i
 - `5060ecd7f0c41a86fb70b92f8f57ec4baa4ec803` — `qa: cover same-room rematch end to end`.
 - `51183f896368d0a568dd22b569c4c5a520811269` — `qa: run same-room rematch E2E`.
 
-### Checks / evidence at handoff
-- Checks for `51183f896368d0a568dd22b569c4c5a520811269` were created successfully.
-- At last inspection: `validate` in progress; `qa` in progress. Game QA had started dependency installation; no failing step was available yet.
-- Because the relevant CI + the new local Supabase rematch E2E have not completed yet, Session 27 is **not deploy-safe**.
+### Checks / evidence
+- `51183f896368d0a568dd22b569c4c5a520811269`: `validate` completed/success and `qa` completed/success on 2026-09-11.
+- Handoff commit `d33dadd40ddd81f2d4174108a534e9b96bfdc8ec`: `validate` completed/success and `qa` completed/success.
+- The new local Supabase rematch E2E is therefore inside the Green Game QA gate.
 
 ### Newly discovered bugs / risks
-- Production DB parity remains blocked independently. The new RPC is a migration and must not be applied to Production while that blocker remains or before this session's full E2E is Green and deploy-safe is explicitly recorded.
+- Production DB parity remains blocked independently. The new RPC is a migration and must not be applied to Production while that blocker remains or before a read-only parity/smoke plan.
 - Rematch intentionally retains room settings (`max_players`, difficulty, theme, case mode/template) and existing members. Changing settings/roster between matches is a separate product decision and was not added to this objective.
-- Existing `README.md` roadmap is partially stale because timer and QR are already implemented; that documentation cleanup is not required to make rematch function and should be handled as ordinary docs polish, not mixed into this feature session.
+- Existing `README.md` roadmap is partially stale because timer, QR, and now rematch are already implemented.
 
 ### Deploy-safety status
-**Not deploy-safe yet.** No production deployment, restore, migration, or production-data write occurred.
+**Locally/CI deploy-gate Green, but Production deployment remains blocked by unknown Production DB parity / inactive Production Supabase.** No production deployment, restore, migration, or production-data write occurred.
 
 ### Roadmap impact
-This is the first bounded Milestone E gameplay/product feature after Core + Identity/Story + Story Quality + Curated Library foundations. The safety gate remains the existing full-game suite plus the new rematch E2E.
+This is the first bounded Milestone E gameplay/product feature after Core + Identity/Story + Story Quality + Curated Library foundations. The safety gate remains the existing full-game suite plus rematch E2E.
+
+## Session 28 — 2026-09-11 — Checkpoint / Planning after Rematch
+### Session type
+Checkpoint/Planning only. No gameplay/product feature, schema change, migration, or production mutation was implemented.
+
+### Starting evidence
+- Mandatory read order completed from default branch: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → this handoff.
+- `main` at start: `d33dadd40ddd81f2d4174108a534e9b96bfdc8ec` (`docs: hand off same-room rematch session`).
+- Prerequisite code/QA commit `51183f896368d0a568dd22b569c4c5a520811269`: `validate` ✅ and `qa` ✅.
+- Latest handoff commit `d33dadd40ddd81f2d4174108a534e9b96bfdc8ec`: `validate` ✅ and `qa` ✅.
+- Checkpoint is due: last checkpoint was Session 22, followed by Sessions 23–27 (five implementation/repair/delivery sessions), and Milestone E has now started.
+
+### Exact objective
+Audit what is genuinely Green after rematch, what remains risky or blocked, and set the next 3–4 substantial objectives without starting another implementation slice.
+
+### Audit / design findings
+- **Core/full-game:** no known P0 deadlock is open. Deterministic coverage remains 140 complete games across 4–10, with local RPC E2E across 4–10 plus tie/reconnect, eliminated Boss admin behavior, identity/story install, and now same-room rematch.
+- **Rematch:** fully Green in CI/QA; no evidence of a current regression after Session 27.
+- **Identity/story:** current runtime contract is stable. Destructive `character_name` cleanup remains intentionally deferred; `character_bio` is still runtime-required.
+- **Story/library:** 14 curated cases cover exactly 4–10 (two per count), all went through semantic fairness review plus automated lexical/identity/player-count guards. There is no quality evidence justifying 11–15 expansion yet.
+- **Production/DB:** read-only project status was rechecked in this checkpoint; Supabase project `bwxgzcppxdrfcaorobpm` (`mafia`) is still `INACTIVE`. Therefore production schema/RPC/data parity cannot be proven safely now. Best next action remains: explicit restore authorization first, then read-only parity + smoke plan before any production migration/deploy. No restore was attempted.
+- **Technical debt:** `README.md` "Next" is stale (timer, QR, rematch already exist). `.github/workflows/game-qa.yml` still labels the full-game RPC step as `4/5/6/7 players` even though the current suite covers 4–10. These are documentation/label drift, not gameplay blockers.
+- **Product direction:** current create flow already has a theme field for AI cases and a curated selector by player count, while README's next unimplemented product direction is case packs/custom themes. That is a stronger coherent next product slice than adding more player counts or superficial animation-only polish.
+
+### Code / database / test / doc changes
+- No runtime code, schema, migration, story, or test behavior changed in this checkpoint.
+- This handoff was updated to close Session 27 as Green, record the still-inactive Production DB blocker, document QA/docs drift, and set the next ordered objectives.
+
+### Checks / evidence
+- `51183f896368d0a568dd22b569c4c5a520811269`: `validate` ✅, `qa` ✅.
+- `d33dadd40ddd81f2d4174108a534e9b96bfdc8ec`: `validate` ✅, `qa` ✅.
+- No failing check tied to an active objective was found at checkpoint start.
+
+### Newly discovered bugs / risks
+- No new P0/P1 gameplay bug was found from current evidence.
+- Production remains the main release blocker because DB parity is unknowable while the project is inactive.
+- README/workflow labels can mislead future operators about what is already shipped/tested if left stale.
+- A future case-pack/custom-theme feature must preserve exact-count curated fairness and must not turn theme choice into hidden mafia-assignment bias.
+
+### Deploy-safety status
+No production deploy, restore, migration, or data write occurred. Current `main` is Green in CI/QA, but **Production deployment is not considered safe while Production Supabase parity remains unverified/inactive**.
+
+### Roadmap impact — next 4 substantial objectives
+1. **Curated Case Packs / Theme Browsing end-to-end**: add explicit pack/theme metadata to the shared curated source of truth, expose a player-count-safe browse/filter UX, keep exact-count fairness, and add catalog/API/UI regression coverage. Do not change mafia assignment semantics.
+2. **Production parity + smoke-readiness gate once restore is explicitly authorized**: after Production Supabase is available, perform read-only migration/schema/RPC/version parity, identify drift, define a bounded smoke plan, and only then decide whether any migration/deploy can be marked deploy-safe.
+3. **Abuse / public-launch protection vertical slice**: rate-limit or otherwise bound room creation/join/generation abuse using server-authoritative controls appropriate to the deployed architecture, with regressions that do not break normal multiplayer flows.
+4. **Polish/launch readiness pass**: clean stale README/QA labels, tighten error/observability paths, then add focused audiovisual/haptic polish only where it improves gameplay clarity rather than hiding state.
 
 ## Backlog / roadmap
 - [x] Core/full-game 4–10 stable in deterministic + local RPC suites.
@@ -125,13 +175,16 @@ This is the first bounded Milestone E gameplay/product feature after Core + Iden
 - [x] Deep semantic/human fairness review for all 14 curated cases.
 - [x] Remove duplicated server/API curated registry.
 - [x] Legacy DB identity compatibility audit + regression guard; Session 26 prerequisite Green.
-- [ ] Session 27 same-room rematch checks Green on `51183f896368d0a568dd22b569c4c5a520811269` (pending at handoff).
-- [ ] Production parity remains separately blocked.
+- [x] Session 27 same-room rematch: `validate` ✅ and `qa` ✅ including rematch E2E.
+- [ ] Curated case packs / theme browsing feature.
+- [ ] Production parity remains blocked while Supabase project is `INACTIVE`.
 - [ ] Future destructive identity cleanup only after read-only Production parity/data evidence; `character_bio` additionally requires a replacement contract first.
+- [ ] Abuse/public-launch protection.
+- [ ] Polish/observability/docs drift cleanup.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
 ## اتجاه المنتج
-**Core Stable → Identity/Story Contract Stable → Story Quality Hardening → Curated Library Stable (4–10) → Technical Drift Cleanup → New Gameplay Features → Polish/Launch**.
+**Core Stable → Identity/Story Contract Stable → Story Quality Hardening → Curated Library Stable (4–10) → Technical Drift Cleanup → New Gameplay Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص `validate` و`qa` لـ`51183f896368d0a568dd22b569c4c5a520811269` أولًا. لو failure حقيقي ظهر، أصلح أول failure فقط. لو الاتنين Green: اعمل **Checkpoint/Planning session فقط** لأن آخر checkpoint كان Session 22 وتلاه Sessions 23–27؛ راجع full-game/rematch evidence، Production blocker، story/library status، technical debt، وأعلى 3–4 milestones/features التالية قبل أي implementation جديد.
+إذا ظل `main` Green ولم يظهر P0 جديد: نفّذ **Curated Case Packs / Theme Browsing end-to-end** كـvertical slice واحد فقط، باستخدام shared curated registry كمصدر الحقيقة، مع pack/theme metadata + player-count-safe filtering/browsing + API/UI/contracts/tests/docs. لا توسّع 11–15، ولا تغيّر mafia assignment أو gender fairness، ولا تبدأ Production restore/migration داخل نفس الجلسة.
