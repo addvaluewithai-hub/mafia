@@ -2,92 +2,57 @@
 
 > مصدر الحقيقة للحالة الحالية والهاند أوف. اقرأ قبله `AGENTS.md` ثم `docs/qa/QA-OPERATING-MODE.md`. لا تعتمد على chat memory بدل الريبو.
 
-## الهدف والقواعد الثابتة
+## ثوابت المنتج والـQA
 - full-game: create → join → role/case install → clues → voting → ties → elimination → reconnect → next round → winner.
-- nickname هو هوية اللاعب الظاهرة؛ caseRole وصف وليس اسم شخصية بديلة.
-- gender للصياغة فقط، ولا يؤثر على mafia assignment أو الفوز.
-- Boss لاعب كامل ويحتفظ بإدارة اللعبة بعد elimination.
-- bug مهم → regression عندما يكون عمليًا؛ ممنوع إضعاف test لجعل CI أخضر.
+- nickname هو الهوية الظاهرة؛ gender للصياغة فقط ولا يؤثر على mafia assignment أو الفوز؛ Boss لاعب كامل ويحتفظ بإدارة اللعبة بعد elimination.
+- bug مهم → regression عندما يكون عمليًا؛ لا تضعف test لجعل CI أخضر.
 - لا Production deploy/migration إلا بعد relevant E2E Green و`deploy-safe` صريح هنا.
-- الجلسة العادية vertical slice واحد كامل؛ checkpoint حسب `QA-OPERATING-MODE.md`.
+- الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
-## P0 / Core status
-- [x] vote gating + server-authoritative `phase/canVote` + UI guard.
-- [x] reconnect: before/after cast → tie reset → resolve → next round.
-- [x] eliminated Boss admin controls + eliminated-player vote rejection.
-- [x] deterministic + local Supabase full-game RPC coverage لـ4–10 لاعبين.
-- [x] same-room rematch E2E Green.
-- [ ] Production DB parity blocked: Supabase project `bwxgzcppxdrfcaorobpm` rechecked read-only in Session 31 and still `INACTIVE`; no restore/write/migration بدون تصريح صريح. بعد restore المطلوب أولًا read-only schema/RPC/migration parity + smoke plan.
-
-## Identity / story contract
-- [x] gender + caseRole schema/backend/UI/E2E.
-- [x] nickname-only identity; gender-aware install بعد shuffle بدون تأثير على mafia selection.
-- [x] AI generator + curated presets يستخدمان semantic role/bio + male/female variants.
-- [x] semantic/human fairness review للـ14 curated cases موثق في `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md`.
-- [x] server preset/AI-reference path يستخدم shared `lib/server-stories` registry.
-- [x] legacy identity audit موثق في `docs/qa/LEGACY-IDENTITY-COMPATIBILITY-AUDIT.md`.
-
-## Curated library
-- 4: `last-tray`, `balcony-key`.
-- 5: `clock-1117`, `room-312`.
-- 6: `last-rehearsal`, `blue-notebook`.
-- 7: `fourth-floor`, `silent-auction`.
-- 8: `rooftop-envelope`, `backstage-pass`.
-- 9: `gallery-ledger`, `garden-locker`.
-- 10: `midnight-menu`, `archive-seal`.
-- Theme packs: `home-social`, `stage-events`, `work-records`; filtering stays inside exact active player count.
-- 11–12: AI-only؛ 13–15 غير مستهدفة حاليًا.
-
-## QA coverage
-- vote/gender/join/player-card/generated-case/legacy-identity contracts.
-- caseRole + gender-aware install E2E.
-- story critic + lexical fairness + curated identity integrity guards.
-- curated exact-count/pack contract for 4–10.
-- deterministic full-game simulations: 140 complete games، 20 لكل 4/5/6/7/8/9/10.
-- local Supabase full-game RPC E2E: 4–10 + tie/reconnect + eliminated Boss + rematch.
-- AI generation abuse E2E: host-only DB-backed claim, 20s cooldown, 3 attempts / 10 minutes, preset exclusion, private limiter state, both server entrypoints enforce 429.
-- Room/join abuse E2E added in Session 31: shared DB-backed per-auth identity limiter across current + legacy RPCs, private limiter state, create budget 5/10m, successful-join budget 8/10m.
-- Known non-blocking drift: full-game workflow label still says 4/5/6/7 though suite covers 4–10; README roadmap lags implemented features.
+## الحالة الحالية
+- Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 معروف.
+- Identity/story contract: gender + caseRole + nickname-only identity + curated/AI semantic roles Green. Legacy audit: `character_name` compatibility-only و`character_bio` runtime-required.
+- Curated library: قصتان لكل عدد 4–10، fairness review مكتمل، packs: `home-social`, `stage-events`, `work-records`. 11–12 AI-only؛ 13–15 غير مستهدفة.
+- Production parity blocked: Supabase `bwxgzcppxdrfcaorobpm` rechecked read-only في Session 31 وما زال `INACTIVE`. لا restore/write/migration بدون تصريح صريح.
+- Known non-blocking drift: اسم full-game workflow step ما زال يقول 4/5/6/7 رغم أن التغطية 4–10؛ README roadmap متأخر.
 
 ## Recent milestones
-- Sessions 18–21: Story Quality baseline + semantic preset migration + curated 4–10 expansion; Green.
-- Session 22: Checkpoint; Green.
-- Session 23: Deep Curated Story Fairness Review; Green.
-- Sessions 24–25: shared curated registry + QA repair; Green.
-- Session 26: Legacy DB Identity Compatibility Audit; Green.
-- Session 27: Same-room Rematch; Green.
-- Session 28: Checkpoint/Planning; Green.
-- Session 29: Curated Case Packs / Theme Browsing; Green.
-- Session 30: AI Generation Abuse Protection; `validate` ✅ and `qa` ✅ on `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a`.
+- Sessions 18–21 Story Quality + curated 4–10: Green.
+- Session 22 Checkpoint: Green.
+- Session 23 deep curated fairness: Green.
+- Sessions 24–25 shared registry + QA repair: Green.
+- Session 26 legacy identity audit: Green.
+- Session 27 same-room rematch: Green.
+- Session 28 Checkpoint: Green.
+- Session 29 curated packs/theme browsing: Green.
+- Session 30 AI Generation Abuse Protection: `validate` ✅ و`qa` ✅ على `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a`.
 
 ## Session 31 — 2026-09-11 — Room Creation / Join Abuse Protection
 ### Session type
-Delivery — exactly one launch-safety vertical slice. No unrelated gameplay/story/feature work, Production restore, Production migration, or Production data write.
+Delivery — هدف launch-safety واحد فقط. لا gameplay/story/feature إضافية ولا Production mutation.
 
 ### Starting evidence
-- Mandatory read order completed from default branch: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → this handoff.
-- `main` at start: `faf19e4a158684ceaa7c593f7eb2f49b3be2496e`.
-- Session 30 prerequisite resolved before implementation: `validate` and `qa` both completed/success on `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a`.
-- Production rechecked read-only: Supabase project `bwxgzcppxdrfcaorobpm` remains `INACTIVE`; restore not authorized, so no Production mutation was attempted.
-- No failing check or known P0 tied to the active objective was present.
+- قرأت بالترتيب: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → هذا الهاند أوف من default branch.
+- `main` عند البداية: `faf19e4a158684ceaa7c593f7eb2f49b3be2496e`.
+- prerequisite Session 30 اتقفل Green: `validate` و`qa` completed/success.
+- Production recheck: المشروع ما زال `INACTIVE`; restore غير مصرح به.
 
 ### Exact objective
-Add server-authoritative bounded throttling for room creation and room joining before public launch, covering current and legacy RPC entrypoints so older callable functions cannot bypass the protection, while preserving normal create/join/idempotent behavior.
+Server-authoritative bounded throttling لإنشاء الروم والانضمام، مع تغطية current + legacy RPCs حتى لا توجد version-based bypasses، مع الحفاظ على create/join/idempotent behavior الطبيعي.
 
 ### Reproduction / design finding
-- `create_room_v3` and `join_room_v2` had no durable per-identity room/join budget.
-- Legacy authenticated RPCs (`create_room`, `create_room_v2`, `join_room`) remained callable, so protecting only the newest RPCs would leave a trivial bypass.
-- A Postgres-backed limiter is required because client-only or in-memory throttles are bypassable/unreliable across instances.
-- Join accounting is intentionally applied immediately before a successful insert, after room/state/name validations. This keeps idempotent retries and validation errors from consuming budget. Consequence: this slice limits successful multi-room join spam, not invalid room-code probing; that residual risk is documented rather than hidden.
+- `create_room_v3` و`join_room_v2` لم يكن عليهما durable room/join budget.
+- legacy authenticated RPCs (`create_room`, `create_room_v2`, `join_room`) بقيت callable؛ حماية أحدث RPC فقط كانت ستترك bypass مباشرًا.
+- limiter لازم يكون Postgres-backed؛ client-only/in-memory غير كافٍ.
+- join accounting موضوع قبل successful insert بعد validations؛ بالتالي retries/idempotent/validation errors لا تستهلك budget. هذا يحمي successful multi-room join spam، لكنه لا يعد invalid room-code probes لأن exception rollback يعيد transaction؛ الخطر موثق صراحة.
 
-### Code / database / test changes
-- `supabase/migrations/20260911164000_room_join_rate_limit.sql` adds private `room_action_rate_limits` state keyed by authenticated user + action.
-- Internal `claim_room_action_slot(text)` enforces one explicit 10-minute window with max 5 successful room creations or 8 successful joins per authenticated identity.
-- Direct table access and direct execution of the internal claim function are revoked from `public`, `anon`, and `authenticated`.
-- `create_room_v3`, `create_room_v2`, and legacy `create_room` all call the same creation limiter, closing version-based bypasses.
-- `join_room_v2` and legacy `join_room` both call the same join limiter immediately before successful player insertion. Existing-member/host idempotent returns remain uncharged.
-- `scripts/qa/room-join-rate-limit-e2e.mjs` verifies five creates succeed and the sixth is blocked; legacy create cannot bypass; eight joins succeed and the ninth is blocked even through legacy join; limiter table/function stay private; limits remain explicit/reviewable.
-- `.github/workflows/game-qa.yml` now runs the room/join abuse E2E against clean local Supabase after the AI-generation abuse guard.
+### Code / database / tests
+- `supabase/migrations/20260911164000_room_join_rate_limit.sql`: جدول private `room_action_rate_limits` keyed by auth user + action، window = 10 دقائق، create max = 5، successful join max = 8.
+- `claim_room_action_slot(text)` داخلي فقط؛ table access وdirect execute مسحوبان من `public`, `anon`, `authenticated`.
+- `create_room_v3`, `create_room_v2`, `create_room` تشترك في نفس create budget.
+- `join_room_v2`, `join_room` يشتركان في نفس join budget؛ existing-member/host idempotent returns لا تُحسب.
+- `scripts/qa/room-join-rate-limit-e2e.mjs`: 5 creates ثم block السادس؛ legacy create لا يتجاوز limiter؛ 8 joins ثم block التاسع عبر legacy join؛ state/function private؛ constants explicit.
+- `.github/workflows/game-qa.yml` يشغل الـE2E الجديد بعد AI generation abuse guard.
 
 ### Commits
 - `d33fc2843e54ab28e65e31e14cf14d5a16304282` — `feat: throttle room creation and joins`.
@@ -95,38 +60,34 @@ Add server-authoritative bounded throttling for room creation and room joining b
 - `bdd73e1a8b6ba0c4a3fa6dcb51d628d6a1c6b36d` — `qa: run room and join abuse guard`.
 
 ### Checks / evidence
-- Session 30 prerequisite: `validate` ✅ and `qa` ✅.
-- For `bdd73e1a...`, both `validate` and `qa` were `in_progress` at final inspection with no failure reported yet. The new local Supabase room/join E2E had therefore not been confirmed Green at handoff time.
+- Session 30 prerequisite: `validate` ✅ و`qa` ✅.
+- `bdd73e1a...`: `validate` ✅ completed/success؛ `qa` ما زال `in_progress` عند آخر فحص، بدون failure مُبلغ حتى الآن. الـroom/join local E2E لم يُثبت Green بعد.
 
 ### Newly discovered bugs / risks
-- No new gameplay P0/P1 was discovered.
-- Protection is per authenticated anonymous identity, not per IP/device; resetting identity can obtain a fresh budget. IP/device/provider-level controls remain future launch hardening if evidence justifies them.
-- Invalid/nonexistent room-code probes are not durably counted by this RPC-level limiter because exception paths roll back the transaction. Solving that correctly requires a separate request boundary/token or gateway-level control and is outside this one objective.
-- Legacy RPCs remain supported for compatibility but now share the same limiter, avoiding an abuse bypass.
-- Production remains independently blocked/inactive and does not have either Session 30 or Session 31 migrations.
+- لا gameplay P0/P1 جديد.
+- الحماية per authenticated anonymous identity وليست per IP/device؛ reset للهوية يعطي budget جديد.
+- invalid/nonexistent room-code probing غير محسوب durable داخل نفس RPC بسبب transaction rollback؛ الحل الصحيح يحتاج gateway/request-boundary/token design منفصل، وليس تغييرًا جانبيًا داخل هذه الجلسة.
+- Production لا يحتوي migrations Session 30/31 لأنه inactive ولم يحدث أي write.
 
 ### Deploy-safety status
-**Not deploy-safe yet because `validate` and `qa` for `bdd73e1a...` were still running.** No Production deploy, restore, migration, or data write occurred.
+**Not deploy-safe yet لأن `qa` لـ`bdd73e1a...` ما زال يعمل.** `validate` Green. لا Production deploy/restore/migration/data write حدث.
 
 ### Roadmap impact
-This closes the second concrete public-launch abuse-control slice after AI generation. Since Sessions 29–31 are three implementation sessions after Checkpoint 28, the next Green handoff should trigger a bounded checkpoint/planning session rather than another implementation feature.
+أغلقنا ثاني launch-abuse slice بعد AI generation. Sessions 29–31 أصبحت 3 implementation sessions بعد Checkpoint 28، لذلك بعد Green يجب عمل checkpoint بدل feature جديدة.
 
 ## Backlog / roadmap
-- [x] Core/full-game 4–10 stable in deterministic + local RPC suites.
+- [x] Core/full-game 4–10 stable.
 - [x] Identity/story contract stable.
-- [x] Curated library exact coverage 4–10 + deep fairness review.
-- [x] Shared curated registry + legacy identity compatibility audit.
+- [x] Curated 4–10 + fairness + packs.
 - [x] Same-room rematch.
-- [x] Curated case packs/theme browsing.
-- [x] AI generation abuse protection; Session 30 Green.
-- [ ] Room creation/join abuse protection; implementation complete, awaiting final `validate`/`qa` result.
-- [ ] Production parity blocked while Supabase project is `INACTIVE`.
-- [ ] Future launch hardening only after checkpoint reprioritization: observability/error telemetry, provider quotas/runbook, possible gateway/IP-level probing controls.
-- [ ] Polish/README/workflow-label drift cleanup.
-- [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
+- [x] AI generation abuse protection؛ Green.
+- [ ] Room creation/join abuse protection؛ implementation complete، `validate` Green و`qa` running.
+- [ ] Production parity blocked while Supabase is `INACTIVE`.
+- [ ] بعد checkpoint فقط: observability/error telemetry، provider quotas/runbook، possible gateway/IP-level probe controls، ثم polish/docs drift.
+- [ ] 11–15 فقط إذا gameplay/UX evidence لاحقًا يبرر.
 
 ## اتجاه المنتج
-**Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Gameplay/Product Features → Production/Launch Safety → Polish/Launch**.
+**Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص أولًا نتيجة `validate` و`qa` لـ`bdd73e1a8b6ba0c4a3fa6dcb51d628d6a1c6b36d`. لو ظهر failure حقيقي مرتبط بالـroom/join abuse guard، أصلح أول failure meaningful فقط ولا تبدأ scope جديد. لو Green، نفّذ **Checkpoint/Planning session فقط**: راجع launch-safety coverage الفعلية، residual abuse risks، Production DB blocker، full-game regression health، story/library status، technical/docs drift، وحدد 3–4 milestones تالية مع أولوية واحدة دقيقة؛ لا تبدأ feature جديدة في نفس checkpoint.
+افحص أولًا `qa` لـ`bdd73e1a8b6ba0c4a3fa6dcb51d628d6a1c6b36d`. إذا فشل بسبب الـroom/join abuse guard، أصلح أول failure meaningful فقط ولا تبدأ scope جديد. إذا Green، نفّذ **Checkpoint/Planning session فقط**: audit launch-safety coverage، residual abuse risks، Production blocker، full-game health، story/library status، technical/docs drift، ثم حدد 3–4 milestones تالية وأولوية واحدة دقيقة بدون feature implementation.
