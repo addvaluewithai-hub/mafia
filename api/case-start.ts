@@ -1,12 +1,18 @@
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 
+import { ARCHIVE_SEAL } from '../lib/server-stories/archive-seal';
+import { BACKSTAGE_PASS } from '../lib/server-stories/backstage-pass';
 import { BALCONY_KEY } from '../lib/server-stories/balcony-key';
 import { BLUE_NOTEBOOK } from '../lib/server-stories/blue-notebook';
 import { CLOCK_1117 } from '../lib/server-stories/clock-1117';
 import { FOURTH_FLOOR } from '../lib/server-stories/fourth-floor';
+import { GALLERY_LEDGER } from '../lib/server-stories/gallery-ledger';
+import { GARDEN_LOCKER } from '../lib/server-stories/garden-locker';
 import { LAST_REHEARSAL } from '../lib/server-stories/last-rehearsal';
 import { LAST_TRAY } from '../lib/server-stories/last-tray';
+import { MIDNIGHT_MENU } from '../lib/server-stories/midnight-menu';
+import { ROOFTOP_ENVELOPE } from '../lib/server-stories/rooftop-envelope';
 import { ROOM_312 } from '../lib/server-stories/room-312';
 import { SILENT_AUCTION } from '../lib/server-stories/silent-auction';
 import type { GeneratedCase } from '../lib/types';
@@ -23,6 +29,12 @@ const CASES = {
   'blue-notebook': { playerCount: 6, case: BLUE_NOTEBOOK },
   'fourth-floor': { playerCount: 7, case: FOURTH_FLOOR },
   'silent-auction': { playerCount: 7, case: SILENT_AUCTION },
+  'rooftop-envelope': { playerCount: 8, case: ROOFTOP_ENVELOPE },
+  'backstage-pass': { playerCount: 8, case: BACKSTAGE_PASS },
+  'gallery-ledger': { playerCount: 9, case: GALLERY_LEDGER },
+  'garden-locker': { playerCount: 9, case: GARDEN_LOCKER },
+  'midnight-menu': { playerCount: 10, case: MIDNIGHT_MENU },
+  'archive-seal': { playerCount: 10, case: ARCHIVE_SEAL },
 } as const;
 
 function mafiaCountFor(count: number) {
