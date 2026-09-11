@@ -155,7 +155,7 @@ export default function CreateRoomScreen() {
             disabled={!presetAvailable}
             className={`min-h-[112px] flex-1 justify-center gap-2 rounded-3xl border p-4 active:scale-[0.99] ${caseMode === 'preset' ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'} ${!presetAvailable ? 'opacity-40' : ''}`}>
             <Text className={`text-right text-lg font-black ${caseMode === 'preset' ? 'text-case-gold' : 'text-case-cream'}`}>قضية جاهزة</Text>
-            <Text className="text-right text-xs leading-5 text-case-muted">{presetAvailable ? `عندنا قصتين مخصوص لـ${players} لاعبين، صعوبتهم عالية ومحسوبة.` : 'متاحة حاليًا للـ5 والـ6 والـ7 لاعبين.'}</Text>
+            <Text className="text-right text-xs leading-5 text-case-muted">{presetAvailable ? `عندنا ${availableStories.length === 1 ? 'قضية' : 'قصتين'} مخصوص لـ${players} لاعبين، صعوبتهم عالية ومحسوبة.` : 'متاحة حاليًا من 4 لـ7 لاعبين.'}</Text>
           </Pressable>
 
           <Pressable
