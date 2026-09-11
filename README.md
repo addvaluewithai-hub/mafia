@@ -1,14 +1,14 @@
 # آخر خيط — Akher Kheit
 
-لعبة تحقيق اجتماعية للعائلة والأصدقاء. الـBoss يعمل روم ويشارك رابطًا واحدًا، وكل لاعب يدخل باسمه. التطبيق يوزع الأدوار سرًا، يولّد قضية جديدة بالـAI، يكشف الأدلة جولة بجولة، ويدير التصويت والسجن والنهاية.
+لعبة تحقيق اجتماعية للعائلة والأصدقاء. الـBoss لاعب كامل داخل الروم، وكل لاعب يدخل بـnickname ظاهر. التطبيق يوزع الأدوار السرية، يثبت قضية curated أو يولد قضية بالـAI، يكشف الأدلة جولة بجولة، ويدير التصويت والإقصاء والفائز.
 
-## Architecture
+## Production architecture
 
 ```text
 Players / Boss
       |
       v
-Expo Router app on EAS Hosting
+Expo Router web app on Vercel
   - Web UI
   - /api/generate-case server route
   - Gemini API key stays server-side
@@ -21,24 +21,24 @@ Supabase
   - Rooms / players / roles
   - Realtime events
   - Votes / eliminations
-  - Generated case storage
+  - Case storage
 ```
 
-**Supabase لا يشغّل الـAI في الـproduction architecture.** هو فقط multiplayer backend والداتا. توليد القضية يتم في Expo API Route على السيرفر.
+Production web: `https://akher-kheit.vercel.app`.
 
-## الموجود في النسخة الأولى
+Supabase لا يشغّل الـAI في production architecture؛ هو multiplayer/database backend. توليد القضية يتم في server API route.
+
+## Current product state
 
 - Expo SDK 57: Web + Android + iOS من نفس الكود.
-- روم بكود 6 حروف ورابط قابل للمشاركة.
-- Boss خارج عدد المشتبه فيهم.
-- من 4 إلى 12 لاعبًا.
-- توزيع سري `Mafia / Innocent` فقط؛ كل باقي معلومات الشخصية علنية.
-- عدد المافيا تلقائي: 1 للـ4–5، 2 للـ6–9، 3 للـ10–12.
-- 4 جولات أدلة، تصويت حي، كشف دور المسجون، وحسم الفائز.
-- Supabase Anonymous Auth + RLS.
-- Supabase Realtime لتحديث كل الأجهزة.
+- Boss لاعب كامل ويحتفظ بصلاحيات الإدارة المطلوبة حتى لو تم إقصاؤه.
+- Core/full-game automated coverage للـ4–10 لاعبين: create → join → case/roles → clues → voting/ties → elimination → reconnect → next round → winner.
+- curated cases مغطاة للـ4–10؛ 11–12 AI-generated only حاليًا، و13–15 ليست launch target حاليًا.
+- nickname هو الهوية الظاهرة؛ gender للصياغة فقط ولا يدخل في mafia assignment أو win probability.
+- Supabase Anonymous Auth + RLS + server-authoritative gameplay RPCs.
 - Gemini server route في `app/api/generate-case+api.ts`.
-- الـAI يولّد القضية مرة واحدة فقط عند بداية الروم ثم تُحفظ للجميع.
+- Solo/AI Players MVP: Human Boss + 3 server-side bots مع نفس role/vote/round lifecycle.
+- abuse guards موجودة لتوليد القضايا وإنشاء/دخول الرومات؛ public-launch perimeter ضد anonymous identity churn ما زال roadmap item منفصلًا.
 
 ## Environment variables
 
@@ -47,6 +47,8 @@ Public client values:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://bwxgzcppxdrfcaorobpm.supabase.co
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+EXPO_PUBLIC_APP_URL=https://akher-kheit.vercel.app
+EXPO_PUBLIC_API_BASE_URL=https://akher-kheit.vercel.app
 ```
 
 Server-only Gemini values:
@@ -56,31 +58,7 @@ GEMINI_API_KEY=YOUR_GEMINI_KEY
 GEMINI_MODELS=gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it
 ```
 
-After the first production web deployment also set:
-
-```env
-EXPO_PUBLIC_APP_URL=https://YOUR_APP.expo.app
-EXPO_PUBLIC_API_BASE_URL=https://YOUR_APP.expo.app
-```
-
 Never prefix `GEMINI_API_KEY` with `EXPO_PUBLIC_`.
-
-## First deployment to EAS Hosting
-
-```bash
-npm install
-npx eas-cli@latest login
-npx eas-cli@latest init
-```
-
-Add the environment variables above to the EAS `production` environment, then:
-
-```bash
-npm run export:web
-npx eas-cli@latest deploy --prod
-```
-
-The first deploy gives the production `*.expo.app` URL. Put that URL in `EXPO_PUBLIC_APP_URL` and `EXPO_PUBLIC_API_BASE_URL`, then deploy once more.
 
 ## Local development
 
@@ -98,17 +76,15 @@ npx expo export --platform web
 npx expo serve
 ```
 
-## AI rules
+## Production release safety
 
-The prompt requires:
+Vercel is the authoritative production web path. EAS files remain for Expo-related workflows but are not the current production web release mechanism.
 
-- The first clue implicates at least three characters.
-- No single clue identifies a mafia player on its own.
-- Innocent characters have genuine misleading details.
-- The fourth clue only becomes strong when connected to previous clues.
-- Mafia players do not know each other in the story.
-- All character information is public; only the role is private.
-- The final solution explains both the crime and the red herrings.
+Every production candidate is pinned to one full commit SHA. Before packaging or deploying it, the repository preflight requires the `validate` and `qa` checks for that exact SHA to be completed/success and compares production Supabase migration history with `supabase/migrations/` using a read-only query.
+
+Runbook: `docs/operations/RELEASE-RUNBOOK.md`.
+
+Guarded GitHub workflow: `.github/workflows/package-vercel-source.yml` (`Vercel Release Package`). It packages source only after the read-only preflight passes. Production migrations and deployment remain explicit operations and must also satisfy the deploy-safety gate in `docs/qa/CONTINUOUS-QA.md`.
 
 ## Main files
 
@@ -117,29 +93,26 @@ app/
   index.tsx
   create.tsx
   join.tsx
+  solo.tsx
   room/[code].tsx
   api/generate-case+api.ts
 components/
-  game-ui.tsx
 lib/
-  game.ts
-  supabase.ts
-  theme.ts
-  types.ts
+scripts/qa/
+scripts/release/preflight.mjs
 supabase/migrations/
-  20260809180000_initial_game.sql
-.eas/workflows/
-  deploy.yml
+docs/qa/
+docs/operations/RELEASE-RUNBOOK.md
+.github/workflows/
 ```
 
-## Next
+## QA source of truth
 
-After the first live multiplayer test:
+Before autonomous QA/product work, read in order:
 
-- Timer for discussion/voting.
-- QR room join.
-- Rematch in the same room.
-- Better animations, sounds and haptics.
-- Case packs and custom themes.
-- Android production build for Google Play.
-- Abuse protection before a public launch.
+1. `AGENTS.md`
+2. `docs/qa/QA-OPERATING-MODE.md`
+3. `docs/qa/CONTINUOUS-QA.md`
+4. latest `main` commits and checks
+
+Do not infer production parity from an older session; verify it before a release.
