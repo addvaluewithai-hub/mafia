@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { getAbuseInstallationKey } from '@/lib/supabase';
+
 export type GameplayTelemetryEvent =
   | 'create'
   | 'join'
@@ -48,7 +50,7 @@ export function emitGameplayTelemetry(payload: Omit<GameplayTelemetryPayload, 'r
   };
   void globalThis.fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Abuse-Key': getAbuseInstallationKey() },
     cache: 'no-store',
     keepalive: true,
     body: JSON.stringify(body),
@@ -57,9 +59,6 @@ export function emitGameplayTelemetry(payload: Omit<GameplayTelemetryPayload, 'r
 
 function emitOperationResult(payload: Omit<GameplayTelemetryPayload, 'release'>) {
   emitGameplayTelemetry(payload);
-  // Case start currently owns generation + install as one server transaction. Emit
-  // both names so production evidence can distinguish the UX milestone now and the
-  // generation pipeline later without exposing room/player/story data.
   if (payload.event === 'start') emitGameplayTelemetry({ ...payload, event: 'generation' });
 }
 
