@@ -1,17 +1,17 @@
-import { ARCHIVE_SEAL } from '@/lib/server-stories/archive-seal';
-import { BACKSTAGE_PASS } from '@/lib/server-stories/backstage-pass';
-import { BALCONY_KEY } from '@/lib/server-stories/balcony-key';
-import { BLUE_NOTEBOOK } from '@/lib/server-stories/blue-notebook';
-import { CLOCK_1117 } from '@/lib/server-stories/clock-1117';
-import { FOURTH_FLOOR } from '@/lib/server-stories/fourth-floor';
-import { GALLERY_LEDGER } from '@/lib/server-stories/gallery-ledger';
-import { GARDEN_LOCKER } from '@/lib/server-stories/garden-locker';
-import { LAST_REHEARSAL } from '@/lib/server-stories/last-rehearsal';
-import { LAST_TRAY } from '@/lib/server-stories/last-tray';
-import { MIDNIGHT_MENU } from '@/lib/server-stories/midnight-menu';
-import { ROOFTOP_ENVELOPE } from '@/lib/server-stories/rooftop-envelope';
-import { ROOM_312 } from '@/lib/server-stories/room-312';
-import { SILENT_AUCTION } from '@/lib/server-stories/silent-auction';
+import { ARCHIVE_SEAL } from './archive-seal';
+import { BACKSTAGE_PASS } from './backstage-pass';
+import { BALCONY_KEY } from './balcony-key';
+import { BLUE_NOTEBOOK } from './blue-notebook';
+import { CLOCK_1117 } from './clock-1117';
+import { FOURTH_FLOOR } from './fourth-floor';
+import { GALLERY_LEDGER } from './gallery-ledger';
+import { GARDEN_LOCKER } from './garden-locker';
+import { LAST_REHEARSAL } from './last-rehearsal';
+import { LAST_TRAY } from './last-tray';
+import { MIDNIGHT_MENU } from './midnight-menu';
+import { ROOFTOP_ENVELOPE } from './rooftop-envelope';
+import { ROOM_312 } from './room-312';
+import { SILENT_AUCTION } from './silent-auction';
 
 export const CURATED_CASES = {
   'last-tray': { playerCount: 4, case: LAST_TRAY },
@@ -30,9 +30,11 @@ export const CURATED_CASES = {
   'archive-seal': { playerCount: 10, case: ARCHIVE_SEAL },
 } as const;
 
+export type CuratedCaseId = keyof typeof CURATED_CASES;
+
 export function getCuratedCase(id: string | null | undefined) {
   if (!id || !(id in CURATED_CASES)) return null;
-  return CURATED_CASES[id as keyof typeof CURATED_CASES];
+  return CURATED_CASES[id as CuratedCaseId];
 }
 
 export function referenceCasesFor(playerCount: number) {
