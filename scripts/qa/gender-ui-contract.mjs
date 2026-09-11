@@ -5,10 +5,13 @@ const create = fs.readFileSync('app/create.tsx', 'utf8');
 const room = fs.readFileSync('app/room/[code].tsx', 'utf8');
 const game = fs.readFileSync('lib/game.ts', 'utf8');
 
-assert(create.includes("supabase.rpc('create_room_v3'"), 'Create UI must use create_room_v3');
-assert(create.includes('p_boss_gender: bossGender'), 'Create UI must submit boss gender');
+assert(create.includes('createRoomV3'), 'Create UI must use the createRoomV3 helper');
+assert(create.includes('bossGender,'), 'Create UI must submit selected boss gender through createRoomV3');
 assert(create.includes('<GenderPicker value={bossGender}'), 'Create UI must render gender picker');
+assert(game.includes("supabase.rpc('create_room_v3'"), 'createRoomV3 must use create_room_v3');
+assert(game.includes('p_boss_gender: input.bossGender'), 'createRoomV3 must send boss gender');
 assert(!create.includes("supabase.rpc('create_room_v2'"), 'Create UI must not regress to create_room_v2');
+assert(!game.includes("supabase.rpc('create_room_v2'"), 'Create helper must not regress to create_room_v2');
 
 assert(room.includes('<GenderPicker value={joinGender}'), 'Join UI must render gender picker');
 assert(room.includes('joinRoom(code, nickname, joinGender)'), 'Join UI must submit selected gender');
@@ -16,4 +19,4 @@ assert(game.includes("supabase.rpc('join_room_v2'"), 'joinRoom must use join_roo
 assert(game.includes('p_gender: gender'), 'joinRoom must send gender');
 assert(!game.includes("supabase.rpc('join_room',"), 'joinRoom must not regress to legacy join_room');
 
-console.log('QA gender UI contract: create/join selection is wired to gender-aware RPCs.');
+console.log('QA gender UI contract: create/join selection is wired through helpers to gender-aware RPCs.');
