@@ -21,3 +21,5 @@ jobs:
         run: npm run typecheck
       - name: Release preflight contract
         run: npm run qa:release-preflight
+      - name: Observability privacy contract
+        run: npm run qa:observability
