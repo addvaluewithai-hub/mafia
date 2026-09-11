@@ -1,3 +1,4 @@
+import { storyMetadata } from '../story-catalog';
 import { ARCHIVE_SEAL } from './archive-seal';
 import { BACKSTAGE_PASS } from './backstage-pass';
 import { BALCONY_KEY } from './balcony-key';
@@ -34,7 +35,9 @@ export type CuratedCaseId = keyof typeof CURATED_CASES;
 
 export function getCuratedCase(id: string | null | undefined) {
   if (!id || !(id in CURATED_CASES)) return null;
-  return CURATED_CASES[id as CuratedCaseId];
+  const item = CURATED_CASES[id as CuratedCaseId];
+  const metadata = storyMetadata(id);
+  return { ...item, metadata };
 }
 
 export function referenceCasesFor(playerCount: number) {
@@ -43,6 +46,7 @@ export function referenceCasesFor(playerCount: number) {
     .map(([id, item]) => ({
       id,
       playerCount: item.playerCount,
+      packId: storyMetadata(id)?.packId ?? null,
       title: item.case.title,
       premise: item.case.premise,
       characters: item.case.characters,
