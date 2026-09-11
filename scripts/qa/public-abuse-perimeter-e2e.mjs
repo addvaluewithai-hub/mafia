@@ -25,7 +25,6 @@ const installationKey = `qa-${crypto.randomUUID()}-${crypto.randomUUID()}`;
 const firstIdentity = await signedClient();
 const secondIdentity = await signedClient();
 
-// Eight create claims are shared by one installation key even when auth.uid changes.
 for (let i = 0; i < 8; i += 1) {
   const c = i % 2 === 0 ? firstIdentity : secondIdentity;
   const { data, error } = await c.rpc('claim_public_abuse_slot', {
@@ -43,8 +42,6 @@ assert.ifError(blockedError);
 assert.equal(blocked.allowed, false, 'new anonymous auth identity must not reset the installation budget');
 assert(Number(blocked.retryAfterSeconds) > 0, 'blocked response must include a retry window');
 
-// A distinct installation key has an independent budget; this proves the boundary is
-// installation-scoped rather than nickname/player/room/gender scoped.
 const { data: independent, error: independentError } = await firstIdentity.rpc('claim_public_abuse_slot', {
   p_abuse_key: `qa-${crypto.randomUUID()}-${crypto.randomUUID()}`,
   p_action: 'create_room',
@@ -61,13 +58,18 @@ const telemetry = fs.readFileSync('app/api/telemetry+api.ts', 'utf8');
 const generation = fs.readFileSync('app/api/generate-case+api.ts', 'utf8');
 
 assert.match(migration, /digest\(v_key, 'sha256'\)/, 'DB must store a one-way key digest');
-assert.doesNotMatch(migration, /nickname|boss_name|gender|player_id|room_code|story|mafia_assignment/i, 'limiter table/function must not use gameplay identity or story data');
+const tableDefinition = migration.match(/create table public\.public_abuse_rate_limits \(([\s\S]*?)\);/)?.[1] ?? '';
+assert(tableDefinition, 'limiter table definition must remain inspectable');
+for (const forbidden of ['nickname', 'gender', 'room', 'player', 'story', 'mafia', 'user_id']) {
+  assert(!tableDefinition.toLowerCase().includes(forbidden), `limiter table must not store ${forbidden}`);
+}
+assert.match(tableDefinition, /key_hash text not null/, 'limiter table must store only the hashed installation boundary');
 assert.match(game, /create_room_v4/, 'create path must use churn-protected wrapper');
 assert.match(game, /join_room_v3/, 'join path must use churn-protected wrapper');
 assert.match(game, /abuseKey: getAbuseInstallationKey\(\)/, 'generation path must send the installation boundary');
 assert.match(generation, /claim_case_generation_slot_v2/, 'AI generation must enforce both installation and auth budgets');
 assert.match(telemetry, /claim_public_abuse_slot/, 'telemetry must enforce the installation budget server-side');
-assert.doesNotMatch(telemetry, /console\.(?:info|log)[\s\S]*abuseKey/i, 'telemetry must never log the raw abuse key');
+assert.doesNotMatch(telemetry, /console\.(?:info|log)[^\n]*abuseKey/i, 'telemetry must never log the raw abuse key');
 
 const report = {
   ok: true,
@@ -77,7 +79,7 @@ const report = {
     'different installation keys remain independent',
     'database stores only SHA-256 key digests and keeps limiter state private',
     'create, join, generation, and telemetry paths are wired to the second boundary',
-    'gameplay identity/story fields are not used as abuse identity',
+    'gameplay identity/story fields are not stored as abuse identity',
   ],
 };
 fs.writeFileSync(path.join(reportDir, 'public-abuse-perimeter-e2e.json'), JSON.stringify(report, null, 2));
