@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 
+import { classifyTelemetryError, emitGameplayTelemetry, observeGameplayOperation } from '@/lib/observability';
 import type { PlayerGender, RoomSnapshot } from '@/lib/types';
 import { ensureAnonymousSession, supabase } from '@/lib/supabase';
 
@@ -42,17 +43,21 @@ function looksTransient(error: unknown) {
 }
 
 export async function createRoom(input: { bossName: string; maxPlayers: number; difficulty: 'easy' | 'medium' | 'hard'; theme: string }) {
-  await ensureAnonymousSession();
-  const { data, error } = await supabase.rpc('create_room', { p_boss_name: input.bossName.trim(), p_max_players: input.maxPlayers, p_difficulty: input.difficulty, p_theme: input.theme.trim() });
-  if (error) throw new Error(errorToMessage(error, 'تعذر إنشاء الروم'));
-  return String(data);
+  return observeGameplayOperation('create', async () => {
+    await ensureAnonymousSession();
+    const { data, error } = await supabase.rpc('create_room', { p_boss_name: input.bossName.trim(), p_max_players: input.maxPlayers, p_difficulty: input.difficulty, p_theme: input.theme.trim() });
+    if (error) throw new Error(errorToMessage(error, 'تعذر إنشاء الروم'));
+    return String(data);
+  });
 }
 
 export async function joinRoom(code: string, nickname: string, gender: PlayerGender) {
-  await ensureAnonymousSession();
-  const { data, error } = await supabase.rpc('join_room_v2', { p_code: normalizeRoomCode(code), p_nickname: nickname.trim(), p_gender: gender });
-  if (error) throw new Error(errorToMessage(error, 'تعذر دخول الروم'));
-  return String(data);
+  return observeGameplayOperation('join', async () => {
+    await ensureAnonymousSession();
+    const { data, error } = await supabase.rpc('join_room_v2', { p_code: normalizeRoomCode(code), p_nickname: nickname.trim(), p_gender: gender });
+    if (error) throw new Error(errorToMessage(error, 'تعذر دخول الروم'));
+    return String(data);
+  });
 }
 
 export async function addAiPlayer(code: string) {
@@ -73,12 +78,16 @@ export async function castAiVotes(code: string) {
 }
 
 export async function getRoomSnapshot(code: string) {
+  const startedAt = Date.now();
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await ensureAnonymousSession();
       const { data, error } = await supabase.rpc('room_snapshot', { p_code: normalizeRoomCode(code) });
       if (error) throw error;
+      if (attempt > 0) {
+        emitGameplayTelemetry({ event: 'reconnect', outcome: 'recovered', durationMs: Date.now() - startedAt, detail: 'retry' });
+      }
       return data as RoomSnapshot;
     } catch (error) {
       lastError = error;
@@ -86,22 +95,31 @@ export async function getRoomSnapshot(code: string) {
       await sleep(350 * (attempt + 1));
     }
   }
+  emitGameplayTelemetry({ event: 'reconnect', outcome: 'error', durationMs: Date.now() - startedAt, errorClass: classifyTelemetryError(lastError) });
   throw new Error(errorToMessage(lastError, 'تعذر تحميل الروم. جرّب تاني بعد لحظة.'));
 }
 
 export async function castVote(code: string, targetPlayerId: string) {
-  const { error } = await supabase.rpc('cast_vote', { p_code: normalizeRoomCode(code), p_target_player_id: targetPlayerId });
-  if (error) throw new Error(errorToMessage(error, 'تعذر تسجيل الصوت'));
+  return observeGameplayOperation('vote', async () => {
+    const { error } = await supabase.rpc('cast_vote', { p_code: normalizeRoomCode(code), p_target_player_id: targetPlayerId });
+    if (error) throw new Error(errorToMessage(error, 'تعذر تسجيل الصوت'));
+  });
 }
 
 export async function resolveVote(code: string) {
-  // Computer players commit their votes at the same moment the Boss settles the
-  // table. Humans still vote normally; bots never block a solo game waiting for
-  // an auth session they do not have.
-  await castAiVotes(code);
-  const { data, error } = await supabase.rpc('resolve_vote', { p_code: normalizeRoomCode(code) });
-  if (error) throw new Error(errorToMessage(error, 'تعذر حسم التصويت'));
-  return data as { status: 'pending' | 'tie' | 'eliminated' | 'finished'; missing?: number; nickname?: string; role?: 'mafia' | 'innocent'; winner?: 'mafia' | 'innocents' };
+  return observeGameplayOperation(
+    'resolve',
+    async () => {
+      // Computer players commit their votes at the same moment the Boss settles the
+      // table. Humans still vote normally; bots never block a solo game waiting for
+      // an auth session they do not have.
+      await castAiVotes(code);
+      const { data, error } = await supabase.rpc('resolve_vote', { p_code: normalizeRoomCode(code) });
+      if (error) throw new Error(errorToMessage(error, 'تعذر حسم التصويت'));
+      return data as { status: 'pending' | 'tie' | 'eliminated' | 'finished'; missing?: number; nickname?: string; role?: 'mafia' | 'innocent'; winner?: 'mafia' | 'innocents' };
+    },
+    { successDetail: (result) => result.status },
+  );
 }
 
 export async function revealNextRound(code: string) {
@@ -127,29 +145,31 @@ function apiUrl(path: string) {
 }
 
 export async function generateAndStartCase(code: string) {
-  const session = await ensureAnonymousSession();
-  let response: Response;
-  try {
-    response = await globalThis.fetch(apiUrl('/api/generate-case'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      cache: 'no-store',
-      body: JSON.stringify({ roomCode: normalizeRoomCode(code), sessionToken: session.access_token }),
-    });
-  } catch (error) {
-    throw new Error(errorToMessage(error, 'مش قادرين نوصل لسيرفر تجهيز القضية. جرّب تاني.'));
-  }
+  return observeGameplayOperation('start', async () => {
+    const session = await ensureAnonymousSession();
+    let response: Response;
+    try {
+      response = await globalThis.fetch(apiUrl('/api/generate-case'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        cache: 'no-store',
+        body: JSON.stringify({ roomCode: normalizeRoomCode(code), sessionToken: session.access_token }),
+      });
+    } catch (error) {
+      throw new Error(errorToMessage(error, 'مش قادرين نوصل لسيرفر تجهيز القضية. جرّب تاني.'));
+    }
 
-  const raw = await response.text();
-  let body: { ok?: boolean; model?: string; source?: 'ai' | 'preset'; storyTitle?: string; error?: unknown } = {};
-  if (raw) {
-    try { body = JSON.parse(raw) as typeof body; } catch { body = { error: raw }; }
-  }
-  if (!response.ok || !body.ok) {
-    const fallback = response.status === 401 ? 'جلسة الـBoss محتاجة تتجدد. اعمل Refresh واضغط تاني.' : 'تعذر تجهيز القضية';
-    throw new Error(errorToMessage(body.error, fallback));
-  }
-  return body;
+    const raw = await response.text();
+    let body: { ok?: boolean; model?: string; source?: 'ai' | 'preset'; storyTitle?: string; error?: unknown } = {};
+    if (raw) {
+      try { body = JSON.parse(raw) as typeof body; } catch { body = { error: raw }; }
+    }
+    if (!response.ok || !body.ok) {
+      const fallback = response.status === 401 ? 'جلسة الـBoss محتاجة تتجدد. اعمل Refresh واضغط تاني.' : 'تعذر تجهيز القضية';
+      throw new Error(errorToMessage(body.error, fallback));
+    }
+    return body;
+  }, { successDetail: (result) => result.source });
 }
 
 export function shareRoomUrl(code: string) {
