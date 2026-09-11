@@ -17,7 +17,8 @@
 - آخر production DB evidence من Session 34: Supabase `bwxgzcppxdrfcaorobpm` كان `ACTIVE_HEALTHY` ومهاجر حتى `20260911180000_ai_players_mvp`. لا نفترض parity مستقبلية بدون preflight.
 - Production web الحالي: Vercel `https://akher-kheit.vercel.app`; آخر deployment durable evidence من Session 34 هو `dpl_So7A51KxPVdmh1eGbRsrB1Uzwagb` READY.
 - Session 35 checkpoint جعل launch-safety أعلى من توسيع AI features.
-- Session 36 أضاف repo-native release preflight + exact-SHA Vercel package gate + runbook/README truth. لا Production writes تمت.
+- Session 36 أضاف release preflight + exact-SHA Vercel package gate + runbook/README truth، وأصبح handoff commit `bb5363e1d137dd7c2125f83aa0463935f457f714` لاحقًا CI + Game QA Green.
+- Session 37 أضاف privacy-safe production gameplay telemetry للمسارات الحرجة مع release correlation وCI privacy contract. لا Production writes تمت؛ final checks كانت ما زالت queued/running عند كتابة handoff.
 
 ## Recent milestones
 - Sessions 18–21 Story Quality + curated 4–10: Green.
@@ -34,9 +35,10 @@
 - Session 33 Solo/AI Players MVP: code + local Supabase E2E + Game QA integration, Green.
 - Session 34 Production rollout: Supabase restore/parity + AI Players migration + Vercel deploy + live smoke, Green.
 - Session 35 Checkpoint: core/CI Green; launch-safety became next priority.
-- Session 36 Release guardrails: exact-SHA check/migration preflight + Vercel artifact gate + docs truth implemented; final checks were still running at handoff write time.
+- Session 36 Release guardrails: final handoff commit `bb5363e1d137dd7c2125f83aa0463935f457f714` is CI + Game QA Green.
+- Session 37 Production observability: implementation complete; final checks pending at handoff write time.
 
-## Durable prior production evidence
+## Durable production evidence
 ### Session 34 — Production rollout for Solo/AI Players
 - Production Supabase was restored and missing repo migrations were applied through `20260911180000_ai_players_mvp`.
 - Production drift in an old `create_room_v2` signature was conservatively repaired before migration application.
@@ -44,81 +46,81 @@
 - Live smoke: `/` and `/solo` HTTP 200; `/api/generate-case` returned expected GET 405 for POST-only route.
 - This remains the last deployed/deploy-safe production evidence until a later session explicitly records another production release.
 
-## Session 35 — Launch-safety checkpoint
+## Session 36 — Release parity + Vercel deployment guardrails
 ### Result
-- Latest starting main `e3b86ad91b57997df2f23afcbc3cf8ff38547a04` had `validate` and `qa` completed/success.
-- No known P0 gameplay deadlock.
-- Highest risks reordered to: release parity/deployment guardrails → observability → anonymous identity churn perimeter → AI Players UX evidence/contract.
-- Exact next priority was Release parity + deployment guardrails.
+- Added read-only exact-SHA release preflight requiring `validate` + `qa` Green and production migration parity.
+- Vercel source artifact workflow is gated by that preflight and emits a SHA-stamped release manifest.
+- README and release runbook now describe Vercel as current production web truth.
+- No Production writes occurred.
+- Session 36 handoff commit `bb5363e1d137dd7c2125f83aa0463935f457f714` subsequently reached `validate` completed/success and `qa` completed/success.
 
-## Session 36 — 2026-09-11 — Release parity + Vercel deployment guardrails
+## Session 37 — 2026-09-11 — Production observability/error telemetry
 ### Session type
-Delivery — one launch-safety vertical slice only. No product feature, production deploy, production migration, or service mutation.
+Delivery — one Production/Launch Safety vertical slice only. No gameplay feature, production deploy, production migration, DB write, or service mutation.
 
 ### Starting evidence
 - Read `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff from default branch.
-- Starting latest `main`: `2d491bdb222da744d4303b277c2eb2b9dfad4867` (`docs: record launch-safety checkpoint`).
+- Starting latest `main`: `bb5363e1d137dd7c2125f83aa0463935f457f714` (`docs: hand off release guardrails session`).
 - Starting `validate`: completed/success ✅.
 - Starting Game QA `qa`: completed/success ✅.
-- No prerequisite pending and no meaningful failing check tied to the active objective.
+- Therefore Session 36's pending-check prerequisite was resolved Green before new scope; no meaningful failing check displaced the handoff priority.
 
 ### Exact objective
-Build a repository-native, read-only release preflight that binds a release to an exact SHA, requires Green CI/Game QA for that SHA, detects production Supabase migration drift before any write, gates the Vercel source artifact on that preflight, and updates README/runbook so the documented production path matches current Vercel truth.
+Add structured privacy-safe Production gameplay telemetry for create/join/start/generation/vote/resolve/reconnect, with release correlation, bounded allowlisted payloads, non-blocking client behavior, deterministic CI contract checks, and operator documentation — without leaking secrets, identity, room identifiers, case content, or the solution.
 
 ### Reproduction / design finding
-- Before this session, release safety was durable evidence only: operators could know Session 34 had parity, but repo tooling did not prevent a later deploy from using a SHA with pending/failed checks or a migration state different from production.
-- Existing `.github/workflows/package-vercel-source.yml` packaged a moving checkout without validating release SHA, checks, or production migration parity.
-- README still described EAS Hosting as production while Session 34 production evidence is Vercel.
-- Chosen guardrail is fail-closed and read-only: GitHub check-runs are read through API; production DB access performs only `SELECT version FROM supabase_migrations.schema_migrations`.
-- Migration application remains intentionally separate. A release containing unapplied migrations should fail preflight rather than silently mutate production.
+- Critical gameplay mutations mostly call Supabase directly from clients, while case start/generation goes through the app server. Existing production evidence therefore lacked one consistent operational signal vocabulary for failures across create/join/vote/resolve/reconnect.
+- Existing generation logs included raw server error messages. For the new cross-path telemetry contract, raw exceptions/user-entered values are intentionally excluded; only coarse error classes and bounded enum details are allowed.
+- Routine successful room snapshots can be frequent because realtime events call refresh. Logging every snapshot would create noise, so reconnect telemetry records only transient recovery after retry and terminal snapshot failure.
+- Start currently owns generation/install as one transaction. The implementation emits both `start` and `generation` names from the same observed operation so production dashboards have a stable generation signal before those stages are ever split.
 
-### Code / test / workflow / docs changes
-- Added `scripts/release/preflight.mjs`:
-  - requires a full 40-character release SHA;
-  - requires exact-SHA `validate` and `qa` check-runs to be `completed/success`;
-  - reads local migration versions from `supabase/migrations/`;
-  - reads production migration history with `psql` using `SUPABASE_PRODUCTION_DB_URL`;
-  - fails on either missing-in-production or unexpected-in-production migration versions;
-  - includes fixture-file inputs so contract logic is testable without production access.
-- Added deterministic `scripts/qa/release-preflight-contract.mjs` covering Green checks/parity, failed Game QA, missing production migration, and unexpected production migration.
-- Added package scripts `release:preflight` and `qa:release-preflight`.
-- CI `validate` now runs the release-preflight contract regression.
-- Reworked `.github/workflows/package-vercel-source.yml` into `Vercel Release Package`:
-  - manual full SHA input;
-  - exact-SHA checkout;
-  - read-only preflight before packaging;
-  - requires GitHub Actions secret `SUPABASE_PRODUCTION_DB_URL`;
-  - emits a SHA-stamped artifact only after preflight passes;
-  - includes `release-manifest.txt` with repository, exact SHA, and `preflight=passed`.
-- Added `docs/operations/RELEASE-RUNBOOK.md` defining release invariants, secret handling, guarded artifact procedure, migration hard-stop behavior, and explicit handoff/deploy-safety requirement.
-- Updated README to current Vercel production architecture, current Boss/player-count/AI state, and the guarded release path. EAS is no longer presented as authoritative production web hosting.
+### Code / test / docs changes
+- Added `lib/observability.ts`:
+  - event allowlist: `create`, `join`, `start`, `generation`, `vote`, `resolve`, `reconnect`;
+  - outcome allowlist: `success`, `error`, `recovered`;
+  - coarse error classification only (`auth`, `rate_limit`, `network`, `not_found`, `conflict`, `server`, `unknown`);
+  - duration + bounded safe details only;
+  - non-blocking telemetry transport; telemetry failure never fails gameplay;
+  - client release hint via `EXPO_PUBLIC_RELEASE_SHA` when configured.
+- Added `app/api/telemetry+api.ts`:
+  - strict Zod schema rejects unknown fields instead of silently accepting them;
+  - 2 KiB payload hard cap;
+  - writes a single structured JSON log shape `type=akher_kheit.gameplay`;
+  - canonical release is server-side `VERCEL_GIT_COMMIT_SHA` (or `RELEASE_SHA` fallback), so client metadata cannot spoof the deployed release.
+- Refactored active room creation in `app/create.tsx` through observed `createRoomV3` in `lib/game.ts`.
+- Instrumented active `join`, `vote`, `resolve`, `start/generation`, and reconnect-retry/failure paths in `lib/game.ts`.
+- Added `scripts/qa/observability-contract.mjs` checking critical event coverage, active create-path wiring, strict endpoint/size bound/release correlation, and a forbidden sensitive-field list including room code/id, nickname, player IDs, tokens, story title, solution, clues, theme and prompt.
+- Added `npm run qa:observability` and made CI `validate` run it.
+- Added `docs/operations/OBSERVABILITY.md` with event semantics, privacy contract, release correlation, failure behavior, Vercel query shape, and current abuse limitation.
 
 ### Commits
-- `38214755af36d3750bf541148bf098983e031e0f` — add read-only release preflight.
-- `f9d004551aa3cf32f8d0184509df44f4ca8f7965` — deterministic preflight contract tests.
-- `e4f9e4952c2bb5cc90b705191bc538549ed72498` — expose release scripts.
-- `faf45fa35d52e8ada409c9d72e09cfdc4fd3056a` — run preflight contract in CI.
-- `0a134667e07ab8c9d3f60b32b9dc53520dd2c604` — gate Vercel source artifact on exact-SHA preflight.
-- `2b18e6c903a78ecf4252f249312f352162f19df9` — add release runbook.
-- `034006b210a95ec4b9925984d4f66171f3d9c81f` — align README with production Vercel truth.
+- `06d25c8828e73cd86e5423b0e0251afc2e9cb2c9` — add privacy-safe gameplay telemetry client contract.
+- `8c97e9d97af4a04abf77b045e6d703ca98a5ac81` — add strict server telemetry sink.
+- `b5d5bf836a78d485365e095e94474bd2e626eec7` / `8344fa81783f88df4349550a45d8301a4bd4d83d` — instrument gameplay operations and centralize current `create_room_v3` path.
+- `c3f2a2901092ab3d2d4214ef7c2445ac3e45aa58` — route Create UI through observed create path.
+- `b41255527760ffca7a5151599258dc13c137b8c5` — emit correlated generation signal with case start.
+- `00cfffe25f4fd2da25e6658c89595c99fdcb841e` — add observability privacy/coverage contract.
+- `587eca91fc8dc494df1c2d7914c16f8b260f7aac` — expose observability QA script.
+- `198e8f9c7a489ec57b1fbb8d6373b9bb232a058d` — run observability contract in CI.
+- `ae3e14569b21dfc916702ebcc1c36dd24f70311c` — document production observability contract.
 
 ### Checks / test results
-- Starting checkpoint commit `2d491bdb222da744d4303b277c2eb2b9dfad4867`: `validate` completed/success ✅ and `qa` completed/success ✅.
-- Preflight implementation was syntax-checked and its deterministic fixtures were executed during the session before repository write: Green fixture PASS; failed `qa` blocked; missing migration blocked; unexpected production migration blocked.
-- On final implementation SHA `034006b210a95ec4b9925984d4f66171f3d9c81f`, both GitHub checks had started and were `in_progress` when inspected. Therefore this session does **not** mark the new release tooling deploy-safe yet.
-- This handoff commit itself will trigger normal main checks after write; inspect them first next session.
+- Starting handoff commit `bb5363e1d137dd7c2125f83aa0463935f457f714`: `validate` completed/success ✅ and `qa` completed/success ✅.
+- The deterministic observability contract is wired into `validate`; it is designed to fail if critical event wiring disappears or forbidden sensitive fields are added to the telemetry API.
+- At the last pre-handoff inspection, commit `198e8f9c7a489ec57b1fbb8d6373b9bb232a058d` had both `validate` and `qa` in progress, and later documentation SHA `ae3e14569b21dfc916702ebcc1c36dd24f70311c` had both checks queued.
+- This handoff commit itself will trigger normal checks. Inspect the latest-main checks first next session. Do not infer deploy safety while they are pending.
 
 ### Newly discovered bugs / risks
-- The guarded workflow requires a repository Actions secret named `SUPABASE_PRODUCTION_DB_URL`. Repo tooling cannot prove that secret is configured until the workflow is run; missing secret fails closed before migration comparison.
-- Vercel Git integration is still not enabled/documented as active. The runbook deliberately standardizes the current path around an exact-SHA guarded artifact until Git integration is intentionally configured and verified.
-- `.eas/workflows/deploy.yml` still exists for Expo-related workflow history; README/runbook now explicitly state it is not authoritative production web release path. Do not infer that file proves a production EAS deployment path.
-- No production DB connection was used in this session, so current parity beyond Session 34 was not reasserted; the new tool exists to verify it at release time.
+- The telemetry endpoint is intentionally public and low-data. It can still receive anonymous request churn; do not add identity/room data to solve that. The correct next perimeter is bounded abuse protection at the request/anonymous-identity layer.
+- `EXPO_PUBLIC_RELEASE_SHA` is optional, so `clientRelease` can be `unknown`. Canonical production correlation remains server-side Vercel SHA; future release packaging may set the client value for richer correlation.
+- Routine successful snapshot/realtime refreshes are deliberately not logged to avoid high-volume noise. Current reconnect evidence is recovery-after-retry or terminal failure, not every successful refresh.
+- This session did not deploy the new telemetry endpoint, so there is no claim yet that production is emitting these events.
 
 ### Deploy-safety status
-**Not deploy-safe yet for Session 36 changes.** No Production deployment or migration occurred. Final implementation checks were still running when inspected. A future production release must satisfy both Green checks for the exact release SHA, successful read-only migration parity preflight, and an explicit deploy-safe handoff entry.
+**Not deploy-safe yet for Session 37 changes.** No Production deployment or migration occurred. Final implementation/documentation checks were still queued/running at handoff time. Before any deployment, require latest exact-SHA `validate` + `qa` Green, release preflight/migration parity Green, and a later explicit deploy-safe handoff decision.
 
 ### Roadmap impact
-Release safety moved from convention/documented evidence to a repository-enforced fail-closed package gate. The next highest priority from Session 35 remains Production observability because no gameplay failure displaced it.
+Production observability moved from ad-hoc path-specific logging to one privacy-safe structured vocabulary with release correlation and CI-enforced field constraints. No core/full-game priority was displaced. Per the Session 35 checkpoint ordering, the next launch-safety risk is anonymous identity/request churn rather than AI feature expansion.
 
 ## Backlog / roadmap
 - [x] Core/full-game 4–10 stable.
@@ -130,7 +132,7 @@ Release safety moved from convention/documented evidence to a repository-enforce
 - [x] Production restore/parity + Solo/AI Players rollout + live smoke.
 - [x] Checkpoint: launch-safety prioritization.
 - [x] Release parity + Vercel deployment guardrails + README/runbook truth.
-- [ ] Production observability/error telemetry on critical paths.
+- [x] Production observability/error telemetry implementation (checks pending at Session 37 handoff).
 - [ ] Anonymous-identity churn / public-launch abuse perimeter.
 - [ ] AI Players snapshot identity + browser/live UX evidence; then decide LLM discussion scope.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
@@ -139,4 +141,4 @@ Release safety moved from convention/documented evidence to a repository-enforce
 **Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-أولًا افحص checks الخاصة بآخر handoff/main commits من Session 36. إذا ظهر failure حقيقي مرتبط بالـrelease guardrails، أصلح أول failure meaningful فقط. إذا أصبحت Green، نفّذ **Production observability vertical slice** واحدًا: structured privacy-safe error/event telemetry للمسارات الحرجة (create/join/start/generation/vote/resolve/reconnect) مع release correlation واختبارات/verification مناسبة، بدون تسريب secrets أو case solution وبدون Production deployment إلا بعد handoff deploy-safe صريح.
+أولًا افحص checks الخاصة بأحدث Session 37 handoff/main SHA. إذا ظهر failure حقيقي مرتبط بالـobservability slice، أصلح أول failure meaningful فقط. إذا أصبحت Green، نفّذ **Anonymous-identity churn / public-launch abuse perimeter vertical slice** واحدًا: اختَر أقل contract يحد bypass عبر إنشاء anonymous identities جديدة على create/join/telemetry/generation بدون تخزين PII أو التأثير على gameplay fairness، مع deterministic regression/E2E مناسب وبدون Production migration/deploy إلا بعد Green + deploy-safe صريح.
