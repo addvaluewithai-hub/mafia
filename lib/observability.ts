@@ -55,6 +55,14 @@ export function emitGameplayTelemetry(payload: Omit<GameplayTelemetryPayload, 'r
   }).catch(() => undefined);
 }
 
+function emitOperationResult(payload: Omit<GameplayTelemetryPayload, 'release'>) {
+  emitGameplayTelemetry(payload);
+  // Case start currently owns generation + install as one server transaction. Emit
+  // both names so production evidence can distinguish the UX milestone now and the
+  // generation pipeline later without exposing room/player/story data.
+  if (payload.event === 'start') emitGameplayTelemetry({ ...payload, event: 'generation' });
+}
+
 export async function observeGameplayOperation<T>(
   event: GameplayTelemetryEvent,
   operation: () => Promise<T>,
@@ -66,10 +74,10 @@ export async function observeGameplayOperation<T>(
   try {
     const result = await operation();
     const successDetail = typeof options?.successDetail === 'function' ? options.successDetail(result) : options?.successDetail;
-    emitGameplayTelemetry({ event, outcome: 'success', durationMs: Date.now() - startedAt, ...(successDetail ? { detail: successDetail } : {}) });
+    emitOperationResult({ event, outcome: 'success', durationMs: Date.now() - startedAt, ...(successDetail ? { detail: successDetail } : {}) });
     return result;
   } catch (error) {
-    emitGameplayTelemetry({ event, outcome: 'error', durationMs: Date.now() - startedAt, errorClass: classifyTelemetryError(error) });
+    emitOperationResult({ event, outcome: 'error', durationMs: Date.now() - startedAt, errorClass: classifyTelemetryError(error) });
     throw error;
   }
 }
