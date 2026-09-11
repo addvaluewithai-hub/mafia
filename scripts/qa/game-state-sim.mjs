@@ -144,14 +144,14 @@ function runScenario(playerCount, iteration) {
 }
 
 const results = [];
-for (const count of [5, 6, 7]) {
+for (const count of [4, 5, 6, 7]) {
   for (let i = 1; i <= 20; i += 1) results.push(runScenario(count, i));
 }
 
 const report = {
   ok: true,
   simulations: results.length,
-  playerCounts: [5, 6, 7],
+  playerCounts: [4, 5, 6, 7],
   assertions: [
     'Boss can vote while retaining host capability',
     'Tie clears votes and reopens the same round',
