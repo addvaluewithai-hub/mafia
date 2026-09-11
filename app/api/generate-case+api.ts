@@ -258,6 +258,20 @@ export async function POST(request: Request) {
       return Response.json({ error: 'عدد اللاعبين لازم يكون من 4 لـ12.' }, { status: 400, headers: corsHeaders() });
     }
 
+    const { data: generationSlot, error: generationSlotError } = await supabase.rpc('claim_case_generation_slot', {
+      p_code: roomCode,
+    });
+    if (generationSlotError) {
+      return Response.json({ error: errorMessage(generationSlotError) }, { status: 500, headers: corsHeaders() });
+    }
+    if (!generationSlot?.allowed) {
+      const retryAfterSeconds = Math.max(1, Number(generationSlot?.retryAfterSeconds ?? 20));
+      return Response.json(
+        { error: `استنى ${retryAfterSeconds} ثانية قبل ما تطلب قضية AI جديدة.`, retryAfterSeconds },
+        { status: 429, headers: { ...corsHeaders(), 'Retry-After': String(retryAfterSeconds) } },
+      );
+    }
+
     const mafiaCount = mafiaCountFor(playerCount);
     const validator = schemaFor(playerCount, mafiaCount);
     const ai = new GoogleGenAI({ apiKey: geminiKey });
