@@ -10,82 +10,82 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 معروف قبل أحدث CI repair.
-- Identity/story: gender + caseRole + nickname-only identity + curated/AI semantic roles كانت Green قبل Session 37 refactor.
-- Curated library: قصتان لكل عدد 4–10؛ 11–12 AI-only؛ 13–15 غير مستهدفة حاليًا.
-- Solo/AI Players MVP live in Production.
-- آخر production DB evidence من Session 34: Supabase كان `ACTIVE_HEALTHY` ومهاجر حتى `20260911180000_ai_players_mvp`; لا نفترض parity مستقبلية بدون preflight.
-- Production web الحالي Vercel. آخر deployment durable evidence من Session 34؛ لا يوجد Production deploy في Sessions 35–38.
-- Session 36 release guardrails handoff `bb5363e1d137dd7c2125f83aa0463935f457f714` أصبح `validate` + `qa` Green.
-- Session 37 observability handoff `e5b6a4d01b7b944b54a1157730f067d313be76c8`: `validate` Green لكن `qa` failed عند `Gender UI RPC contract`.
-- Session 38 أصلح contract regression الناتج عن نقل create RPC من الشاشة إلى `createRoomV3`; latest repair checks pending.
+- أحدث `main` قبل هذا checkpoint: `62509fd60dfab0769c648ed304925979dcb9c42c` (`docs: record gender contract CI repair`).
+- latest `main` checks: `validate` completed/success ✅ و`qa` completed/success ✅؛ Session 38 gender-contract repair أصبح Green بالكامل.
+- Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 gameplay معروف في أحدث Green QA.
+- Identity/story: nickname-only visible identity + gender wording + caseRole + curated/AI semantic-role contracts Green.
+- Curated library: 14 قضية، قصتان لكل عدد 4–10؛ fairness review الحالية PASS لكل القضايا بعد الإصلاحات الموثقة. 11–12 AI-only؛ 13–15 غير مستهدفة حاليًا.
+- Solo/AI Players MVP live in Production، لكن snapshot identity + browser/live UX evidence ما زال gap قبل أي توسع AI discussion.
+- AI generation abuse guard وroom create/join abuse guard موجودان حاليًا per authenticated identity فقط؛ churn عبر إنشاء anonymous identities جديدة ما زال launch-risk حقيقيًا.
+- Production observability code موجود مع privacy-safe allowlist وrelease correlation، لكنه غير مثبت كـdeployed runtime في handoff حالي.
+- آخر Production DB evidence من Session 34: Supabase كان `ACTIVE_HEALTHY` ومهاجر حتى `20260911180000_ai_players_mvp`; لا نفترض parity مستقبلية بدون release preflight.
+- Production web الحالي Vercel؛ لا يوجد Production deploy موثق بعد Sessions 35–38.
 
 ## Roadmap status
-- [x] Core/full-game 4–10 stable قبل latest CI repair.
+- [x] Core/full-game 4–10 stable.
 - [x] Identity/story contract + curated 4–10 + fairness + packs.
 - [x] Same-room rematch.
-- [x] AI generation abuse protection.
-- [x] Room creation/join abuse protection + legacy Boss regression repair.
+- [x] AI generation abuse protection per authenticated identity.
+- [x] Room creation/join abuse protection per authenticated identity + legacy Boss regression repair.
 - [x] Solo/AI Players MVP + relevant E2E + Production rollout.
-- [x] Launch-safety checkpoint.
 - [x] Release parity + Vercel deployment guardrails.
 - [x] Production observability implementation.
-- [ ] Session 38 gender contract repair must become Green before new scope.
+- [x] Session 38 gender contract repair Green.
 - [ ] Anonymous-identity churn / public-launch abuse perimeter.
+- [ ] Fresh production parity + guarded release evidence for current launch-safety code; observability runtime remains undeployed until explicitly released.
 - [ ] AI Players snapshot identity + browser/live UX evidence; then decide LLM discussion scope.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 38 — 2026-09-11 — Gender UI contract repair after observability refactor
+## Session 39 — 2026-09-11 — Launch-safety checkpoint after Sessions 36–38
 ### Session type
-Delivery/CI-repair — exactly one bounded objective: resolve the first meaningful failing check on latest `main`. No new product feature, abuse-perimeter implementation, Production deploy, migration, or DB write.
+Checkpoint/planning — exactly one bounded checkpoint objective. No product feature implementation, schema migration, Production deploy, or Production DB write.
 
 ### Starting evidence
 - Read `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff from default branch.
-- Starting `main`: `e5b6a4d01b7b944b54a1157730f067d313be76c8` (`docs: record observability CI repair`).
+- Last checkpoint preceded three implementation/repair sessions (36 release guardrails, 37 observability, 38 CI contract repair), so the default 3–4-session checkpoint cadence is due.
+- Starting `main`: `62509fd60dfab0769c648ed304925979dcb9c42c`.
 - `validate`: completed/success ✅.
-- `qa`: completed/failure ❌.
-- Game QA job evidence: TypeScript ✅, Expo doctor ✅, Vote UI authoritative contract ✅, then `Gender UI RPC contract` ❌; all later QA steps were skipped because the job stopped at that failure.
-- Per operating mode, no new anonymous-identity scope was started.
+- `qa`: completed/success ✅.
+- Current Game QA still covers TypeScript, Expo doctor, vote/gender/identity/story contracts, deterministic full-game state sims, local Supabase identity/gender/caseRole/gender-wording E2E, AI-generation abuse guard, room create/join abuse guard, AI Players E2E, full-game RPC E2E 4–10, eliminated Boss admin controls, and rematch E2E.
 
 ### Exact objective
-Repair the failing gender UI QA contract without weakening the gender contract: continue proving that Create renders a gender picker, sends the selected Boss gender through the active UI helper, and that the helper uses `create_room_v3` with `p_boss_gender`; retain join-side proof for `join_room_v2` + `p_gender`.
+Audit what is truly Green after Sessions 36–38 and reset the next 3–4 substantial objectives around launch risk, without forcing another implementation slice during a due checkpoint.
 
-### Reproduction / design finding
-- Session 37 intentionally refactored Create from a direct `supabase.rpc('create_room_v3', ...)` call in `app/create.tsx` to the observed `createRoomV3(...)` helper in `lib/game.ts`.
-- Runtime behavior remained gender-aware: `app/create.tsx` passes `bossGender` into `createRoomV3`; `lib/game.ts` calls `create_room_v3` and maps it to `p_boss_gender: input.bossGender`.
-- `scripts/qa/gender-ui-contract.mjs` was structurally stale: it required the literal RPC and `p_boss_gender: bossGender` to live in `app/create.tsx`, so it failed despite the same semantic contract now crossing the UI/helper boundary.
-- The correct fix is to update the regression test to assert both halves of that boundary, not to delete or bypass the test.
+### Checkpoint findings
+1. **Core/full-game confidence remains Green.** Latest full `qa` completed successfully, so there is no evidence requiring a P0 gameplay repair before launch-safety work.
+2. **Session 38 repair is closed.** The gender UI contract now follows the real UI→helper→RPC boundary and the full downstream QA suite also completed, restoring fresh evidence beyond the previously failing static step.
+3. **Anonymous-identity churn is now the highest practical launch risk.** Existing DB guards key create/join and AI-generation budgets by `auth.uid()`. A user can obtain a new anonymous identity and reset those budgets. Observability explicitly documents public endpoint churn as a separate unresolved objective. The next implementation should add a second server-authoritative, non-PII abuse key/perimeter rather than weakening gameplay or storing nickname/gender/room/story data.
+4. **Production parity is historical, not current release evidence.** The runbook correctly requires exact-SHA `validate` + `qa`, read-only migration parity, preflight, and explicit deploy-safe before release. Current latest Green does not by itself prove Production DB parity or that observability is deployed.
+5. **Story/content status is healthy.** The current human fairness review covers all 14 curated 4–10 cases and concludes PASS; no fixed-cadence rewrite is justified. Story work should react to regression/new-content evidence rather than manufacture activity.
+6. **Curated coverage should stay 4–10 for now.** Two curated cases exist for each count 4–10; the documented review explicitly says expansion beyond 10 is not justified by current evidence.
+7. **AI Players needs evidence before scope expansion.** MVP has E2E and production rollout evidence, but browser/live snapshot identity and UX behavior should be verified before adding LLM discussion or broader bot behavior.
+8. **Technical-debt watch:** static source-contract tests can become location-coupled during refactors. New contracts should prefer semantic boundaries, as fixed in Session 38.
 
 ### Code / database / tests / docs changes
-- Updated `scripts/qa/gender-ui-contract.mjs` to assert:
-  - Create UI uses `createRoomV3`.
-  - Create UI passes `bossGender` and still renders `<GenderPicker value={bossGender}`.
-  - `lib/game.ts` uses `supabase.rpc('create_room_v3'` and sends `p_boss_gender: input.bossGender`.
-  - Neither Create UI nor the helper regresses to `create_room_v2`.
-  - Existing join assertions remain: join picker, `joinRoom(code, nickname, joinGender)`, `join_room_v2`, `p_gender: gender`, and no legacy `join_room` regression.
-- No runtime product code changed in this session.
-- No schema/database change.
-- No test was removed, skipped, weakened, or rewritten to ignore gender wiring; the contract now follows the actual abstraction boundary introduced by observability.
+- Checkpoint only: no runtime code, schema, migration, test, or Production change.
+- Updated this rolling handoff with current Green evidence, launch risks, reordered milestones, and one exact next-session priority.
 
 ### Commits
-- `e8bfed074b49403d7092c67662eee1b8512911ca` — `fix: align gender UI contract with create helper`.
-- This handoff commit records Session 38 evidence and will trigger checks again.
+- This handoff checkpoint commit: `docs: checkpoint launch-safety priorities`.
 
 ### Check/test results
-- Starting SHA `e5b6a4d01b7b944b54a1157730f067d313be76c8`: `validate` success, `qa` failure at exactly `Gender UI RPC contract`.
-- Immediately after repair commit `e8bfed074b49403d7092c67662eee1b8512911ca`, GitHub had not yet registered check runs (`total_count: 0`) at inspection time.
-- Therefore the repair is not yet claimed Green. Next session must inspect checks for latest `main` first and resolve any real remaining failure before new scope.
+- Starting SHA `62509fd60dfab0769c648ed304925979dcb9c42c`: `validate` success ✅ and `qa` success ✅.
+- This docs-only checkpoint commit will trigger checks; inspect them next session before any new implementation and fix any real failure first.
 
 ### Newly discovered bugs / risks
-- Static source-contract tests that assert implementation location rather than semantic wiring are vulnerable to false regressions during safe refactors. Future contracts should cover abstraction boundaries explicitly when helpers own RPC calls.
-- Because Game QA stopped at step 8, this run does not provide fresh evidence for the later full-game/E2E steps on Session 37/38 code. Existing earlier Green evidence remains historical only until latest QA completes.
-- Observability runtime remains undeployed; no Production telemetry claim is made.
+- No new P0 gameplay bug found.
+- Confirmed architectural abuse gap: per-`auth.uid()` quotas do not survive anonymous identity churn.
+- Production observability remains an implementation claim, not a deployed-runtime claim, until an exact-SHA guarded release is explicitly made and recorded.
+- Production DB parity must be re-proven for the release candidate; Session 34 evidence is not sufficient for a future deploy.
 
 ### Deploy-safety status
-**Not deploy-safe.** Latest `main` still requires fresh Green `validate` + full `qa`, release preflight/migration parity, and an explicit later handoff marking the exact release deploy-safe. No Production write occurred.
+**Not deploy-safe for a new Production release from this checkpoint alone.** Core checks are Green, but no fresh release preflight/migration parity was executed for a deployment candidate and no deploy was requested. No Production write occurred.
 
-### Roadmap impact
-No roadmap scope changed. This session consumed the required CI-repair slot and preserved the gender-safe identity contract after the observability refactor. Anonymous-identity churn remains the next product objective only after latest checks are fully Green.
+### Roadmap impact — next 4 substantial objectives
+1. **Anonymous-identity churn / public-launch abuse perimeter** — add the least-identifying practical second abuse boundary across create/join/generation/telemetry, server-authoritative where possible, with deterministic regression/E2E. Do not use nickname, gender, room code, player ID, story text, or mafia assignment as an abuse identity.
+2. **Fresh release readiness for launch-safety stack** — once objective 1 is Green, run exact-SHA read-only preflight/parity and close any production/migration drift; only mark deploy-safe when the handoff records the exact Green candidate. Do not deploy automatically.
+3. **AI Players snapshot identity + browser/live UX evidence** — verify bot identity, refresh/reconnect visibility, Boss add/remove flow, vote resolution, and solo completion in browser/live conditions; repair regressions before considering new AI behavior.
+4. **AI Players scope decision checkpoint** — based on objective 3 evidence, decide whether LLM discussion adds enough product value without harming latency/cost/fairness. Keep 11–15 and unrelated polish deferred unless evidence changes priorities.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص checks لأحدث `main` أولًا. إذا ظهر أي failure حقيقي، أصلح أول failure meaningful فقط. إذا أصبح `validate` + **full `qa`** Green، نفّذ **Anonymous-identity churn / public-launch abuse perimeter vertical slice** واحدًا: أقل contract عملي يحد bypass عبر إنشاء anonymous identities جديدة على create/join/telemetry/generation بدون تخزين PII أو التأثير على gameplay fairness، مع deterministic regression/E2E مناسب، وبدون Production migration/deploy إلا بعد Green + deploy-safe صريح.
+افحص checks لأحدث `main` أولًا. إذا ظهر failure حقيقي، أصلح أول failure meaningful فقط. إذا بقي `validate` + full `qa` Green، نفّذ **Anonymous-identity churn / public-launch abuse perimeter** كـvertical slice واحد: second abuse boundary غير معتمد على `auth.uid()` وحده، لا يخزن PII أو gameplay identity، يغطي create/join/generation/telemetry بقدر عملي server-authoritative، ويضيف deterministic regression/E2E. لا Production migration/deploy إلا بعد Green + parity/preflight + `deploy-safe` صريح لاحقًا.
