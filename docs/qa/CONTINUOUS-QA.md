@@ -13,7 +13,7 @@
 - Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 معروف.
 - Identity/story contract: gender + caseRole + nickname-only identity + curated/AI semantic roles Green. Legacy audit: `character_name` compatibility-only و`character_bio` runtime-required.
 - Curated library: قصتان لكل عدد 4–10، fairness review مكتمل، packs: `home-social`, `stage-events`, `work-records`. 11–12 AI-only؛ 13–15 غير مستهدفة.
-- Production parity blocked: Supabase `bwxgzcppxdrfcaorobpm` rechecked read-only في Session 31 وما زال `INACTIVE`. لا restore/write/migration بدون تصريح صريح.
+- Production parity كان blocked لأن Supabase `bwxgzcppxdrfcaorobpm` كان `INACTIVE` عند آخر read-only check قبل طلب المستخدم deployment صريح.
 - Known non-blocking drift: README roadmap متأخر.
 
 ## Recent milestones
@@ -28,6 +28,7 @@
 - Session 30 AI Generation Abuse Protection: Green.
 - Session 31 room/join abuse protection: initial Game QA failure بسبب legacy Boss-row regression.
 - Session 32 repair: `24c78e3bf09bad67dac9bc3f21461196f9f83b0c` أصبح `validate` ✅ و`qa` ✅.
+- Session 33 Solo/AI Players MVP: code + local Supabase E2E + Game QA integration.
 
 ## Session 32 — 2026-09-11 — Repair legacy Boss identity regression
 ### Session type
@@ -78,19 +79,20 @@ Delivery feature — explicit product request من المستخدم قدّم ه�
 
 ### Checks / evidence
 - prerequisite Session 32 repair: `validate` ✅ و`qa` ✅.
-- عند آخر فحص لـ`a84f9008...`: GitHub لم يكن قد أنشأ check runs بعد (`0 check runs`). لذلك لا توجد دعوى Green للتغيير الجديد بعد.
+- `a84f900804440d716f783c402e2a877a5b91e3c4`: `validate` completed/success ✅ وGame QA `qa` completed/success ✅.
+- AI-player local Supabase E2E كان جزءًا من Game QA الناجحة، لذلك DB/gameplay contract مثبت على clean local stack.
 
 ### Newly discovered bugs / risks
 - AI players MVP لا ينتج نقاشًا نصيًا/صوتيًا بعد؛ الذكاء الحالي محدود لاختيار التصويت من الأدلة المكشوفة. هذا مقصود كـMVP وليس ادعاء LLM-agent كامل.
 - bot identity يعتمد حاليًا على prefix `AI ` في الاسم للعرض؛ `is_bot` لم يُضف بعد إلى `room_snapshot` UI contract. الـDB contract نفسه صريح وآمن.
 - solo screen يستخدم قضية 4-player واحدة (`last-tray`) كبداية سريعة؛ اختيار القضية/عدد bots لاحقًا يمكن أن يكون slice منفصل بعد ثبوت الـMVP.
-- Production ما زالت inactive، لذلك المستخدم لن يقدر يجرب feature على production قبل restore/migration/deploy مصرح به.
+- Production Supabase كان inactive؛ deployment يتطلب restore + migration parity قبل اعتبار feature usable على live.
 
 ### Deploy-safety status
-**Not deploy-safe.** local E2E الجديد والـfull Game QA لم يثبتا Green بعد، وProduction inactive. لم يحدث Production restore/deploy/migration/data write.
+**Deploy-safe for the exact Solo/AI Players MVP change after production database parity is restored.** Relevant `validate` وGame QA كلاهما Green على `a84f9008...`، بما فيها AI-player local Supabase E2E. المستخدم طلب صراحةً Production deployment. المسموح في هذا rollout هو فقط: restore لنفس Supabase project إذا كان ما زال inactive، تطبيق migrations الناقصة من repo بالترتيب دون أي ad-hoc data mutation، ثم deploy للـVercel project `akher-kheit` والتحقق من live readiness. لا تغييرات product إضافية ضمن هذا rollout.
 
 ### Roadmap impact
-Solo/AI Players أصبح feature MVP فعلي بدل فكرة فقط. قبل توسيعه إلى LLM discussion أو أعداد أكبر يجب أولًا إثبات DB/full-game E2E Green ثم عمل checkpoint لأن cadence كان مستحقًا أصلًا.
+Solo/AI Players أصبح feature MVP فعلي ومؤهل للنشر بعد parity. بعد rollout يرجع next product session إلى checkpoint المستحق قبل توسيع bots إلى LLM discussion أو scope جديد.
 
 ## Backlog / roadmap
 - [x] Core/full-game 4–10 stable.
@@ -98,13 +100,13 @@ Solo/AI Players أصبح feature MVP فعلي بدل فكرة فقط. قبل ت�
 - [x] Same-room rematch.
 - [x] AI generation abuse protection.
 - [x] Room creation/join abuse protection + legacy Boss regression repair.
-- [ ] Solo/AI Players MVP: implementation committed؛ deploy safety معلقة على Game QA الجديدة.
-- [ ] Production parity blocked while Supabase is `INACTIVE`.
-- [ ] بعد checkpoint: قيّم AI discussion/reasoning UX مقابل launch-safety/observability، ولا توسع bots عشوائيًا قبل ثبوت الـMVP.
+- [x] Solo/AI Players MVP implementation + relevant E2E Green.
+- [ ] Production parity/rollout: restore inactive Supabase if required, apply repo migrations in order, deploy Vercel, smoke-check live.
+- [ ] بعد rollout: checkpoint يقيم AI discussion/reasoning UX مقابل launch-safety/observability.
 - [ ] 11–15 فقط إذا gameplay/UX evidence لاحقًا يبرر.
 
 ## اتجاه المنتج
 **Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص أولًا `validate` وGame QA لـ`a84f900804440d716f783c402e2a877a5b91e3c4`. إذا ظهر failure حقيقي في AI Players أو regression موجود، أصلح أول failure meaningful فقط. إذا Green بالكامل، نفّذ **Checkpoint/Planning session فقط**: قيّم Solo/AI MVP وfull-game/security coverage، ثم قرر هل أعلى milestone تالٍ هو AI discussion agents أم Production/launch-safety/observability، مع 3–4 أهداف مرتبة وبدون implementation جديد في نفس checkpoint.
+أكمل Production rollout المحدد أعلاه فقط: restore/parity migrations إن لزم → Vercel deploy → smoke/readiness check. بعد نجاحه، الجلسة التالية تكون Checkpoint/Planning فقط قبل أي feature جديدة.
