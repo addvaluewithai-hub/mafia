@@ -15,8 +15,9 @@
 - [x] vote gating + server-authoritative `phase/canVote` + UI guard.
 - [x] reconnect: before/after cast → tie reset → resolve → next round.
 - [x] eliminated Boss admin controls + eliminated-player vote rejection.
-- [x] Session 20 أثبت deterministic + local Supabase full-game RPC coverage لـ4/5/6/7؛ prerequisite `b34067d54f4febb7a0dedab74e20d38fc8c9cf08` انتهى `validate` ✅ و`qa` ✅.
-- [ ] Session 21 يوسّع نفس full-game confidence لـ4–10؛ checks على آخر code commit `c3eb880e8a158545e71080dd5e91dc7a6f55ac12` كانت بدأت وما زالت غير مكتملة عند تحديث هذا الملف.
+- [x] deterministic + local Supabase full-game RPC coverage لـ4–10 لاعبين.
+- [x] Session 21 code commit `c3eb880e8a158545e71080dd5e91dc7a6f55ac12`: `validate` ✅ و`qa` ✅.
+- [x] Session 21 handoff commit `4beafc3f0b96f9d7ceaf02c97013bdadb0f82d4c`: `validate` ✅ و`qa` ✅.
 - [ ] Production DB parity blocked لأن Production Supabase كان `INACTIVE`; لا write/migration قبل read-only parity + smoke plan أو تصريح restore صريح.
 
 ## Identity / story contract
@@ -25,7 +26,7 @@
 - [x] gender-aware `install_case` بعد player shuffle، بدون تغيير mafia selection.
 - [x] AI generator + shared TypeScript contract للـsemantic role/bio + male/female variants.
 - [x] curated presets 4–10 تستخدم semantic roles + gender-aware wording.
-- [ ] legacy DB/snapshot `character_name`/`character_bio` موجودة للتوافق؛ لا حذف بدون compatibility audit.
+- [ ] legacy DB/snapshot `character_name`/`character_bio` compatibility debt لم يُحسم بعد؛ لا حذف بدون audit ومigration-safe plan.
 
 ## Current curated library
 - 4: `last-tray`, `balcony-key`.
@@ -35,16 +36,17 @@
 - 8: `rooftop-envelope`, `backstage-pass`.
 - 9: `gallery-ledger`, `garden-locker`.
 - 10: `midnight-menu`, `archive-seal`.
-- 11–12: لا curated support معلن؛ AI-only حتى content + matching E2E في milestone لاحق إذا تقرر دعمهما.
+- 11–12: AI-only؛ لا curated support معلن.
+- 13–15: غير مستهدفة حاليًا؛ لا توسع بدون gameplay/UX evidence.
 
 ## QA coverage
 - vote/gender/join/player-card/generated-case contracts.
 - caseRole + gender-aware install E2E.
 - story critic + machine-readable lexical fairness baseline + curated identity integrity guard.
 - `curated-player-count-contract.mjs`: exact 2 cases لكل 4–10، catalog/server/API sync، no unrelated-count fallback، و11–12 غير معلنين.
-- deterministic full-game simulations في Session 21 أصبحت 140: 20 لكل 4/5/6/7/8/9/10.
-- local Supabase full-game RPC E2E في Session 21 يستهدف 4/5/6/7/8/9/10.
-- eliminated Boss admin E2E + six-player tie/reconnect regression يظلان ضمن suite.
+- deterministic full-game simulations: 140 complete games، 20 لكل 4/5/6/7/8/9/10.
+- local Supabase full-game RPC E2E: 4/5/6/7/8/9/10.
+- eliminated Boss admin E2E + six-player tie/reconnect regression ضمن suite.
 
 ## Recent sessions
 ### Session 18 — Story Quality Baseline
@@ -54,80 +56,60 @@
 `8bb4e2b25cfe0132df78be670cdf6d4c5ab068a0`; presets 5/6/7 migrated إلى semantic/gender-aware contract؛ `validate` ✅ `qa` ✅.
 
 ### Session 20 — Curated 4–7 coverage
-Final code `b34067d54f4febb7a0dedab74e20d38fc8c9cf08`; أضاف قصتين لـ4، exact-count registry/reference behavior، 80 deterministic simulations، وlocal RPC E2E لـ4/5/6/7. **Session 21 أثبت prerequisite: `validate` ✅ `qa` ✅.**
+`b34067d54f4febb7a0dedab74e20d38fc8c9cf08`; أضاف curated 4-player coverage و80 deterministic simulations وlocal RPC E2E لـ4–7؛ `validate` ✅ `qa` ✅.
 
-## Session 21 — 2026-09-11 — Curated 8–10 expansion
+### Session 21 — Curated 8–10 expansion
+`c3eb880e8a158545e71080dd5e91dc7a6f55ac12`; أضاف 6 curated cases لـ8/9/10، catalog/server/API/UI support، 140 deterministic simulations، وlocal RPC E2E لـ4–10؛ `validate` ✅ `qa` ✅.
+
+## Session 22 — 2026-09-11 — Checkpoint after Story/Curated milestone
 ### Session type
-Delivery — vertical slice واحد: curated content + selection + matching automated full-game coverage لـ8/9/10 قبل اعتبارهم supported.
+Checkpoint / Planning فقط — لا feature implementation.
 
 ### Starting evidence
-- قرأنا `AGENTS.md` → `QA-OPERATING-MODE.md` → هذا handoff من default branch.
-- main وقت البداية: `bd3ea0ea94d9c92911c07e81760b40ea4ca0ef32`.
-- prerequisite Session 20 `b34067d...`: `validate` ✅ و`qa` ✅.
-- Production parity blocker لم يُلمس.
+- قُرئ `AGENTS.md` ثم `QA-OPERATING-MODE.md` ثم هذا handoff من default branch.
+- main عند البداية كان `4beafc3f0b96f9d7ceaf02c97013bdadb0f82d4c`.
+- Session 21 code commit `c3eb880...`: `validate` ✅ `qa` ✅.
+- Session 21 handoff commit `4beafc3...`: `validate` ✅ `qa` ✅.
+- لا P0 جديد ظهر في CI أو handoff.
 
-### Reproduction / design finding
-- قبل الجلسة catalog/server/API فيها curated 4–7 فقط، والـcreate UI تحول 8–12 تلقائيًا إلى AI.
-- deterministic simulator وlocal RPC full-game suite يقفان عند 7 لاعبين.
-- mafia count contract الحالي هو 2 للـ8/9 و3 للـ10، فالمحتوى الجديد لازم يطابق ذلك.
+### Checkpoint findings
+1. **Core Stable confidence قوي حاليًا**: full-game deterministic + local RPC E2E يغطي 4–10، مع tie/reconnect/elimination/Boss/winner paths محمية.
+2. **Identity & Story Contract milestone عمليًا مستقر** للruntime الحالي: nickname identity + semantic roles + gender-only wording موجودة في AI والcurated presets.
+3. **Curated library milestone الأساسي تحقق لـ4–10** بواقع قصتين لكل عدد، لكن جودة القصص الكبيرة 8–10 لم تحصل بعد على semantic/human fairness review عميق مماثل لما نحتاجه قبل feature expansion.
+4. **Story critic الحالي baseline deterministic وليس حكمًا semantic كاملًا**؛ لا يكفي وحده لاكتشاف clue منطقي يكشف المافيا مبكرًا أو ambiguity غير عادلة بدون explicit lexical signal.
+5. **Registry duplication** بين curated server registry ومسار API ما زالت technical debt؛ regression يمنع drift لكنه لا يزيل المصدر المكرر.
+6. **Legacy DB identity fields** (`character_name` / `character_bio`) ما زالت compatibility debt؛ حذفها يحتاج audit قبل أي migration.
+7. **Production parity** ما زالت blocker منفصلة؛ لا ينبغي تعطيل roadmap المحلي بسببها، ولا ينبغي لمس Production بدون read-only verification/restore authorization.
+8. لا يوجد دليل حالي يبرر curated expansion لـ11–15؛ الأفضل تثبيت جودة 4–10 ثم الانتقال لfeatures ذات قيمة أعلى.
 
-### What changed
-- أضيفت 6 قضايا curated جديدة، قصتان لكل 8 و9 و10 لاعبين:
-  - 8: `rooftop-envelope`, `backstage-pass`.
-  - 9: `gallery-ledger`, `garden-locker`.
-  - 10: `midnight-menu`, `archive-seal`.
-- كل قضية تستخدم semantic `role` + neutral `bio` + complete `roleByGender`/`bioByGender`، بدون fictional names، و4 clues.
-- 8/9 تستخدم 2 mafia indexes؛ 10 تستخدم 3، مستقلين عن gender.
-- `lib/server-stories/index.ts`, `lib/story-catalog.ts`, و`api/case-start.ts` أصبحت exact-count curated 4–10.
-- create UI يعرض preset selection لـ8/9/10 ويصف curated range بدقة كـ4–10، بينما 11–12 يظلان AI-only.
-- `curated-player-count-contract.mjs` يفرض 14 case بالضبط: قصتان لكل عدد 4–10، ويمنع إعلان 11/12 قبل E2E خاص بهما.
-- deterministic simulator أصبح 140 complete games: 20 لكل عدد 4–10.
-- local Supabase RPC E2E أصبح يشغّل full game لكل عدد 4–10 مع بقاء tie/reconnect special regression على 6 لاعبين.
+### Next roadmap — ordered vertical slices
+1. **Deep Curated Story Fairness Review (14 cases)** — أعلى أولوية تالية. اعمل semantic audit لكل القضايا 4–10: suspects×clues matrix، early-reveal risk، plausible alternative suspects، clue escalation، Egyptian naturalness، وعدّل القصص والcritic/regressions حيث يوجد defect حقيقي. الهدف ليس rewrite شكليًا بل إثبات أن المكتبة الحالية عادلة وممتعة قبل features جديدة.
+2. **Single Source of Truth for Curated Registry** — أزل duplication بين server/API registries مع contract tests تضمن exact-count lookup وعدم كسر Expo/server paths.
+3. **Legacy Identity Compatibility Audit** — تتبع `character_name`/`character_bio` عبر schema/migrations/snapshots/runtime، وحدد migration-safe path: إزالة، alias، أو إبقاء موثق. لا production migration ضمن هذا slice إلا إذا parity/authorization تسمح.
+4. **First New Gameplay/Product Feature Slice** — بعد إغلاق 1–3 أو إثبات أن 2/3 غير blocking، اعمل product-value review سريع واختر feature واحدة end-to-end مبنية على core الحالي، مع full-game regressions وعدم توسيع player counts تلقائيًا.
 
-### Commits
-- `46bc72446cebdcea104e824a129343ec88975ecd` — 8-player Rooftop Envelope.
-- `4f7a839271c6e67e1d5c9d0da5ebccda9942b25a` — 8-player Backstage Pass.
-- `9b686b654958b56a707153d34d3148818325e06a` — 9-player Gallery Ledger.
-- `8ab1d8a01b00efd47c1caeee5bdbcee9d1560660` — 9-player Garden Locker.
-- `28516dad998da45958a7450d034bcd59da6537b9` — 10-player Midnight Menu.
-- `f00a1a554640209d1042c6b6657f7972cef8d0aa` — 10-player Archive Seal.
-- `a01f4a5b6969cb768f1416de0bc5b52826f9f18c` — server registry 4–10.
-- `c5876198be57e4e3990498c4a07098c3abcf428a` — catalog 4–10.
-- `32c7a10d102729b74700e4a26fff24ba1293d20f` — case-start API registry 4–10.
-- `0426a3fc8e7e970238a8584c944afd748e04e24f` — player-count contract 4–10.
-- `646e27a27d03c9464f4abdc5c6b2798fac7f5dd9` — 140 deterministic simulations.
-- `3a3c9dd101b5e0e13b43328d6e5958d5a924118d` — create UI curated range 4–10.
-- `c3eb880e8a158545e71080dd5e91dc7a6f55ac12` — local RPC E2E 4–10.
-
-### Evidence / checks — latest inspected state
-- prerequisite `b34067d...`: `validate` ✅ `qa` ✅.
-- on `c3eb880e8a158545e71080dd5e91dc7a6f55ac12`, `validate` and `qa` were queued/starting at last inspection; no failure was visible yet.
-- therefore Session 21 is **not deploy-safe yet** until both complete Green.
-
-### Newly discovered risks / technical debt
-- curated registry definition remains duplicated between `lib/server-stories/index.ts` and `api/case-start.ts`; regression prevents drift but does not remove duplication.
-- story critic lexical fairness remains a deterministic baseline, not a substitute for deeper human semantic fairness review, especially with the six new larger-player stories.
-- 11–12 remain supported by AI flow only; do not describe them as curated.
+### Roadmap decision
+- لا نوسع curated counts فوق 10 الآن.
+- Story Quality لم تعد مجرد "content cleanup"؛ المرحلة التالية تبدأ semantic fairness hardening للمكتبة كاملة، ثم technical debt التي تقلل drift، وبعدها نفتح New Features.
+- Core/full-game suite تظل gate لأي feature جديد.
 
 ### Production safety
-No Production deploy, restore, migration, or DB write. Production parity remains blocked.
+- لم يحدث deploy أو restore أو migration أو Production DB write.
+- Production parity ما زالت blocked وغير متحققة.
+- Session 21 runtime/content changes Green محليًا وCI، لكن هذا لا يثبت Production DB parity تلقائيًا.
 
 ## Backlog / roadmap
-- [ ] Close Session 21 only when full `validate` + `qa` on `c3eb880...` are Green; if failure appears, fix the first real failure inside this objective only.
-- [ ] Next session is **Checkpoint/Planning** if Session 21 closes Green: Sessions 18–21 are four implementation slices since Checkpoint 17.
-- [ ] Checkpoint must audit Core Stable, 4–10 full-game confidence, story quality/fairness of the now 14-case library, production parity blocker, registry duplication, legacy DB identity compatibility debt, and decide the next 3–4 substantial objectives before new gameplay features.
-- [ ] Later candidate: deeper semantic/human fairness review for 14 curated cases.
-- [ ] Later candidate: remove duplicated curated registry safely.
-- [ ] Later candidate: legacy DB identity compatibility audit.
-- [ ] 11–15 only if gameplay/UX evidence justifies expansion; do not assume it.
+- [x] Session 21 full `validate` + `qa` Green.
+- [x] Checkpoint 22 بعد أربع implementation sessions.
+- [ ] Deep semantic/human fairness review للـ14 curated cases مع measurable artifact/regression improvements.
+- [ ] Remove duplicated curated registry safely.
+- [ ] Legacy DB identity compatibility audit.
+- [ ] بعدها New Gameplay Feature milestone يبدأ feature واحدة ذات قيمة واضحة end-to-end.
+- [ ] Production parity remains separately blocked.
+- [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
 ## اتجاه المنتج
-**Core Stable → Identity/Story Contract Stable → Story Quality → Curated Case Library → New Gameplay Features → Polish/Launch**.
+**Core Stable → Identity/Story Contract Stable → Story Quality Hardening → Curated Library Stable (4–10) → New Gameplay Features → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-1. افحص full checks لـ`c3eb880e8a158545e71080dd5e91dc7a6f55ac12`.
-2. إذا failure: أصلح أول failure حقيقي فقط داخل Curated 8–10 objective مع regression، ولا تبدأ checkpoint أو feature جديد.
-3. إذا `validate` و`qa` Green: أغلق Session 21 ونفّذ **Checkpoint/Planning session فقط** وفق `QA-OPERATING-MODE.md`.
-4. الـCheckpoint يحدد 3–4 vertical slices التالية؛ لا يضيف feature كبيرة بنفسه.
-5. لا تغيّر mafia assignment بسبب gender.
-6. Production parity blocked ولا يُلمس إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
+نفّذ **Deep Curated Story Fairness Review** كـvertical slice واحد للـ14 curated cases: ابنِ/حدّث semantic suspects×clues evidence لكل قصة، راجع early reveal + plausible alternatives + escalation + Egyptian naturalness، أصلح defects الحقيقية في content والvalidator/critic/tests، وحافظ على mafia counts/assignment semantics وfull-game behavior. لا تبدأ registry cleanup أو legacy DB audit أو feature جديد في نفس الجلسة.
