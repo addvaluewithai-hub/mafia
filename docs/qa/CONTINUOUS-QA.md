@@ -17,7 +17,7 @@
 - [x] eliminated Boss admin controls + eliminated-player vote rejection.
 - [x] deterministic + local Supabase full-game RPC coverage لـ4–10 لاعبين.
 - [x] same-room rematch E2E Green: finish → Boss-only reset → preserved players → clean lobby → fresh second case.
-- [ ] Production DB parity blocked: Supabase project `bwxgzcppxdrfcaorobpm` was last rechecked read-only in Session 28 and was `INACTIVE`; no restore/write/migration بدون تصريح صريح. بعد restore المطلوب أولًا read-only schema/RPC/migration parity + smoke plan.
+- [ ] Production DB parity blocked: Supabase project `bwxgzcppxdrfcaorobpm` rechecked read-only in Session 30 and still `INACTIVE`; no restore/write/migration بدون تصريح صريح. بعد restore المطلوب أولًا read-only schema/RPC/migration parity + smoke plan.
 
 ## Identity / story contract
 - [x] gender + caseRole schema/backend/UI/E2E.
@@ -45,6 +45,7 @@
 - `curated-player-count-contract.mjs`: exact 2 cases لكل 4–10، shared registry/API/Expo path، pack metadata integrity، player-count-first pack filtering، no unrelated-count fallback، و11–12 غير معلنين.
 - deterministic full-game simulations: 140 complete games، 20 لكل 4/5/6/7/8/9/10.
 - local Supabase full-game RPC E2E: 4/5/6/7/8/9/10 + tie/reconnect + eliminated Boss + rematch.
+- AI generation abuse E2E added in Session 30: host-only DB-backed claim, 20s cooldown, 3 attempts / 10 minutes, preset exclusion, private limiter state, both server entrypoints required to enforce HTTP 429.
 - Known non-blocking drift: اسم خطوة full-game في `.github/workflows/game-qa.yml` ما زال يقول 4/5/6/7 رغم أن suite يغطي 4–10؛ README roadmap أيضًا متأخر عن features المنفذة.
 
 ## Recent milestones
@@ -53,55 +54,60 @@
 - Session 23: Deep Curated Story Fairness Review; Green.
 - Sessions 24–25: shared curated registry + QA repair; Green.
 - Session 26: Legacy DB Identity Compatibility Audit; Green.
-- Session 27: Same-room Rematch, code/QA `51183f896368d0a568dd22b569c4c5a520811269`; Green.
-- Session 28: Checkpoint/Planning `6320fdbb24c3b7c18020f0ab9e732197121db0c4`; `CI` ✅ and `Game QA` ✅.
+- Session 27: Same-room Rematch; Green.
+- Session 28: Checkpoint/Planning; Green.
+- Session 29: Curated Case Packs / Theme Browsing, code/QA `9d4b7ac442d99a2a0683ad28cc6c0e79cec5453e`; `CI` ✅ and `Game QA` ✅.
 
-## Session 29 — 2026-09-11 — Curated Case Packs / Theme Browsing
+## Session 30 — 2026-09-11 — AI Generation Abuse / Public-launch Protection
 ### Session type
-Delivery — exactly one Milestone E product slice. No Production work, new player-count expansion, gameplay rule change, or second feature started.
+Delivery — exactly one Production/Launch Safety slice. No unrelated feature, gameplay rule change, story change, player-count expansion, Production restore, Production migration, or Production data write.
 
 ### Starting evidence
 - Mandatory read order completed from default branch: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → this handoff.
-- `main` at start: `6320fdbb24c3b7c18020f0ab9e732197121db0c4`.
-- Session 28 prerequisite resolved before implementation: GitHub Actions `CI` and `Game QA` both completed/success on `6320fdbb...`.
+- `main` at start: `fee9566ac053177847bbd555879b28bb3a53dd64`.
+- Session 29 prerequisite resolved before implementation: GitHub Actions `CI` and `Game QA` both completed/success on `9d4b7ac442d99a2a0683ad28cc6c0e79cec5453e`.
+- Production gate was rechecked read-only via Supabase: project `bwxgzcppxdrfcaorobpm` remains `INACTIVE`. Restore was not explicitly authorized, so Production parity remained blocked and no Production mutation was attempted.
 - No failing check or known P0 tied to the active objective was present.
 
 ### Exact objective
-Add curated case packs/theme browsing end-to-end while preserving exact player-count safety, curated fairness, nickname/gender contracts, and existing mafia assignment semantics.
+Protect the costly AI case-generation path from repeated anonymous-session abuse before public launch, using a durable server-authoritative budget that cannot be bypassed by client UI changes, while leaving curated preset play unaffected.
 
 ### Reproduction / design finding
-- The create flow exposed exactly two curated cases for each supported count but only as a flat pair; there was no reusable theme taxonomy or browse/filter affordance as the library grows.
-- Pack filtering must be secondary to player-count eligibility. A theme must never surface a case for the wrong count or change mafia assignment/gender behavior.
-- Some counts currently have both cases in one pack, so the UI should only show pack filters when more than one pack is actually useful for that count; it must never manufacture unrelated-count fallback content.
+- Both server case-generation entrypoints authenticated the Boss and checked lobby state, but an authenticated anonymous Boss could repeatedly invoke Gemini generation with no durable cooldown or per-user request budget.
+- Client-only throttling would be bypassable, and an in-memory serverless limiter would be unreliable across instances. The limiter therefore needs to live in Postgres and be claimed before any Gemini call.
+- Preset cases do not incur model-generation cost and must not consume AI budget.
 
-### Code / API / UI / test changes
-- `lib/story-catalog.ts`: added three explicit reviewed packs (`home-social`, `stage-events`, `work-records`), assigned every one of the 14 curated cases to one pack, and added `storiesForPlayerCount(playerCount, packId)`, `packsForPlayerCount`, and `storyMetadata` helpers.
-- `lib/server-stories/index.ts`: server registry now resolves shared catalog metadata and includes `packId` in exact-count AI reference DTOs. Preset lookup still resolves the same curated case and player-count contract; no mafia/story content changed.
-- `app/create.tsx`: added player-count-safe pack browsing, only offers packs available for the active count, clears stale filters when count changes, auto-selects a valid case when a pack changes, labels case cards by pack, and keeps final submit validation against the full exact-count set.
-- `scripts/qa/curated-player-count-contract.mjs`: expanded regression coverage to require all 14 cases to have valid pack metadata, all three packs to contain content, pack filtering to remain player-count-first, server references to carry metadata, UI to derive only available packs, and stale pack state to reset on count changes. Existing exact 4–10/two-per-count/no-fallback guards remain intact.
-- No schema, migration, Supabase RPC, player identity, gender wording, story text, or mafia assignment logic changed.
+### Code / database / API / test changes
+- `supabase/migrations/20260911154500_case_generation_rate_limit.sql` adds private `case_generation_rate_limits` state keyed by authenticated user and a `claim_case_generation_slot(p_code)` SECURITY DEFINER RPC.
+- The RPC verifies authenticated Boss ownership, lobby status, and AI case mode, then atomically enforces a 20-second cooldown and a maximum of 3 AI-generation attempts per rolling/resettable 10-minute window. Cooldown rejections do not consume budget.
+- Direct table access is revoked from `public` and `authenticated`; only the bounded claim RPC is executable by authenticated clients.
+- `app/api/generate-case+api.ts` now claims a slot after Boss/lobby/player-count validation and before constructing/calling Gemini. Rejected claims return HTTP `429` with `Retry-After` and a user-facing Egyptian-Arabic retry message.
+- `api/case-start.ts` now enforces the same DB-backed claim only for AI mode; curated preset installation remains outside the AI budget. Rejected claims also return `429` + `Retry-After`.
+- `scripts/qa/case-generation-rate-limit-e2e.mjs` verifies first host claim succeeds, immediate repeat is cooldown-blocked without spending another attempt, non-host claims fail, preset rooms cannot consume AI budget, limiter state stays private, explicit budget constants remain reviewable, and both server entrypoints contain the DB claim + 429 path.
+- `.github/workflows/game-qa.yml` now runs the abuse-guard E2E against a clean local Supabase before the existing full-game E2E suite.
 
 ### Commits
-- `14b1a8d95431a469c6df139ec2a00d6ad0189971` — `feat: add curated case pack metadata`.
-- `0308a892ad31c443d2bf90dc237941371421c682` — `feat: expose curated pack metadata server-side`.
-- `d05368cc08180385e238276bc3c750d241fc86fb` — `feat: browse curated cases by theme pack`.
-- `9d4b7ac442d99a2a0683ad28cc6c0e79cec5453e` — `qa: cover curated case pack browsing`.
+- `59452976c92cb5b405f2e8678a8581d5b31a279a` — `feat: rate limit AI case generation`.
+- `7c2d981fb8e0a355ffa8efb5caecc06a088a3a9a` — `feat: enforce AI generation budget`.
+- `18e6e9329e19f751f41c2008f745ee7fed5d4327` — `qa: cover AI generation rate limit`.
+- `dbbe3315d74bc3cbe47fdbb999de0dbb5a5d3673` — `feat: protect Vercel AI generation endpoint`.
+- `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a` — `qa: run AI generation abuse guard E2E`.
 
 ### Checks / evidence
-- At session close, GitHub Actions for `9d4b7ac442d99a2a0683ad28cc6c0e79cec5453e` had started: `CI` in progress and `Game QA` in progress, with no failure reported yet.
-- Because full checks were not complete, this session is not marked deploy-safe.
+- At handoff update time, GitHub Actions for `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a` had started: `CI` in progress and `Game QA` in progress, with no failure reported yet.
+- Session 29 prerequisite remains confirmed Green.
 
 ### Newly discovered bugs / risks
-- No new P0/P1 gameplay bug was found during this slice.
-- Pack taxonomy is intentionally metadata-only; it does not imply every player count has a case in every pack. Future library growth should add content based on quality/fairness, not fill a matrix mechanically.
-- Production parity remains independently blocked by the inactive Production Supabase state last verified in Session 28.
-- README/workflow-label drift remains non-blocking technical debt and was not mixed into this feature session.
+- No new gameplay P0/P1 was discovered in this slice.
+- This slice protects the highest-cost public endpoint but is not a complete anti-abuse program: room-creation/join spam, IP/device-level controls, observability, and provider-side quotas remain future launch-hardening work if evidence justifies them.
+- The current budget is per authenticated anonymous user, not per IP; clearing app/browser identity could obtain a fresh anonymous user. That residual risk is explicit rather than hidden.
+- Production parity remains blocked independently by the inactive Supabase project. The new migration has not been applied to Production.
 
 ### Deploy-safety status
-**Not deploy-safe yet because `CI` and `Game QA` for the final code/QA commit were still running at handoff.** No Production deploy, restore, migration, or data write occurred.
+**Not deploy-safe yet because `CI` and `Game QA` for `d89c7cc...` were still running at handoff.** Also, Production DB is inactive and does not have this migration. No Production deploy, restore, migration, or data write occurred.
 
 ### Roadmap impact
-Curated library browsing now has a scalable taxonomy without weakening exact-count fairness. This closes the first post-checkpoint product objective and leaves Production parity as an external gate rather than silently coupling it to product work.
+This closes the first concrete abuse-control slice around the externally billable AI path without touching gameplay fairness or content. The next launch-hardening work should be chosen only after this E2E is Green; Production parity remains an explicit external gate.
 
 ## Backlog / roadmap
 - [x] Core/full-game 4–10 stable in deterministic + local RPC suites.
@@ -109,14 +115,15 @@ Curated library browsing now has a scalable taxonomy without weakening exact-cou
 - [x] Curated library exact coverage 4–10 + deep fairness review.
 - [x] Shared curated registry + legacy identity compatibility audit.
 - [x] Same-room rematch.
-- [ ] Session 29 curated case packs/theme browsing: implementation complete; awaiting final `CI` + `Game QA` result.
+- [x] Curated case packs/theme browsing; Session 29 Green.
+- [ ] Session 30 AI-generation abuse protection: implementation complete; awaiting final `CI` + `Game QA` result.
 - [ ] Production parity remains blocked while Supabase project is `INACTIVE`.
-- [ ] Abuse/public-launch protection.
-- [ ] Polish/observability/docs drift cleanup.
+- [ ] Further public-launch hardening if justified: room/join abuse controls, observability/error telemetry, provider quotas/runbook.
+- [ ] Polish/README/workflow-label drift cleanup.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
 ## اتجاه المنتج
 **Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Gameplay/Product Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص أولًا نتيجة `CI` و`Game QA` لـ`9d4b7ac442d99a2a0683ad28cc6c0e79cec5453e`. لو ظهر failure حقيقي أصلح أول failure meaningful فقط. لو Green، نفّذ **Production parity + smoke-readiness gate فقط إذا كان restore/availability مصرحًا ومتاحًا بوضوح**؛ وإلا اعتبر Production blocker قائمًا وانتقل إلى **Abuse / public-launch protection vertical slice** كهدف واحد، بدون Production mutation وبدون توسيع 11–15.
+افحص أولًا نتيجة `CI` و`Game QA` لـ`d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a`. لو ظهر failure حقيقي مرتبط بالـabuse guard، أصلح أول failure meaningful فقط ولا تبدأ scope جديد. لو Green، أعد فحص Production availability read-only؛ إذا ظلت `INACTIVE` أو restore غير مصرح به، نفّذ **Room Creation / Join Abuse Protection** كـvertical slice واحد فقط، مع server-authoritative bounded throttling + local E2E، بدون Production mutation وبدون خلط observability/polish في نفس الجلسة.
