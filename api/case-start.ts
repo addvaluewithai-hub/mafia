@@ -179,6 +179,17 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ ok: true, source: 'preset', model: 'قضية جاهزة', storyTitle: curated.title });
     }
 
+    const { data: generationSlot, error: generationSlotError } = await supabase.rpc('claim_case_generation_slot', { p_code: roomCode });
+    if (generationSlotError) return res.status(500).json({ error: errorMessage(generationSlotError) });
+    if (!generationSlot?.allowed) {
+      const retryAfterSeconds = Math.max(1, Number(generationSlot?.retryAfterSeconds ?? 20));
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(429).json({
+        error: `استنى ${retryAfterSeconds} ثانية قبل ما تطلب قضية AI جديدة.`,
+        retryAfterSeconds,
+      });
+    }
+
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) return res.status(500).json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' });
     const models = (process.env.GEMINI_MODELS ?? 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it')
