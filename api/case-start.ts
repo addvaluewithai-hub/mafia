@@ -1,10 +1,12 @@
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 
+import { BALCONY_KEY } from '../lib/server-stories/balcony-key';
 import { BLUE_NOTEBOOK } from '../lib/server-stories/blue-notebook';
 import { CLOCK_1117 } from '../lib/server-stories/clock-1117';
 import { FOURTH_FLOOR } from '../lib/server-stories/fourth-floor';
 import { LAST_REHEARSAL } from '../lib/server-stories/last-rehearsal';
+import { LAST_TRAY } from '../lib/server-stories/last-tray';
 import { ROOM_312 } from '../lib/server-stories/room-312';
 import { SILENT_AUCTION } from '../lib/server-stories/silent-auction';
 import type { GeneratedCase } from '../lib/types';
@@ -13,6 +15,8 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://bwxgzcppxd
 const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_76VPHfV-oe9rexR8B80Vkw_M0LhqckV';
 
 const CASES = {
+  'last-tray': { playerCount: 4, case: LAST_TRAY },
+  'balcony-key': { playerCount: 4, case: BALCONY_KEY },
   'clock-1117': { playerCount: 5, case: CLOCK_1117 },
   'room-312': { playerCount: 5, case: ROOM_312 },
   'last-rehearsal': { playerCount: 6, case: LAST_REHEARSAL },
@@ -78,16 +82,14 @@ function validateCase(value: any, playerCount: number, mafiaCount: number, requi
 }
 
 function referenceCases(playerCount: number) {
-  const entries = Object.entries(CASES);
-  const matching = entries.filter(([, item]) => item.playerCount === playerCount);
-  const fallbackCount = playerCount <= 5 ? 5 : 7;
-  const picked = matching.length ? matching : entries.filter(([, item]) => item.playerCount === fallbackCount).slice(0, 2);
-  return picked.map(([id, item]) => ({
-    id,
-    playerCount: item.playerCount,
-    ...item.case,
-    characters: item.case.characters.map((character) => ({ bio: character.bio })),
-  }));
+  return Object.entries(CASES)
+    .filter(([, item]) => item.playerCount === playerCount)
+    .map(([id, item]) => ({
+      id,
+      playerCount: item.playerCount,
+      ...item.case,
+      characters: item.case.characters.map((character) => ({ bio: character.bio })),
+    }));
 }
 
 function genderTextJsonSchema() {
