@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 import { classifyTelemetryError, emitGameplayTelemetry, observeGameplayOperation } from '@/lib/observability';
-import type { PlayerGender, RoomSnapshot } from '@/lib/types';
+import type { CaseMode, PlayerGender, RoomSnapshot } from '@/lib/types';
 import { ensureAnonymousSession, supabase } from '@/lib/supabase';
 
 export function normalizeRoomCode(value: string) {
@@ -49,6 +49,31 @@ export async function createRoom(input: { bossName: string; maxPlayers: number; 
     if (error) throw new Error(errorToMessage(error, 'تعذر إنشاء الروم'));
     return String(data);
   });
+}
+
+export async function createRoomV3(input: {
+  bossName: string;
+  bossGender: PlayerGender;
+  maxPlayers: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  theme: string;
+  caseMode: CaseMode;
+  storyTemplateId: string | null;
+}) {
+  return observeGameplayOperation('create', async () => {
+    await ensureAnonymousSession();
+    const { data, error } = await supabase.rpc('create_room_v3', {
+      p_boss_name: input.bossName.trim(),
+      p_boss_gender: input.bossGender,
+      p_max_players: input.maxPlayers,
+      p_difficulty: input.difficulty,
+      p_theme: input.theme,
+      p_case_mode: input.caseMode,
+      p_story_template_id: input.storyTemplateId,
+    });
+    if (error) throw new Error(errorToMessage(error, 'تعذر إنشاء الروم'));
+    return String(data);
+  }, { successDetail: input.caseMode });
 }
 
 export async function joinRoom(code: string, nickname: string, gender: PlayerGender) {
