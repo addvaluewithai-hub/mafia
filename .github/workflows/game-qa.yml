@@ -87,7 +87,14 @@ jobs:
           export SUPABASE_URL="$API_URL"
           export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
           node scripts/qa/room-join-rate-limit-e2e.mjs
-      - name: Full-game RPC E2E (4/5/6/7 players)
+      - name: AI players solo-play E2E
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          node scripts/qa/ai-players-e2e.mjs
+      - name: Full-game RPC E2E (4–10 players)
         shell: bash
         run: |
           eval "$(supabase status -o env)"
