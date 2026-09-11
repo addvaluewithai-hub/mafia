@@ -73,6 +73,13 @@ jobs:
           export SUPABASE_URL="$API_URL"
           export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
           node scripts/qa/gender-case-text-install-e2e.mjs
+      - name: AI case generation abuse guard
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          node scripts/qa/case-generation-rate-limit-e2e.mjs
       - name: Full-game RPC E2E (4/5/6/7 players)
         shell: bash
         run: |
