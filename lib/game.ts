@@ -136,6 +136,13 @@ export async function restartDiscussionTimer(code: string, seconds: number) {
   if (error) throw new Error(errorToMessage(error, 'تعذر إعادة العداد'));
 }
 
+export async function rematchRoom(code: string) {
+  const { error } = await supabase.rpc('reset_room_for_rematch', {
+    p_code: normalizeRoomCode(code),
+  });
+  if (error) throw new Error(errorToMessage(error, 'تعذر تجهيز الروم لماتش جديد'));
+}
+
 function apiUrl(path: string) {
   if (Platform.OS === 'web') return path;
 
