@@ -31,6 +31,8 @@ jobs:
         run: node scripts/qa/player-card-identity-contract.mjs
       - name: Generated case role identity contract
         run: node scripts/qa/generated-case-role-contract.mjs
+      - name: Curated player-count contract
+        run: node scripts/qa/curated-player-count-contract.mjs
       - name: Full-game state simulations
         run: node scripts/qa/game-state-sim.mjs
       - name: Story critic (report mode)
@@ -69,7 +71,7 @@ jobs:
           export SUPABASE_URL="$API_URL"
           export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
           node scripts/qa/gender-case-text-install-e2e.mjs
-      - name: Full-game RPC E2E (5/6/7 players)
+      - name: Full-game RPC E2E (4/5/6/7 players)
         shell: bash
         run: |
           eval "$(supabase status -o env)"
