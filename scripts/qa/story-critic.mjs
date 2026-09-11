@@ -25,11 +25,7 @@ function extractQuotedValues(source, key) {
 function extractNumberArray(source, key) {
   const match = source.match(new RegExp(`${key}\\s*:\\s*\\[([^\\]]*)\\]`));
   if (!match) return [];
-  return match[1]
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((value) => Number(value));
+  return match[1].split(',').map((value) => value.trim()).filter(Boolean).map(Number);
 }
 
 function countObjectKey(source, key) {
@@ -38,7 +34,7 @@ function countObjectKey(source, key) {
 
 const stories = files.map((file) => {
   const source = fs.readFileSync(path.join(storyDir, file), 'utf8');
-  const titles = extractQuotedValues(source, 'title');
+  const title = extractQuotedValues(source, 'title')[0] ?? file;
   const premise = extractQuotedValues(source, 'premise')[0] ?? '';
   const clues = extractQuotedValues(source, 'clue');
   const bios = extractQuotedValues(source, 'bio');
@@ -47,10 +43,12 @@ const stories = files.map((file) => {
   const prompts = extractQuotedValues(source, 'discussionPrompt');
   const solution = extractQuotedValues(source, 'solution')[0] ?? '';
   const mafiaCharacterIndexes = extractNumberArray(source, 'mafiaCharacterIndexes');
-  const mafiaNames = mafiaCharacterIndexes.map((index) => names[index]).filter(Boolean);
-  const nonMafiaNames = names.filter((_, index) => !mafiaCharacterIndexes.includes(index));
   const roleByGenderCount = countObjectKey(source, 'roleByGender');
   const bioByGenderCount = countObjectKey(source, 'bioByGender');
+  const identities = roles.length ? roles : names;
+  const mafiaIdentities = mafiaCharacterIndexes.map((index) => identities[index]).filter(Boolean);
+  const nonMafiaIdentities = identities.filter((_, index) => !mafiaCharacterIndexes.includes(index));
+
   const publicText = [premise, ...bios, ...clues, ...prompts].join(' ');
   const jargonHits = countMatches(publicText, jargon);
   const stiffHits = countMatches(publicText, stiffPhrases);
@@ -68,94 +66,64 @@ const stories = files.map((file) => {
   if (!solution) issues.push('solution missing or parser could not find it');
 
   const integrityErrors = [];
-  if (!names.length) integrityErrors.push('no character names parsed');
+  if (!identities.length) integrityErrors.push('no character roles parsed');
+  if (names.length) integrityErrors.push(`legacy fictional name contract still present (${names.length} name fields)`);
+  if (roles.length !== identities.length) integrityErrors.push(`semantic role coverage ${roles.length}/${identities.length}`);
+  if (bios.length !== identities.length) integrityErrors.push(`neutral bio coverage ${bios.length}/${identities.length}`);
+  if (roleByGenderCount !== identities.length) integrityErrors.push(`roleByGender coverage ${roleByGenderCount}/${identities.length}`);
+  if (bioByGenderCount !== identities.length) integrityErrors.push(`bioByGender coverage ${bioByGenderCount}/${identities.length}`);
   if (!mafiaCharacterIndexes.length) integrityErrors.push('no mafiaCharacterIndexes parsed');
   for (const index of mafiaCharacterIndexes) {
-    if (!Number.isInteger(index) || index < 0 || index >= names.length) {
-      integrityErrors.push(`mafiaCharacterIndexes contains invalid index ${index}`);
-    }
+    if (!Number.isInteger(index) || index < 0 || index >= identities.length) integrityErrors.push(`mafiaCharacterIndexes contains invalid index ${index}`);
   }
   if (!clues.length) integrityErrors.push('no clues parsed');
 
   const clueMatrix = clues.map((clue, clueIndex) => {
-    const namedSuspects = names.filter((name) => clue.includes(name));
-    const mafiaNamedSuspects = namedSuspects.filter((name) => mafiaNames.includes(name));
-    const nonMafiaNamedSuspects = namedSuspects.filter((name) => nonMafiaNames.includes(name));
-    const exclusiveNamedSuspect = namedSuspects.length === 1 ? namedSuspects[0] : null;
+    const mentioned = identities.filter((identity) => clue.includes(identity));
+    const mafiaMentioned = mentioned.filter((identity) => mafiaIdentities.includes(identity));
+    const nonMafiaMentioned = mentioned.filter((identity) => nonMafiaIdentities.includes(identity));
+    const exclusive = mentioned.length === 1 ? mentioned[0] : null;
     const isFinalClue = clueIndex === clues.length - 1;
     const decisiveLanguageHits = decisivePhrases.filter((phrase) => clue.includes(phrase));
-    const earlyExclusiveMafia = Boolean(
-      !isFinalClue &&
-      exclusiveNamedSuspect &&
-      mafiaNames.includes(exclusiveNamedSuspect)
-    );
-    const earlyDecisiveMafia = Boolean(
-      !isFinalClue &&
-      mafiaNamedSuspects.length > 0 &&
-      nonMafiaNamedSuspects.length === 0 &&
-      decisiveLanguageHits.length > 0
-    );
-
+    const earlyExclusiveMafia = Boolean(!isFinalClue && exclusive && mafiaIdentities.includes(exclusive));
+    const earlyDecisiveMafia = Boolean(!isFinalClue && mafiaMentioned.length > 0 && nonMafiaMentioned.length === 0 && decisiveLanguageHits.length > 0);
     return {
       round: clueIndex + 1,
-      namedSuspects,
-      mafiaNamedSuspects,
-      nonMafiaNamedSuspects,
-      exclusiveNamedSuspect,
+      mentionedRoles: mentioned,
+      mafiaMentionedRoles: mafiaMentioned,
+      nonMafiaMentionedRoles: nonMafiaMentioned,
+      exclusiveRole: exclusive,
       decisiveLanguageHits,
       warnings: [
         ...(earlyExclusiveMafia ? ['early-exclusive-mafia-mention'] : []),
         ...(earlyDecisiveMafia ? ['early-decisive-mafia-language'] : []),
-        ...(namedSuspects.length === 0 ? ['no-explicit-suspect-mention'] : []),
+        ...(mentioned.length === 0 ? ['no-explicit-role-mention'] : []),
       ],
-      mentionMatrix: Object.fromEntries(names.map((name) => [name, clue.includes(name)])),
+      mentionMatrix: Object.fromEntries(identities.map((identity) => [identity, clue.includes(identity)])),
     };
   });
 
-  const mentionCounts = Object.fromEntries(
-    names.map((name) => [name, clueMatrix.filter((row) => row.namedSuspects.includes(name)).length])
-  );
-  const unmentionedSuspects = names.filter((name) => mentionCounts[name] === 0);
-  const earlyRevealWarnings = clueMatrix.flatMap((row) =>
-    row.warnings
-      .filter((warning) => warning.startsWith('early-'))
-      .map((warning) => ({ round: row.round, warning }))
-  );
-  const identityWarnings = [
-    ...(roles.length < names.length ? ['legacy-fictional-name-contract'] : []),
-    ...(roleByGenderCount < names.length ? ['missing-roleByGender-coverage'] : []),
-    ...(bioByGenderCount < names.length ? ['missing-bioByGender-coverage'] : []),
-  ];
+  const mentionCounts = Object.fromEntries(identities.map((identity) => [identity, clueMatrix.filter((row) => row.mentionedRoles.includes(identity)).length]));
+  const unmentionedRoles = identities.filter((identity) => mentionCounts[identity] === 0);
+  const earlyRevealWarnings = clueMatrix.flatMap((row) => row.warnings.filter((warning) => warning.startsWith('early-')).map((warning) => ({ round: row.round, warning })));
 
   return {
     file,
-    title: titles[0] ?? file,
+    title,
     score: Number(score.toFixed(1)),
-    metrics: {
-      playerCount: names.length,
-      mafiaCount: mafiaCharacterIndexes.length,
-      jargonHits,
-      stiffHits,
-      longClues,
-      longBios,
-      clues: clues.length,
-      bios: bios.length,
-      roles: roles.length,
-      roleByGender: roleByGenderCount,
-      bioByGender: bioByGenderCount,
-    },
+    metrics: { playerCount: identities.length, mafiaCount: mafiaCharacterIndexes.length, jargonHits, stiffHits, longClues, longBios, clues: clues.length, bios: bios.length, roles: roles.length, legacyNames: names.length, roleByGender: roleByGenderCount, bioByGender: bioByGenderCount },
     issues,
     integrityErrors,
     fairnessBaseline: {
-      method: 'lexical character-name mentions per clue; deterministic baseline, not semantic guilt scoring',
+      method: 'lexical semantic-role mentions per clue; deterministic baseline, not semantic guilt scoring',
       mafiaCharacterIndexes,
-      mafiaNames,
-      nonMafiaNames,
+      mafiaRoles: mafiaIdentities,
+      nonMafiaRoles: nonMafiaIdentities,
       clueMatrix,
       mentionCounts,
-      unmentionedSuspects,
+      unmentionedRoles,
       earlyRevealWarnings,
-      identityWarnings,
+      identityWarnings: integrityErrors.filter((error) => error.includes('role') || error.includes('name') || error.includes('bio')),
     },
   };
 });
@@ -168,17 +136,7 @@ const baseline = {
   storyCount: stories.length,
   playerCountCoverage,
   totalEarlyRevealWarnings: stories.reduce((sum, story) => sum + story.fairnessBaseline.earlyRevealWarnings.length, 0),
-  stories: stories.map((story) => ({
-    file: story.file,
-    title: story.title,
-    playerCount: story.metrics.playerCount,
-    mafiaCount: story.metrics.mafiaCount,
-    identityWarnings: story.fairnessBaseline.identityWarnings,
-    mentionCounts: story.fairnessBaseline.mentionCounts,
-    unmentionedSuspects: story.fairnessBaseline.unmentionedSuspects,
-    earlyRevealWarnings: story.fairnessBaseline.earlyRevealWarnings,
-    clueMatrix: story.fairnessBaseline.clueMatrix,
-  })),
+  stories: stories.map((story) => ({ file: story.file, title: story.title, playerCount: story.metrics.playerCount, mafiaCount: story.metrics.mafiaCount, identityWarnings: story.fairnessBaseline.identityWarnings, mentionCounts: story.fairnessBaseline.mentionCounts, unmentionedRoles: story.fairnessBaseline.unmentionedRoles, earlyRevealWarnings: story.fairnessBaseline.earlyRevealWarnings, clueMatrix: story.fairnessBaseline.clueMatrix })),
 };
 
 const report = {
@@ -189,16 +147,15 @@ const report = {
   integrityOk: integrityErrors.length === 0,
   integrityErrors,
   playerCountCoverage,
-  note: 'Language score is heuristic. fairnessBaseline is deterministic lexical evidence inventory and does not replace semantic/human logic criticism.',
+  note: 'Language score is heuristic. fairnessBaseline uses semantic-role lexical evidence and does not replace semantic/human logic criticism.',
   stories,
 };
+
 fs.writeFileSync(path.join(reportDir, 'story-critic.json'), JSON.stringify(report, null, 2));
 fs.writeFileSync(path.join(reportDir, 'story-fairness-baseline.json'), JSON.stringify(baseline, null, 2));
-
 for (const story of stories) {
   const icon = story.score >= 8 ? 'PASS' : 'REWRITE';
-  const fairnessWarnings = story.fairnessBaseline.earlyRevealWarnings.length;
-  console.log(`${icon} ${story.title}: ${story.score}/10 — players=${story.metrics.playerCount}, mafia=${story.metrics.mafiaCount}, earlyFairnessWarnings=${fairnessWarnings}${story.issues.length ? ` — ${story.issues.join('; ')}` : ''}`);
+  console.log(`${icon} ${story.title}: ${story.score}/10 — players=${story.metrics.playerCount}, mafia=${story.metrics.mafiaCount}, earlyFairnessWarnings=${story.fairnessBaseline.earlyRevealWarnings.length}${story.issues.length ? ` — ${story.issues.join('; ')}` : ''}`);
 }
 console.log(`Story critic average: ${report.averageScore}/10`);
 console.log(`Story fairness baseline: ${stories.length} stories; player counts ${playerCountCoverage.join('/')}; early warnings ${baseline.totalEarlyRevealWarnings}`);
