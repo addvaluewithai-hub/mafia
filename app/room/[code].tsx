@@ -32,6 +32,7 @@ import {
   getRoomSnapshot,
   joinRoom,
   normalizeRoomCode,
+  rematchRoom,
   resolveVote,
   restartDiscussionTimer,
   revealNextRound,
@@ -297,6 +298,17 @@ export default function RoomScreen() {
       else if (result.status === 'tie') Alert.alert('تعادل', 'الأصوات اتصفّرت. عندكم دقيقة دفاع وبعدها صوّتوا تاني.');
       else if (result.status === 'finished') Alert.alert('انتهت القضية', result.winner === 'innocents' ? 'الأبرياء كشفوا المافيا.' : 'المافيا كسبت.');
       else Alert.alert('إلى السجن', `${result.nickname} — ${result.role === 'mafia' ? 'مافيوزو' : 'بريء'}`);
+    });
+  };
+
+  const startRematch = async () => {
+    await doAction(async () => {
+      await rematchRoom(code);
+      setRoleVisible(false);
+      setSelectedVote(null);
+      void playGameSfx('success');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      Alert.alert('الروم جاهز', 'كل اللاعبين فضلوا مكانهم. اختاروا قضية جديدة وابدأوا لما تكونوا جاهزين.');
     });
   };
 
@@ -580,6 +592,20 @@ export default function RoomScreen() {
                 </View>
                 <Divider />
                 <Body>{room.publicSolution ?? 'تم إغلاق ملف القضية.'}</Body>
+                {snapshot.isHost ? (
+                  <>
+                    <Divider />
+                    <Button
+                      label="العبوا قضية جديدة بنفس الروم"
+                      onPress={startRematch}
+                      loading={actionLoading}
+                      icon={<Sparkles size={18} color="#050507" strokeWidth={2.3} />}
+                    />
+                    <Text className="text-center text-[10px] leading-5 text-case-dim">هنحتفظ بنفس اللاعبين والأسماء والجنس، ونمسح أدوار وأدلة ونتيجة القضية القديمة قبل البداية الجديدة.</Text>
+                  </>
+                ) : (
+                  <Body muted className="text-center">لو عايزين تلعبوا تاني، الـBoss يقدر يرجّع نفس الروم للّوبي من غير ما حد يدخل من جديد.</Body>
+                )}
               </Card>
             </Animated.View>
           ) : null}
