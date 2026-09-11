@@ -94,7 +94,8 @@ Protect the costly AI case-generation path from repeated anonymous-session abuse
 - `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a` — `qa: run AI generation abuse guard E2E`.
 
 ### Checks / evidence
-- At handoff update time, GitHub Actions for `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a` had started: `CI` in progress and `Game QA` in progress, with no failure reported yet.
+- `CI` for `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a` completed/success.
+- `Game QA` was still in progress at the final inspection. TypeScript, Expo Doctor, vote/gender/join/player-card/legacy/generated-case contracts had completed/success; the run had reached the curated player-count contract with no failure reported. The local Supabase abuse-guard E2E had not run yet.
 - Session 29 prerequisite remains confirmed Green.
 
 ### Newly discovered bugs / risks
@@ -104,7 +105,7 @@ Protect the costly AI case-generation path from repeated anonymous-session abuse
 - Production parity remains blocked independently by the inactive Supabase project. The new migration has not been applied to Production.
 
 ### Deploy-safety status
-**Not deploy-safe yet because `CI` and `Game QA` for `d89c7cc...` were still running at handoff.** Also, Production DB is inactive and does not have this migration. No Production deploy, restore, migration, or data write occurred.
+**Not deploy-safe yet because `Game QA` for `d89c7cc...` was still running and the new local abuse E2E had not executed yet.** `CI` is Green. Production DB is inactive and does not have this migration. No Production deploy, restore, migration, or data write occurred.
 
 ### Roadmap impact
 This closes the first concrete abuse-control slice around the externally billable AI path without touching gameplay fairness or content. The next launch-hardening work should be chosen only after this E2E is Green; Production parity remains an explicit external gate.
@@ -116,7 +117,7 @@ This closes the first concrete abuse-control slice around the externally billabl
 - [x] Shared curated registry + legacy identity compatibility audit.
 - [x] Same-room rematch.
 - [x] Curated case packs/theme browsing; Session 29 Green.
-- [ ] Session 30 AI-generation abuse protection: implementation complete; awaiting final `CI` + `Game QA` result.
+- [ ] Session 30 AI-generation abuse protection: implementation complete; `CI` Green, awaiting final `Game QA` result.
 - [ ] Production parity remains blocked while Supabase project is `INACTIVE`.
 - [ ] Further public-launch hardening if justified: room/join abuse controls, observability/error telemetry, provider quotas/runbook.
 - [ ] Polish/README/workflow-label drift cleanup.
@@ -126,4 +127,4 @@ This closes the first concrete abuse-control slice around the externally billabl
 **Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Gameplay/Product Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص أولًا نتيجة `CI` و`Game QA` لـ`d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a`. لو ظهر failure حقيقي مرتبط بالـabuse guard، أصلح أول failure meaningful فقط ولا تبدأ scope جديد. لو Green، أعد فحص Production availability read-only؛ إذا ظلت `INACTIVE` أو restore غير مصرح به، نفّذ **Room Creation / Join Abuse Protection** كـvertical slice واحد فقط، مع server-authoritative bounded throttling + local E2E، بدون Production mutation وبدون خلط observability/polish في نفس الجلسة.
+افحص أولًا نتيجة `Game QA` لـ`d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a`. لو ظهر failure حقيقي مرتبط بالـabuse guard، أصلح أول failure meaningful فقط ولا تبدأ scope جديد. لو Green، أعد فحص Production availability read-only؛ إذا ظلت `INACTIVE` أو restore غير مصرح به، نفّذ **Room Creation / Join Abuse Protection** كـvertical slice واحد فقط، مع server-authoritative bounded throttling + local E2E، بدون Production mutation وبدون خلط observability/polish في نفس الجلسة.
