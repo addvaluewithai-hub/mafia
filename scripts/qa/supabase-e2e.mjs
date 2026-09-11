@@ -259,8 +259,9 @@ async function runGame(playerCount) {
   };
 }
 
+const supportedCounts = [4, 5, 6, 7, 8, 9, 10];
 const results = [];
-for (const playerCount of [4, 5, 6, 7]) results.push(await runGame(playerCount));
+for (const playerCount of supportedCounts) results.push(await runGame(playerCount));
 
 const report = {
   ok: true,
@@ -268,7 +269,7 @@ const report = {
   scenarios: results,
   coverage: [
     'anonymous auth', 'Boss auto-player', 'join room', 'install case', 'private roles',
-    'four-player full-game path', 'server-authoritative phase', 'server-authoritative canVote', 'canVote closes after submit',
+    'full-game paths for curated player counts 4 through 10', 'server-authoritative phase', 'server-authoritative canVote', 'canVote closes after submit',
     'reconnect preserves player identity', 'reconnect before cast', 'reconnect after cast',
     'cast vote', 'six-player tie', 'tie reset', 'reconnect after tie', 'resolve vote',
     'round_resolved phase', 'reconnect after resolve', 'elimination', 'eliminated voter rejection',
