@@ -87,6 +87,13 @@ jobs:
           export SUPABASE_URL="$API_URL"
           export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
           node scripts/qa/boss-eliminated-e2e.mjs
+      - name: Same-room rematch E2E
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          node scripts/qa/rematch-e2e.mjs
       - name: Upload QA reports
         if: always()
         uses: actions/upload-artifact@v4
