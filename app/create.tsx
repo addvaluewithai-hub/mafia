@@ -6,7 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 import { GenderPicker } from '@/components/gender-picker';
 import { Body, Button, Card, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
 import { errorToMessage, suggestedMafiaCount } from '@/lib/game';
-import { STORY_CATALOG, storiesForPlayerCount } from '@/lib/story-catalog';
+import { packsForPlayerCount, storiesForPlayerCount, STORY_CATALOG, type StoryPackId } from '@/lib/story-catalog';
 import { ensureAnonymousSession, supabase } from '@/lib/supabase';
 import type { CaseMode, PlayerGender } from '@/lib/types';
 
@@ -24,15 +24,19 @@ export default function CreateRoomScreen() {
   const [theme, setTheme] = useState('');
   const [caseMode, setCaseMode] = useState<CaseMode>('preset');
   const [storyTemplateId, setStoryTemplateId] = useState('last-rehearsal');
+  const [storyPackId, setStoryPackId] = useState<StoryPackId | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const availableStories = useMemo(() => storiesForPlayerCount(players), [players]);
+  const availablePacks = useMemo(() => packsForPlayerCount(players), [players]);
+  const visibleStories = useMemo(() => storiesForPlayerCount(players, storyPackId), [players, storyPackId]);
   const presetAvailable = availableStories.length > 0;
 
   const changePlayers = (delta: number) => {
     const next = Math.max(4, Math.min(12, players + delta));
     setPlayers(next);
+    setStoryPackId(null);
     const nextStories = storiesForPlayerCount(next);
     if (caseMode === 'preset') {
       if (nextStories.length) setStoryTemplateId(nextStories[0].id);
@@ -50,6 +54,13 @@ export default function CreateRoomScreen() {
     if (mode === 'preset' && !availableStories.some((story) => story.id === storyTemplateId)) {
       setStoryTemplateId(availableStories[0]?.id ?? '');
     }
+    void Haptics.selectionAsync();
+  };
+
+  const choosePack = (packId: StoryPackId | null) => {
+    setStoryPackId(packId);
+    const matching = storiesForPlayerCount(players, packId);
+    if (!matching.some((story) => story.id === storyTemplateId)) setStoryTemplateId(matching[0]?.id ?? '');
     void Haptics.selectionAsync();
   };
 
@@ -128,21 +139,12 @@ export default function CreateRoomScreen() {
             </View>
 
             <View className="flex-row-reverse items-center gap-4">
-              <Pressable onPress={() => changePlayers(1)} className="h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-noir-700 active:scale-95">
-                <Text className="text-3xl font-bold text-case-gold">+</Text>
-              </Pressable>
-              <View className="flex-1 items-center gap-1">
-                <Text className="text-6xl font-black text-case-cream">{players}</Text>
-                <Text className="text-xs text-case-dim">لاعب إجمالي</Text>
-              </View>
-              <Pressable onPress={() => changePlayers(-1)} className="h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-noir-700 active:scale-95">
-                <Text className="text-3xl font-bold text-case-gold">−</Text>
-              </Pressable>
+              <Pressable onPress={() => changePlayers(1)} className="h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-noir-700 active:scale-95"><Text className="text-3xl font-bold text-case-gold">+</Text></Pressable>
+              <View className="flex-1 items-center gap-1"><Text className="text-6xl font-black text-case-cream">{players}</Text><Text className="text-xs text-case-dim">لاعب إجمالي</Text></View>
+              <Pressable onPress={() => changePlayers(-1)} className="h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-noir-700 active:scale-95"><Text className="text-3xl font-bold text-case-gold">−</Text></Pressable>
             </View>
 
-            <View className="rounded-2xl border border-case-gold/15 bg-case-gold/5 px-4 py-3">
-              <Text className="text-right text-xs font-bold leading-5 text-case-muted">لو اخترت {players} لاعبين: إنت + {players - 1} يدخلوا من الرابط.</Text>
-            </View>
+            <View className="rounded-2xl border border-case-gold/15 bg-case-gold/5 px-4 py-3"><Text className="text-right text-xs font-bold leading-5 text-case-muted">لو اخترت {players} لاعبين: إنت + {players - 1} يدخلوا من الرابط.</Text></View>
           </Card>
         </View>
       </View>
@@ -150,17 +152,12 @@ export default function CreateRoomScreen() {
       <View className="gap-3">
         <SectionTitle title="مصدر القضية" caption="الجاهزة أصعب ومختبرة يدويًا — والـAI بيولد قضية جديدة كل مرة" />
         <View className="gap-2 sm:flex-row-reverse">
-          <Pressable
-            onPress={() => chooseMode('preset')}
-            disabled={!presetAvailable}
-            className={`min-h-[112px] flex-1 justify-center gap-2 rounded-3xl border p-4 active:scale-[0.99] ${caseMode === 'preset' ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'} ${!presetAvailable ? 'opacity-40' : ''}`}>
+          <Pressable onPress={() => chooseMode('preset')} disabled={!presetAvailable} className={`min-h-[112px] flex-1 justify-center gap-2 rounded-3xl border p-4 active:scale-[0.99] ${caseMode === 'preset' ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'} ${!presetAvailable ? 'opacity-40' : ''}`}>
             <Text className={`text-right text-lg font-black ${caseMode === 'preset' ? 'text-case-gold' : 'text-case-cream'}`}>قضية جاهزة</Text>
             <Text className="text-right text-xs leading-5 text-case-muted">{presetAvailable ? `عندنا ${availableStories.length === 1 ? 'قضية' : 'قصتين'} مخصوص لـ${players} لاعبين، صعوبتهم عالية ومحسوبة.` : 'متاحة حاليًا من 4 لـ10 لاعبين.'}</Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => chooseMode('ai')}
-            className={`min-h-[112px] flex-1 justify-center gap-2 rounded-3xl border p-4 active:scale-[0.99] ${caseMode === 'ai' ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}>
+          <Pressable onPress={() => chooseMode('ai')} className={`min-h-[112px] flex-1 justify-center gap-2 rounded-3xl border p-4 active:scale-[0.99] ${caseMode === 'ai' ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}>
             <Text className={`text-right text-lg font-black ${caseMode === 'ai' ? 'text-case-gold' : 'text-case-cream'}`}>قضية بالذكاء الاصطناعي</Text>
             <Text className="text-right text-xs leading-5 text-case-muted">قضية جديدة، والـAI هياخد القضايا الجاهزة كمرجع للصعوبة وطريقة توزيع الشك.</Text>
           </Pressable>
@@ -169,23 +166,22 @@ export default function CreateRoomScreen() {
 
       {caseMode === 'preset' ? (
         <View className="gap-3">
-          <SectionTitle title="اختار القضية" caption="العنوان والوصف من غير أي spoilers — الأدوار تتوزع عشوائي على اللاعبين" />
+          <SectionTitle title="اختار القضية" caption="فلتر حسب الجو اللي تحبوه — من غير spoilers، والأدوار تتوزع عشوائي على اللاعبين" />
+          {availablePacks.length > 1 ? (
+            <View className="flex-row-reverse flex-wrap gap-2">
+              <Pressable onPress={() => choosePack(null)} className={`rounded-full border px-4 py-2 ${storyPackId === null ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}><Text className={storyPackId === null ? 'font-bold text-case-gold' : 'font-bold text-case-muted'}>كل الأجواء</Text></Pressable>
+              {availablePacks.map((pack) => <Pressable key={pack.id} onPress={() => choosePack(pack.id)} className={`rounded-full border px-4 py-2 ${storyPackId === pack.id ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}><Text className={storyPackId === pack.id ? 'font-bold text-case-gold' : 'font-bold text-case-muted'}>{pack.label}</Text></Pressable>)}
+            </View>
+          ) : null}
+          {storyPackId ? <Text className="text-right text-xs leading-5 text-case-dim">{availablePacks.find((pack) => pack.id === storyPackId)?.description}</Text> : null}
           <View className="gap-3 md:flex-row-reverse">
-            {availableStories.map((story) => {
+            {visibleStories.map((story) => {
               const selected = story.id === storyTemplateId;
+              const pack = availablePacks.find((item) => item.id === story.packId);
               return (
-                <Pressable
-                  key={story.id}
-                  onPress={() => {
-                    setStoryTemplateId(story.id);
-                    void Haptics.selectionAsync();
-                  }}
-                  className={`min-h-[132px] flex-1 justify-between gap-3 rounded-3xl border p-4 active:scale-[0.99] ${selected ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}>
-                  <View className="gap-2">
-                    <Text className={`text-right text-xl font-black ${selected ? 'text-case-gold' : 'text-case-cream'}`}>{story.title}</Text>
-                    <Text className="text-right text-xs leading-6 text-case-muted">{story.teaser}</Text>
-                  </View>
-                  <View className="flex-row-reverse"><Pill label={selected ? 'اختيارك' : 'صعبة'} tone={selected ? 'gold' : 'neutral'} /></View>
+                <Pressable key={story.id} onPress={() => { setStoryTemplateId(story.id); void Haptics.selectionAsync(); }} className={`min-h-[132px] flex-1 justify-between gap-3 rounded-3xl border p-4 active:scale-[0.99] ${selected ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}>
+                  <View className="gap-2"><Text className={`text-right text-xl font-black ${selected ? 'text-case-gold' : 'text-case-cream'}`}>{story.title}</Text><Text className="text-right text-xs leading-6 text-case-muted">{story.teaser}</Text></View>
+                  <View className="flex-row-reverse gap-2"><Pill label={selected ? 'اختيارك' : 'صعبة'} tone={selected ? 'gold' : 'neutral'} />{pack ? <Pill label={pack.label} tone="neutral" /> : null}</View>
                 </Pressable>
               );
             })}
@@ -193,38 +189,16 @@ export default function CreateRoomScreen() {
         </View>
       ) : (
         <View className="gap-5 lg:flex-row-reverse lg:items-start lg:gap-7">
-          <View className="flex-1 gap-2">
-            <SectionTitle title="جو القضية" caption="اختياري — والـAI هيبني القضية حواليه" />
-            <Field value={theme} onChangeText={setTheme} placeholder="فرح، فيلا، شركة، مصيف، نادي..." maxLength={70} />
-            <Text className="text-right text-[11px] leading-5 text-case-dim">مثال: «حفلة خطوبة في فيلا قديمة» أو «رحلة أصحاب في الساحل»</Text>
-          </View>
-
+          <View className="flex-1 gap-2"><SectionTitle title="جو القضية" caption="اختياري — والـAI هيبني القضية حواليه" /><Field value={theme} onChangeText={setTheme} placeholder="فرح، فيلا، شركة، مصيف، نادي..." maxLength={70} /><Text className="text-right text-[11px] leading-5 text-case-dim">مثال: «حفلة خطوبة في فيلا قديمة» أو «رحلة أصحاب في الساحل»</Text></View>
           <View className="flex-1 gap-3 lg:max-w-[470px]">
             <SectionTitle title="صعوبة الأدلة" caption="حتى السهل مش هيكشف المافيا من دليل واحد" />
-            <View className="flex-row-reverse gap-2">
-              {difficulties.map((item) => {
-                const selected = difficulty === item.key;
-                return (
-                  <Pressable
-                    key={item.key}
-                    onPress={() => {
-                      setDifficulty(item.key);
-                      void Haptics.selectionAsync();
-                    }}
-                    className={`min-h-[98px] flex-1 items-center justify-center gap-1 rounded-2xl border px-2 active:scale-[0.98] ${selected ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}>
-                    <Text className={`text-base font-black ${selected ? 'text-case-gold' : 'text-case-cream'}`}>{item.label}</Text>
-                    <Text className="text-center text-[10px] leading-4 text-case-dim">{item.desc}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <View className="flex-row-reverse gap-2">{difficulties.map((item) => { const selected = difficulty === item.key; return <Pressable key={item.key} onPress={() => { setDifficulty(item.key); void Haptics.selectionAsync(); }} className={`min-h-[98px] flex-1 items-center justify-center gap-1 rounded-2xl border px-2 active:scale-[0.98] ${selected ? 'border-case-gold/60 bg-case-gold/10' : 'border-white/10 bg-noir-800'}`}><Text className={`text-base font-black ${selected ? 'text-case-gold' : 'text-case-cream'}`}>{item.label}</Text><Text className="text-center text-[10px] leading-4 text-case-dim">{item.desc}</Text></Pressable>; })}</View>
           </View>
         </View>
       )}
 
       {error ? <ErrorText message={error} /> : null}
       <Button label={caseMode === 'preset' ? 'اعمل الروم بالقضية دي' : 'اعمل الروم وخلي الـAI يجهز القضية'} onPress={submit} loading={loading} />
-
       <Text className="hidden">{STORY_CATALOG.length}</Text>
     </Screen>
   );
