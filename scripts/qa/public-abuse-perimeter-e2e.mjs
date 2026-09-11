@@ -60,8 +60,16 @@ const generation = fs.readFileSync('app/api/generate-case+api.ts', 'utf8');
 assert.match(migration, /digest\(v_key, 'sha256'\)/, 'DB must store a one-way key digest');
 const tableDefinition = migration.match(/create table public\.public_abuse_rate_limits \(([\s\S]*?)\);/)?.[1] ?? '';
 assert(tableDefinition, 'limiter table definition must remain inspectable');
+
+const limiterColumns = [...tableDefinition.matchAll(/^\s*([a-z_][a-z0-9_]*)\s+(?:text|integer|timestamptz|uuid|boolean|jsonb)\b/gim)]
+  .map((match) => match[1].toLowerCase());
+assert.deepEqual(
+  limiterColumns,
+  ['key_hash', 'action', 'window_started_at', 'attempts', 'updated_at'],
+  'limiter table must keep the minimal digest/action/window schema',
+);
 for (const forbidden of ['nickname', 'gender', 'room', 'player', 'story', 'mafia', 'user_id']) {
-  assert(!tableDefinition.toLowerCase().includes(forbidden), `limiter table must not store ${forbidden}`);
+  assert(!limiterColumns.some((column) => column.includes(forbidden)), `limiter table must not store ${forbidden}`);
 }
 assert.match(tableDefinition, /key_hash text not null/, 'limiter table must store only the hashed installation boundary');
 assert.match(game, /create_room_v4/, 'create path must use churn-protected wrapper');
