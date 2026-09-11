@@ -26,7 +26,7 @@
 - [x] curated presets 4–10 تستخدم semantic roles + gender-aware wording.
 - [x] semantic/human fairness review للـ14 curated cases موثق في `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md`؛ تم إصلاح defectين في `garden-locker` و`midnight-menu`.
 - [x] server preset/AI-reference path يستخدم shared `lib/server-stories` registry بدل duplicate `CASES` داخل `api/case-start.ts`.
-- [ ] legacy DB/snapshot `character_name`/`character_bio` compatibility debt لم يُحسم بعد؛ لا حذف بدون audit وmigration-safe plan.
+- [x] legacy identity audit موثق في `docs/qa/LEGACY-IDENTITY-COMPATIBILITY-AUDIT.md`: `character_name` compatibility-only، و`character_bio` ما زال runtime-required حتى replacement contract صريح؛ لا destructive migration قبل Production parity/data evidence.
 
 ## Current curated library
 - 4: `last-tray`, `balcony-key`.
@@ -41,6 +41,7 @@
 
 ## QA coverage
 - vote/gender/join/player-card/generated-case contracts.
+- legacy identity compatibility contract: characterName لا يظهر كهوية، characterBio يظل install/snapshot/UI-required، وnickname/caseRole هما canonical identity semantics.
 - caseRole + gender-aware install E2E.
 - story critic + machine-readable lexical fairness baseline + curated identity integrity guard.
 - story critic يوقع QA لو pre-final clue ذكر mafia role(s) فقط بلا explicit non-mafia alternative، أو final clue لم يرجّع كل mafia roles لسلسلة الأدلة.
@@ -93,15 +94,58 @@ Updated `scripts/qa/generated-case-role-contract.mjs` without weakening the unde
 
 ### Checks / evidence
 - Previous `d29c6e2f...`: CI ✅; Game QA ❌ at generated-case contract.
-- New checks for `70efab2a...` started successfully: CI `in_progress`, Game QA `in_progress` at last inspection; no new failure visible yet.
-- Session 25 is **not deploy-safe yet** because the relevant full Game QA has not closed Green.
+- Final checks for `70efab2a...`: `validate` ✅ and `qa` ✅.
 
 ### Newly discovered risks
 - This failure shows structural regex contracts can drift when safe internal DTO shapes change. Keep assertions focused on semantic guarantees where possible while still catching identity regressions.
 - Production DB parity remains independently blocked and untouched.
 
 ### Roadmap impact
-No roadmap expansion. The session repaired the QA gate created by the shared-registry refactor. Legacy DB identity compatibility remains the next planned technical debt slice only after this repair closes Green.
+No roadmap expansion. The session repaired the QA gate created by the shared-registry refactor.
+
+## Session 26 — 2026-09-11 — Legacy DB Identity Compatibility Audit
+### Session type
+Delivery/audit — exactly one objective: classify and harden the `character_name` / `character_bio` compatibility boundary end-to-end. No New Gameplay Feature was started.
+
+### Starting evidence
+- Read `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff from default branch.
+- Latest main at start: `09fcd75de660876b23d915330224ef9ef6623328`.
+- Prerequisite `70efab2a87a9ba27b3548845e7748ee0d8db5d21`: `validate` completed/success and `qa` completed/success.
+- Initial schema still has nullable `players.character_name` and `players.character_bio`.
+- Current `room_snapshot` still exposes both as `characterName` / `characterBio`.
+- Current gender-aware `install_case` writes optional legacy `name` to `character_name`, writes resolved gender-aware bio to `character_bio`, and writes semantic role to `case_role`.
+- PlayerCard renders `nickname` and descriptive `characterBio`, but deliberately does not render `characterName`.
+
+### Reproduction / design finding
+- `character_name`: **compatibility-only**. Current identity UX does not need it; legacy snapshots/types preserve it for old persisted rooms/data. Destructive removal is not safe while Production parity/data contents are unknown.
+- `character_bio`: **runtime-required**. It is populated by the current install RPC, returned by snapshot, typed in `PlayerState`, and displayed in PlayerCard. It cannot be removed without a replacement schema/RPC/snapshot/UI contract.
+- Canonical identity remains `nickname`; `case_role` is semantic story role; gender remains wording-only.
+
+### Changes
+- Added `docs/qa/LEGACY-IDENTITY-COMPATIBILITY-AUDIT.md` with usage classification and migration-safe recommendation.
+- Added `scripts/qa/legacy-identity-contract.mjs` to guard the compatibility boundary.
+- Wired the new contract into Game QA immediately after the PlayerCard identity guard.
+- No DB migration, runtime gameplay behavior, story content, mafia logic, production service, or production data was changed.
+
+### Commits
+- `034eebfccb7574009aa221156eed151bc39e0aeb` — legacy identity compatibility regression guard.
+- `0db3aec9e8945cd92fafcc3144eb9336139d39a6` — compatibility audit artifact.
+- `28fe8870accaa1f33a6a17c11cb56d393a65e1eb` — run the new contract in Game QA.
+
+### Checks / evidence
+- Checks on `28fe8870...` were created successfully; at last inspection both `validate` and `qa` were queued, with no failure available yet.
+- Session 26 is **not deploy-safe yet** until the relevant checks close Green.
+
+### Newly discovered risks
+- `character_name` is dead for current visible identity but still externally observable through snapshot/type compatibility; deleting it without production data evidence could break old rooms or unknown clients.
+- `character_bio` has a misleading legacy name but remains active product data. A future cleanup should introduce a deliberately named replacement end-to-end before considering column removal.
+- Production DB parity remains blocked independently; no destructive recommendation should advance until read-only parity/data inspection is possible.
+
+### Deploy-safety status
+Not deploy-safe yet: checks for the audit/guard commit are still pending. No production deployment or migration occurred.
+
+### Roadmap impact
+Technical Drift Cleanup is now evidence-backed rather than ambiguous. The identity contract itself is stable; remaining destructive cleanup is gated by Production parity and is not a reason to delay product work once this session is Green.
 
 ## Backlog / roadmap
 - [x] Core/full-game 4–10 stable in deterministic + local RPC suites.
@@ -109,14 +153,16 @@ No roadmap expansion. The session repaired the QA gate created by the shared-reg
 - [x] Curated library exact coverage 4–10.
 - [x] Deep semantic/human fairness review for all 14 curated cases.
 - [x] Remove duplicated server/API curated registry.
-- [ ] Session 25 repair full CI/Game QA Green on `70efab2a87a9ba27b3548845e7748ee0d8db5d21`.
-- [ ] Legacy DB identity compatibility audit (`character_name`/`character_bio`) + migration-safe recommendation; no deletion in the audit unless evidence proves it safe and required.
-- [ ] Then begin one clear New Gameplay Feature end-to-end.
+- [x] Session 25 repair Green on `70efab2a87a9ba27b3548845e7748ee0d8db5d21`.
+- [x] Legacy DB identity compatibility audit + migration-safe recommendation + regression guard.
+- [ ] Session 26 checks Green on `28fe8870accaa1f33a6a17c11cb56d393a65e1eb`.
+- [ ] Then begin one clear New Gameplay Feature end-to-end, selected from repository/product evidence rather than speculative scope.
 - [ ] Production parity remains separately blocked.
+- [ ] Future destructive identity cleanup only after read-only Production parity/data evidence; `character_bio` additionally requires a replacement contract first.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
 ## اتجاه المنتج
 **Core Stable → Identity/Story Contract Stable → Story Quality Hardening → Curated Library Stable (4–10) → Technical Drift Cleanup → New Gameplay Features → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص checks لـ`70efab2a87a9ba27b3548845e7748ee0d8db5d21` أولًا. لو failure حقيقي باقٍ، أصلح أول failure فقط مع regression مناسب. لو CI/Game QA Green: نفّذ **Legacy DB Identity Compatibility Audit** كـvertical slice واحد — تتبع `character_name`/`character_bio` عبر migrations/RPC snapshots/types/UI/tests، صنّف كل usage إلى runtime-required أو compatibility-only أو dead، واخرج migration-safe recommendation + regression/cleanup الضروري فقط. لا تبدأ New Gameplay Feature في نفس الجلسة.
+افحص checks لـ`28fe8870accaa1f33a6a17c11cb56d393a65e1eb` أولًا. لو failure حقيقي ظهر، أصلح أول failure فقط. لو `validate` و`qa` Green: ابدأ **New Gameplay Feature واحد end-to-end** فقط، لكن اختَر الـfeature من أعلى قيمة مثبتة في repository evidence الحالية، وحافظ على full-game suite كحاجز أمان. لا تعمل destructive identity migration طالما Production parity محجوبة.
