@@ -11,7 +11,9 @@
     "web": "expo serve",
     "export:web": "expo export --platform web",
     "deploy:web": "eas deploy --prod",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release:preflight": "node scripts/release/preflight.mjs",
+    "qa:release-preflight": "node scripts/qa/release-preflight-contract.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
