@@ -77,6 +77,30 @@ export async function joinRoom(code: string, nickname: string, gender: PlayerGen
   return String(data);
 }
 
+export async function addAiPlayer(code: string) {
+  const { data, error } = await supabase.rpc('add_ai_player', {
+    p_code: normalizeRoomCode(code),
+  });
+  if (error) throw new Error(errorToMessage(error, 'تعذر إضافة لاعب AI'));
+  return data as { playerId: string; nickname: string; gender: PlayerGender };
+}
+
+export async function removeAiPlayer(code: string, playerId: string) {
+  const { error } = await supabase.rpc('remove_ai_player', {
+    p_code: normalizeRoomCode(code),
+    p_player_id: playerId,
+  });
+  if (error) throw new Error(errorToMessage(error, 'تعذر إزالة لاعب AI'));
+}
+
+export async function castAiVotes(code: string) {
+  const { data, error } = await supabase.rpc('cast_ai_votes', {
+    p_code: normalizeRoomCode(code),
+  });
+  if (error) throw new Error(errorToMessage(error, 'لاعبين AI معرفوش يصوتوا'));
+  return data as { votesCast: number };
+}
+
 export async function getRoomSnapshot(code: string) {
   let lastError: unknown;
 
