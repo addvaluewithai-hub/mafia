@@ -57,7 +57,7 @@ Delivery repair — إصلاح أول failure meaningful من Session 31 فقط.
 
 ### Checks / evidence
 - failing prerequisite evidence: CI ✅، Game QA ❌ في `Player identity schema contract` على `bdd73e1a...`.
-- checks على `24c78e3b...` يجب حسمها أولًا في الجلسة التالية/قبل أي scope جديد؛ لا يُعتبر الإصلاح Green حتى تكمل workflows بنجاح.
+- `24c78e3b...`: CI `in_progress` وGame QA `in_progress` عند آخر فحص؛ لا failure جديد ظاهر بعد، ولم تُثبت local E2E/full-suite Green بعد.
 
 ### Newly discovered bugs / risks
 - regression Session 31 كان أوسع من abuse guard نفسه: أي caller يستخدم legacy `create_room` كان يحصل على room بلا Boss player identity.
@@ -66,7 +66,7 @@ Delivery repair — إصلاح أول failure meaningful من Session 31 فقط.
 - Production ما زالت blocked/inactive ولم يحدث أي write أو migration عليها.
 
 ### Deploy-safety status
-**Not deploy-safe.** الإصلاح committed لكن full Game QA الجديدة لم تُثبت Green بعد. لا Production deploy/restore/migration/data write حدث.
+**Not deploy-safe.** الإصلاح committed لكن CI وGame QA الجديدة ما زالت تعمل. لا Production deploy/restore/migration/data write حدث.
 
 ### Roadmap impact
 Session 32 ليست feature session؛ هي repair إلزامي قبل checkpoint. إذا أصبحت Game QA Green بالكامل، يكون الـcheckpoint هو الجلسة التالية لأن Sessions 29–31 كانت ثلاث implementation sessions بعد Checkpoint 28.
