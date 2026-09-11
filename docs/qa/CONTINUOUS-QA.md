@@ -10,11 +10,11 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 معروف قبل regression Session 31.
+- Core/full-game 4–10: deterministic 140 complete games + local Supabase RPC E2E تشمل tie/reconnect/eliminated Boss/rematch؛ لا P0 معروف.
 - Identity/story contract: gender + caseRole + nickname-only identity + curated/AI semantic roles Green. Legacy audit: `character_name` compatibility-only و`character_bio` runtime-required.
 - Curated library: قصتان لكل عدد 4–10، fairness review مكتمل، packs: `home-social`, `stage-events`, `work-records`. 11–12 AI-only؛ 13–15 غير مستهدفة.
 - Production parity blocked: Supabase `bwxgzcppxdrfcaorobpm` rechecked read-only في Session 31 وما زال `INACTIVE`. لا restore/write/migration بدون تصريح صريح.
-- Known non-blocking drift: اسم full-game workflow step ما زال يقول 4/5/6/7 رغم أن التغطية 4–10؛ README roadmap متأخر.
+- Known non-blocking drift: README roadmap متأخر.
 
 ## Recent milestones
 - Sessions 18–21 Story Quality + curated 4–10: Green.
@@ -25,65 +25,86 @@
 - Session 27 same-room rematch: Green.
 - Session 28 Checkpoint: Green.
 - Session 29 curated packs/theme browsing: Green.
-- Session 30 AI Generation Abuse Protection: `validate` ✅ و`qa` ✅ على `d89c7cc75e0ed6d08bb15fbdd9c2d4bdd89ca17a`.
-- Session 31 room/join abuse protection: `validate` ✅ لكن `qa` ❌ بسبب legacy `create_room` Boss-row regression؛ Session 32 أصلح أول failure meaningful.
+- Session 30 AI Generation Abuse Protection: Green.
+- Session 31 room/join abuse protection: initial Game QA failure بسبب legacy Boss-row regression.
+- Session 32 repair: `24c78e3bf09bad67dac9bc3f21461196f9f83b0c` أصبح `validate` ✅ و`qa` ✅.
 
 ## Session 32 — 2026-09-11 — Repair legacy Boss identity regression
 ### Session type
-Delivery repair — إصلاح أول failure meaningful من Session 31 فقط. لم يبدأ checkpoint أو feature جديد.
+Delivery repair — إصلاح أول failure meaningful من Session 31 فقط.
+
+### Result
+- migration `20260911173000_fix_legacy_create_room_boss.sql` أعادت Boss player row للـlegacy `create_room` مع الحفاظ على throttling.
+- لم يتم إضعاف regression.
+- prerequisite repair commit `24c78e3bf09bad67dac9bc3f21461196f9f83b0c`: CI completed/success وGame QA completed/success.
+
+## Session 33 — 2026-09-11 — Solo Play / AI Players MVP
+### Session type
+Delivery feature — explicit product request من المستخدم قدّم هذا الـvertical slice على الـcheckpoint المخطط. لم يتم فتح feature ثانية.
 
 ### Starting evidence
-- قرأت بالترتيب: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → هذا الهاند أوف من default branch.
-- أحدث main قبل الإصلاح: `99335765f2611c4f830690df6438988fbd37235d`.
-- prerequisite `bdd73e1a8b6ba0c4a3fa6dcb51d628d6a1c6b36d`: CI completed/success، Game QA completed/failure.
-- Game QA فشل في أول local DB contract: `Player identity schema contract`; كل static contracts و140 full-game simulations السابقة له كانت Green، وباقي local E2E اتعمل لها skip بعد failure.
+- قرأت `AGENTS.md` → `QA-OPERATING-MODE.md` → هذا الهاند أوف من default branch.
+- فحص prerequisite `24c78e3bf09bad67dac9bc3f21461196f9f83b0c`: `validate` و`qa` كلاهما completed/success.
+- لا P0 gameplay failure معروف عند البداية.
 
 ### Exact objective
-استعادة legacy `create_room` identity contract الذي كسرته Session 31، مع الإبقاء على create-room throttling نفسه ومن دون إضعاف regression أو بدء scope جديد.
+تمكين شخص واحد من إنشاء ماتش تجريبي 4 لاعبين: Boss بشري + 3 computer/AI players، بحيث يدخلوا نفس lifecycle للأدوار والتصويت ولا يعملوا deadlock بسبب عدم امتلاك auth sessions.
 
-### Reproduction / design finding
-- migration `20260911164000_room_join_rate_limit.sql` أعادت تعريف legacy `create_room` لإضافة `claim_room_action_slot('create_room')`.
-- أثناء إعادة التعريف سقط سطر إنشاء Boss player row: تم إنشاء `rooms` row لكن لم يتم إدخال `(room_id, auth.uid(), boss nickname)` في `players`.
-- `scripts/qa/player-identity-schema-e2e.mjs` يعتمد بحق على أن legacy create + join ينتجان Boss وplayer identities؛ لذلك failure regression حقيقي وليس test drift.
+### Design / safety finding
+- `players.user_id` و`player_roles.user_id` كانا `NOT NULL` ومربوطين بـ`auth.users`، لذلك إنشاء fake auth identities للbots كان تصميمًا غير آمن وغير ضروري.
+- الـMVP يجعل bot player داخل نفس `players` table لكن `user_id = null` و`is_bot = true` تحت constraint صريح؛ البشر يظلون `user_id != null`.
+- bot voting server-side يستخدم فقط clues المكشوفة + secret team role الخاص بالbot. لا يقرأ `case_secrets.solution` ولا يرسل private role/solution للعميل.
+- هذه النسخة ليست LLM conversation agent بعد: هي computer-player MVP بقرار تصويت heuristic مبني على الأدلة، لتثبيت gameplay/data/security contract أولًا.
 
-### Code / database / tests / docs
-- أضيفت migration تصحيحية additive: `supabase/migrations/20260911173000_fix_legacy_create_room_boss.sql`.
-- migration تعيد legacy `create_room` بنفس validations ونفس shared create budget، ثم تعيد إدخال Boss في `players` قبل `room_created` event.
-- لم يتم تعديل أو حذف أو تخفيف `player-identity-schema-e2e.mjs`؛ نفس regression هو gate للإصلاح.
-- لا UI/story/feature unrelated changes.
+### Code / database / UI / tests
+- migration `20260911180000_ai_players_mvp.sql`:
+  - nullable bot-safe `user_id` + `players.is_bot` constraint.
+  - `add_ai_player` و`remove_ai_player` Boss-only/lobby-only مع احترام `max_players`.
+  - `cast_ai_votes` Boss-only/voting-only، idempotent per round، ويستخدم نفس `votes` table ونفس eligible-voter accounting.
+  - mafia bot يتجنب teammate عندما يوجد innocent target؛ innocent bot يميل لدور مشتبه مذكور في clues المكشوفة، مع random tie-break.
+- `lib/game.ts`: actions للـAI players، و`resolveVote` يشغّل bot votes قبل الحسم حتى لا تنتظر اللعبة auth sessions غير موجودة.
+- `app/solo.tsx`: one-tap solo setup لـ4 لاعبين بقضية curated `last-tray`: المستخدم + 3 AI.
+- `app/index.tsx`: CTA واضح `جرّب لوحدك ضد AI`.
+- `scripts/qa/ai-players-e2e.mjs`: local Supabase regression من lobby → 3 bots → install case → human vote + 3 bot votes → resolve غير pending، مع capacity/idempotency assertions.
+- `.github/workflows/game-qa.yml`: أضيف AI players E2E للـGame QA، وتم تصحيح label القديم للـfull-game إلى 4–10.
 
 ### Commits
-- `24c78e3bf09bad67dac9bc3f21461196f9f83b0c` — `fix: preserve boss identity in legacy room creation`.
+- `0a5262710d8679a0bf4a61e76ff09d35fd0cc015` — DB AI-player lifecycle + voting.
+- `13e8e8acdd721ab8f87e8e3f06deb093dd09f417` / `2b59ab241284474b8a78a737e1f56ecde7cb16bc` — client actions + automatic bot voting before resolve.
+- `08eff1b2338e7a861916cd3c578dd0e15e6fe772` — solo playtest screen.
+- `c7e1990fc8da32b18596dad9433b30737ccaac76` — home CTA.
+- `b892cee6fec186033b89b6373117f70ab29d3f0e` — AI players local E2E.
+- `a84f900804440d716f783c402e2a877a5b91e3c4` — Game QA integration.
 
 ### Checks / evidence
-- failing prerequisite evidence: CI ✅، Game QA ❌ في `Player identity schema contract` على `bdd73e1a...`.
-- `24c78e3b...`: CI `in_progress` وGame QA `in_progress` عند آخر فحص؛ لا failure جديد ظاهر بعد، ولم تُثبت local E2E/full-suite Green بعد.
+- prerequisite Session 32 repair: `validate` ✅ و`qa` ✅.
+- عند آخر فحص لـ`a84f9008...`: GitHub لم يكن قد أنشأ check runs بعد (`0 check runs`). لذلك لا توجد دعوى Green للتغيير الجديد بعد.
 
 ### Newly discovered bugs / risks
-- regression Session 31 كان أوسع من abuse guard نفسه: أي caller يستخدم legacy `create_room` كان يحصل على room بلا Boss player identity.
-- لا evidence على P0 آخر حتى الآن لأن local E2E اللاحقة تم skip بعد أول failure؛ يجب انتظار Game QA كاملة بعد الإصلاح.
-- residual abuse risks السابقة باقية: limiter per authenticated identity وليس IP/device، وinvalid room-code probes لا تُحسب durable بسبب rollback داخل RPC.
-- Production ما زالت blocked/inactive ولم يحدث أي write أو migration عليها.
+- AI players MVP لا ينتج نقاشًا نصيًا/صوتيًا بعد؛ الذكاء الحالي محدود لاختيار التصويت من الأدلة المكشوفة. هذا مقصود كـMVP وليس ادعاء LLM-agent كامل.
+- bot identity يعتمد حاليًا على prefix `AI ` في الاسم للعرض؛ `is_bot` لم يُضف بعد إلى `room_snapshot` UI contract. الـDB contract نفسه صريح وآمن.
+- solo screen يستخدم قضية 4-player واحدة (`last-tray`) كبداية سريعة؛ اختيار القضية/عدد bots لاحقًا يمكن أن يكون slice منفصل بعد ثبوت الـMVP.
+- Production ما زالت inactive، لذلك المستخدم لن يقدر يجرب feature على production قبل restore/migration/deploy مصرح به.
 
 ### Deploy-safety status
-**Not deploy-safe.** الإصلاح committed لكن CI وGame QA الجديدة ما زالت تعمل. لا Production deploy/restore/migration/data write حدث.
+**Not deploy-safe.** local E2E الجديد والـfull Game QA لم يثبتا Green بعد، وProduction inactive. لم يحدث Production restore/deploy/migration/data write.
 
 ### Roadmap impact
-Session 32 ليست feature session؛ هي repair إلزامي قبل checkpoint. إذا أصبحت Game QA Green بالكامل، يكون الـcheckpoint هو الجلسة التالية لأن Sessions 29–31 كانت ثلاث implementation sessions بعد Checkpoint 28.
+Solo/AI Players أصبح feature MVP فعلي بدل فكرة فقط. قبل توسيعه إلى LLM discussion أو أعداد أكبر يجب أولًا إثبات DB/full-game E2E Green ثم عمل checkpoint لأن cadence كان مستحقًا أصلًا.
 
 ## Backlog / roadmap
-- [x] Core/full-game 4–10 stable قبل Session 31 regression.
-- [x] Identity/story contract stable قبل Session 31 regression.
-- [x] Curated 4–10 + fairness + packs.
+- [x] Core/full-game 4–10 stable.
+- [x] Identity/story contract + curated 4–10 + fairness + packs.
 - [x] Same-room rematch.
-- [x] AI generation abuse protection؛ Green.
-- [ ] Room creation/join abuse protection: implementation موجود، لكن deploy safety معلقة حتى يثبت إصلاح legacy Boss identity أن Game QA كاملة Green.
+- [x] AI generation abuse protection.
+- [x] Room creation/join abuse protection + legacy Boss regression repair.
+- [ ] Solo/AI Players MVP: implementation committed؛ deploy safety معلقة على Game QA الجديدة.
 - [ ] Production parity blocked while Supabase is `INACTIVE`.
-- [ ] بعد checkpoint فقط: observability/error telemetry، provider quotas/runbook، possible gateway/IP-level probe controls، ثم polish/docs drift.
+- [ ] بعد checkpoint: قيّم AI discussion/reasoning UX مقابل launch-safety/observability، ولا توسع bots عشوائيًا قبل ثبوت الـMVP.
 - [ ] 11–15 فقط إذا gameplay/UX evidence لاحقًا يبرر.
 
 ## اتجاه المنتج
 **Core Stable → Identity/Story Contract Stable → Story Quality → Curated Library 4–10 → New Features → Production/Launch Safety → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص أولًا CI وGame QA لـ`24c78e3bf09bad67dac9bc3f21461196f9f83b0c`. إذا ظهر failure حقيقي، أصلح أول failure meaningful فقط ولا تبدأ scope جديد. إذا Green بالكامل، نفّذ **Checkpoint/Planning session فقط**: audit launch-safety coverage، residual abuse risks، Production blocker، full-game health، story/library status، technical/docs drift، ثم حدد 3–4 milestones تالية وأولوية واحدة دقيقة بدون feature implementation.
+افحص أولًا `validate` وGame QA لـ`a84f900804440d716f783c402e2a877a5b91e3c4`. إذا ظهر failure حقيقي في AI Players أو regression موجود، أصلح أول failure meaningful فقط. إذا Green بالكامل، نفّذ **Checkpoint/Planning session فقط**: قيّم Solo/AI MVP وfull-game/security coverage، ثم قرر هل أعلى milestone تالٍ هو AI discussion agents أم Production/launch-safety/observability، مع 3–4 أهداف مرتبة وبدون implementation جديد في نفس checkpoint.
