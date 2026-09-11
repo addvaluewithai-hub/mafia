@@ -1,17 +1,9 @@
 # آخر خيط — Continuous QA Handoff
 
-> هذا الملف هو مصدر الحقيقة **لحالة المشروع الحالية والهاند أوف المتغير بين الجلسات**. قواعد التشغيل وحجم الجلسة والـcheckpoints والـmilestones موجودة في `docs/qa/QA-OPERATING-MODE.md` ويجب قراءتها قبله كما هو موضح في `AGENTS.md`.
-
-## ترتيب القراءة لأي جلسة جديدة
-1. `AGENTS.md`
-2. `docs/qa/QA-OPERATING-MODE.md`
-3. هذا الملف
-4. أحدث commits وCI/checks على `main`
-
-لا تعتمد على chat memory بدل الريبو.
+> هذا الملف هو مصدر الحقيقة **لحالة المشروع الحالية والهاند أوف المتغير بين الجلسات**. اقرأ قبله `AGENTS.md` ثم `docs/qa/QA-OPERATING-MODE.md`. لا تعتمد على chat memory بدل الريبو.
 
 ## الهدف
-لعبة كاملة قابلة للعب من إنشاء الروم حتى إعلان الفائز، بدون deadlocks أو حالات واجهة غامضة، وبهوية اللاعب الحقيقية وقصص مصرية طبيعية وعادلة، مع automated confidence للمسارات الحرجة.
+لعبة كاملة قابلة للعب من إنشاء الروم حتى إعلان الفائز، بدون deadlocks، بهوية اللاعب الحقيقية، وقصص مصرية طبيعية وعادلة، مع automated confidence للمسارات الحرجة.
 
 ## قواعد غير قابلة للتفاوض
 - full-game path: create → join → role/case install → clues → voting → ties → elimination → reconnect → next round → winner.
@@ -21,203 +13,144 @@
 - كل bug مهم أو متكرر يتحول إلى regression عندما يكون ذلك عمليًا.
 - ممنوع إضعاف/حذف test لمجرد جعل CI أخضر.
 - لا Production deploy أو migration إلا بعد E2E مناسب وقرار deploy-safe صريح هنا.
-- الجلسة العادية تنفذ vertical slice واحدًا كاملًا عندما يكون ذلك آمنًا؛ لا micro-sessions بلا داعٍ ولا خلط features غير مرتبطة.
+- الجلسة العادية تنفذ vertical slice واحدًا كاملًا عندما يكون ذلك آمنًا.
 
 ## P0 — Functionality / Deadlocks
 - [x] vote gating defensive hotfix.
-- [x] 60 deterministic full-game state simulations لـ5/6/7 لاعبين.
+- [x] 60 deterministic full-game state simulations لـ5/6/7.
 - [x] local Supabase full-game RPC E2E لـ5/6/7.
-- [x] server-authoritative `phase` + `canVote`.
-- [x] UI تعتمد على `phase/canVote` مع regression guard.
+- [x] server-authoritative `phase` + `canVote` + UI contract.
 - [x] reconnect regression: before cast → after cast → tie reset → resolve → next round.
 - [x] eliminated Boss لا يصوت لكنه يحتفظ بـresolve/reveal admin controls.
-- [ ] Production DB parity **blocked** حتى Production Supabase يكون active أو restore يتصرح به صراحة. لا تطبق migration قبل read-only parity + smoke-test plan.
+- [ ] Production DB parity **blocked** حتى Production Supabase يكون active أو restore يتصرح به صراحة. لا migration قبل read-only parity + smoke-test plan.
 
 ## Production drift المعروف
-Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` قبل تسجيل كل ذلك في versioned migrations. parity لم تثبت لأن Production Supabase كان `INACTIVE` ومحاولة قراءة migration history انتهت connection timeout. لا تدّعِ أن migration حديث مطبق على Production بدون تحقق read-only.
+Production كان فيها `case_mode` / `story_template_id` / `create_room_v2` قبل تسجيل كل ذلك في versioned migrations. parity لم تثبت لأن Production Supabase كان `INACTIVE`. لا تدّعِ أن migration حديث مطبق على Production بدون تحقق read-only.
 
-## Player identity / generated-case contract
+## Identity / story contract — الحالة الحالية
 - [x] `gender + caseRole` schema + snapshot/types regression.
-- [x] gender-aware backend RPCs: `create_room_v3` و`join_room_v2`.
-- [x] backend gender E2E all-male/all-female/mixed مع إثبات استقلال mafia count عن gender.
-- [x] gender create/join UI في create + room join + standalone `/join`.
+- [x] gender-aware create/join backend + UI + mixed-gender E2E.
 - [x] nickname-only PlayerCard identity.
-- [x] `caseRole` population في `install_case`.
-- [x] AI generators يستخدمان `role + bio` بدون fictional names.
-- [x] `install_case` يستهلك optional `roleByGender` / `bioByGender` بعد player shuffle بدون تغيير `order by random()` أو `mafiaCharacterIndexes`.
-- [x] AI generator schemas/prompts/validators تنتج وتفرض `roleByGender.{male,female}` و`bioByGender.{male,female}` مع semantic-equivalence rule واستقلال mafia assignment عن gender.
-- [x] shared TypeScript contract يصرّح بـ`GenderedCaseText`, `GeneratedCaseCharacter`, و`GeneratedAiCase`; legacy `GeneratedCase` يبقى compatible مع preset cases القديمة بينما `GeneratedAiCase` يجعل role والـgender variants mandatory.
-- [ ] `character_name` و`character_bio` ما زالا legacy story fields في presets؛ تحويلهما أصبح جزءًا من Story Quality slice وليس identity micro-cleanup منفصلًا.
+- [x] `install_case` يملأ `caseRole` ويختار optional `roleByGender` / `bioByGender` بعد player shuffle بدون تغيير `order by random()` أو `mafiaCharacterIndexes`.
+- [x] AI generators تطلب semantic `role + bio + roleByGender + bioByGender` مع semantic-equivalence rule واستقلال mafia assignment عن gender.
+- [x] shared TypeScript contract: `GenderedCaseText`, `GeneratedCaseCharacter`, `GeneratedAiCase`.
+- [x] الست curated presets migrated من fictional `name` إلى semantic `role` + complete male/female wording في Session 19.
+- [ ] DB/snapshot legacy `character_name` و`character_bio` fields ما زالت موجودة للتوافق؛ لا تحذفها قبل compatibility audit منفصل.
 
 ## QA coverage الحالي
 - vote UI authoritative contract.
-- gender UI RPC contract + standalone join contract.
-- player card identity contract.
-- generated-case schema + prompt + typed contract + install handoff contract للمسارين.
-- caseRole install E2E + gender-aware case wording install E2E.
-- 60 deterministic full-game state simulations.
+- gender UI RPC + standalone join contract.
+- player-card identity contract.
+- generated-case schema/prompt/type/install contract للمسارين.
+- caseRole + gender-aware install E2E.
+- 60 deterministic full-game simulations.
 - local Supabase full-game RPC E2E لـ5/6/7.
 - eliminated Boss admin-controls E2E.
-- story critic report mode.
+- deterministic story critic + machine-readable fairness baseline.
+- curated-preset identity regression الآن داخل `story-critic.mjs`: يمنع fictional `name` ويرفض نقص `role`, neutral `bio`, `roleByGender`, أو `bioByGender` لأي character.
 
-## Session 15 — AI generator gender wording variants
-- commit: `6d7ea4db2dc9df164d06bd77d9afaa8611b34124`.
-- النتيجة النهائية: `validate` ✅ و`qa` ✅.
-- كلا AI paths يطلب ويvalidate gender-aware role/bio variants، والـprompt يمنع اختلاف الحقائق أو mafia assignment حسب الجنس.
-- لم يحدث Production deploy أو migration.
+## Story Quality baseline
+Session 18 أضاف baseline deterministic للست قصص: player/mafia counts، role/name coverage، clue-by-clue mention matrix، early-exclusive/decisive warnings، jargon/read-aloud burden، وplayer-count coverage. الـfairness signal lexical evidence فقط، وليس semantic guilt verdict.
 
-## Session 16 — 2026-09-10 — Generated Case Identity Contract closure
+## Session 18 — 2026-09-11 — Story Quality Baseline & Fairness Matrix
+- code commit: `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4`.
+- handoff commit: `c0dcf1d6f2cd57b13b4714db50611b971edaad90`.
+- **النتيجة النهائية التي تأكدت في Session 19:** `validate` ✅ و`qa` ✅ على handoff/main prerequisite.
+- لا Production deploy/migration.
+
+## Session 19 — 2026-09-11 — Rewrite/Migrate existing six curated presets
 ### Session type
-Delivery — إغلاق typed generated-case identity contract قبل Story Quality checkpoint.
-
-### Evidence / result
-- commits: `d679dfcbfa7018b95a2a654df7fa97520a42d909` و`8ee7956dbe38bc8ffaebcc04dcf2fb964013d7f2`.
-- أضيف `GenderedCaseText`, `GeneratedCaseCharacter`, `GeneratedAiCase` مع legacy preset compatibility.
-- regression يثبت typed contract بجانب schema/prompt/install handoff.
-- **النتيجة النهائية التي تأكدت في Session 17:** checks على `8ee7956dbe38bc8ffaebcc04dcf2fb964013d7f2` أصبحت `validate` ✅ و`qa` ✅.
-- لم يتغير gameplay أو mafia assignment ولم يحدث Production deploy/migration.
-
-## Session 17 — 2026-09-10 — Milestone A/B → Story Quality checkpoint
-### Session type
-Checkpoint / Planning فقط. لم يبدأ story rewrite أو feature جديدة.
+Delivery — vertical slice واحد: تحويل الست curated presets الحالية end-to-end إلى story identity contract الجديد، مع تبسيط اللغة وتقليل الجارجون والحفاظ على نفس mafia assignment indexes.
 
 ### Starting evidence
 - قُرئت `AGENTS.md` ثم `QA-OPERATING-MODE.md` ثم هذا handoff من default branch.
-- `main` عند بداية الـcheckpoint: `082c1f2b63985dec76aa46ad0e8415f264ffed80` (Session 16 handoff)، والـcode prerequisite `8ee7956d...` Green بالكامل: `validate` ✅ و`qa` ✅.
-- لا يوجد CI failure يسبق الـcheckpoint.
+- أحدث `main` عند البداية كان `c0dcf1d6f2cd57b13b4714db50611b971edaad90`.
+- checks على prerequisite/handoff `c0dcf1d6...`: `validate` ✅ و`qa` ✅؛ لا يوجد failure يسبق الـrewrite.
 - Production parity ما زال blocker خارجيًا ولم يُلمس.
 
-### Audit — Milestone A: Core Stable
-- **لا يوجد P0 gameplay deadlock معروف حاليًا.**
-- local Supabase E2E يثبت create → joins → install → voting → tie (6 players) → tie reset → resolve/elimination → reconnect before/after cast/tie/resolve/reveal → next clue → repeated eliminations → winner/public solution لـ5/6/7.
-- eliminated voter rejection وBoss-host controls بعد elimination مغطاة.
-- deterministic simulation تضيف 60 full-game state scenarios لـ5/6/7.
-- **Gap حقيقي وليس P0 حاليًا:** runtime full-game E2E لا يغطي 4 أو 8–10 لاعبين؛ لكن curated presets نفسها حاليًا 5/6/7 فقط، لذلك لا نوسّع core test matrix عشوائيًا قبل تحديد player-count support مع curated library. عند بدء 4–5/8–10 content coverage يجب إضافة matching full-game E2E قبل اعتبار العدد supported.
-- Milestone A محليًا قريب من stable/Green؛ الاستثناء الوحيد غير المحسوم هو Production DB parity الخارجي.
+### Exact objective
+Rewrite/Migrate الست presets فقط: إزالة fictional player identities، semantic roles + gender-aware wording، مصري أبسط وأسهل في القراءة بصوت عالٍ، وتقليل technical jargon، مع الحفاظ على mystery structure و`mafiaCharacterIndexes`. لم نفتح player-count expansion أو feature جديدة.
 
-### Audit — Milestone B: Identity & Story Contract
-- nickname identity، gender create/join، gender wording install، caseRole، AI generation contract، shared types كلها مغطاة ومتصلة end-to-end.
-- المتبقي ليس runtime identity defect: presets الستة ما زالت تستخدم fictional `name` + single `bio` legacy content. هذا content debt يجب إصلاحه أثناء Story Quality حتى لا نعيد كتابة الهوية منفصلة عن الحبكة والـclues.
-- Milestone B runtime contract يعتبر مغلقًا؛ preset migration هو مدخل Milestone C.
+### What changed
+Migrated all six files under `lib/server-stories/`:
+- `clock-1117.ts`
+- `room-312.ts`
+- `blue-notebook.ts`
+- `last-rehearsal.ts`
+- `fourth-floor.ts`
+- `silent-auction.ts`
 
-### Audit — Story inventory / critic
-- inventory الحالي بالـrepo: **6 curated presets** فقط: قصتان لـ5 لاعبين، قصتان لـ6، قصتان لـ7. لا curated coverage لـ4 أو 8–10 حاليًا.
-- `story-critic.mjs` الحالي مفيد كلغة/structure smoke report لكنه محدود: jargon hits + stiff phrases + clue/bio length + exactly 4 clues + solution presence. هو نفسه يصرح أنه لا يستبدل logic criticism.
-- critic الحالي **لا يقيس** suspect×clue fairness، clue exclusivity، early reveal، red-herring distribution، role/nickname identity debt، gender variants، أو player-count contract.
-- عينة مباشرة من `clock-1117` تؤكد legacy fictional names (`مروان/سلمى/...`) وbio واحد لكل character، رغم أن install/runtime الآن قادر على caseRole/gender variants.
-- عينة `last-rehearsal` تظهر حملًا لغويًا وتقنيًا واضحًا مثل `ريلاي`, `تحليل الغبار`, و`سجل ريلاي`، وتوضح أن story quality debt حقيقي وليس مجرد cleanup نظري.
+لكل character الآن:
+- `role` semantic غير اسم شخص.
+- neutral fallback `bio`.
+- `roleByGender.male/female` بنفس معنى الدور.
+- `bioByGender.male/female` بنفس الحقائق والفرصة والاشتباه.
+- لا `name` fictional fields في curated content.
+
+Story text نفسه اتبسط في premise/clues/prompts/solution، خصوصًا المصطلحات التقنية الثقيلة مثل relay/dust-analysis style wording. الـclues تشير إلى semantic roles بدل أسماء شخصيات خيالية، بحيث nickname الحقيقي يظل هوية اللاعب.
+
+### Regression / fairness guard
+`story-critic.mjs` اتغير من name-based fairness inventory إلى semantic-role-based inventory. وبدل ما legacy identity تكون warning فقط، integrity يفشل CI لو أي curated preset:
+- رجّع `name` fictional field.
+- ناقص `role` لأي character.
+- ناقص neutral `bio`.
+- ناقص `roleByGender` أو `bioByGender` لأي character.
+- عنده invalid `mafiaCharacterIndexes` أو no clues.
+
+الـfairness matrix الآن تستخدم role mentions (`mentionedRoles`, `mafiaMentionedRoles`, `nonMafiaMentionedRoles`) وتظل lexical deterministic evidence وليست semantic verdict.
+
+### Mafia assignment safety
+`mafiaCharacterIndexes` لم تتغير:
+- `clock-1117`: `[1]`
+- `room-312`: `[4]`
+- `blue-notebook`: `[1, 2]`
+- `last-rehearsal`: `[1, 4]`
+- `fourth-floor`: `[1, 6]`
+- `silent-auction`: `[0, 1]`
+Gender variants لا تدخل في الاختيار أو الشفل.
+
+### Commits
+- `dcf845e03dceab4d2bfc84ff8e309da3312f18e3` — clock-1117 migration.
+- `be2ff3d285d1601637a5beb78eeb5442a0c17479` — blue-notebook migration.
+- `3086d683309403b73dc8afd36bff281f7dff5066` — fourth-floor migration.
+- `1c71791e37eb38d21b29e43881cba69fd4d9eee9` — last-rehearsal migration.
+- `30bc8c0850f12d878ca0b4fa73b918174a127a8a` — room-312 migration.
+- `05410e4885f4b39baf80790afef0718ac2a0b3f1` — silent-auction migration.
+- `8bb4e2b25cfe0132df78be670cdf6d4c5ab068a0` — semantic-role story critic + strict curated identity regression.
+
+### Evidence / checks
+- prerequisite `c0dcf1d6...`: `validate` ✅ و`qa` ✅.
+- checks على `8bb4e2b25cfe0132df78be670cdf6d4c5ab068a0` عند آخر فحص: `validate` in_progress و`qa` in_progress، ولا يوجد failure ظاهر حتى handoff.
+- لذلك Session 19 **ليست deploy-safe بعد** حتى يقفل full CI Green.
 
 ### Newly discovered bugs / risks
-- لا bug gameplay جديد ظهر في الـcheckpoint.
-- **Story QA blind spot:** critic يمكن أن يعطي score جيدًا لقصة structurally سليمة لغويًا حتى لو clue واحد يكشف المافيا مبكرًا أو توزيع الاشتباه غير عادل؛ قبل rewrite واسع نحتاج measurable fairness inventory.
-- **Player-count gap:** curated library الحالية 5/6/7 فقط. 4 و8–10 لا ينبغي وصفها supported content bands حتى توجد قصة + validator + matching gameplay evidence.
-- preset fictional names قد تجعل اللاعب يشعر أنه يمثل شخصية بديلة بدل أن nickname هو الهوية؛ يجب تحويلها إلى semantic roles أثناء rewrite، لا مجرد rename آلي.
-
-### Roadmap decision — الأربع vertical slices التالية
-1. **Story Quality Baseline & Fairness Matrix — الأولوية التالية.** وسّع deterministic story QA ليعمل inventory لكل الست قصص: character/mafia counts، suspect×clue evidence matrix أو metadata قابلة للتحقق، early-reveal/exclusivity warnings، jargon/read-aloud burden، legacy identity/gender-variant coverage. Done when: تقرير machine-readable يغطي 6/6 ويكشف gaps بدون تغيير القصص نفسها، ويدخل CI report mode بدون live model.
-2. **Rewrite/Migrate the existing six presets end-to-end.** استخدم baseline لإزالة fictional identity واستبدالها semantic `role` + gender-aware wording، وتبسيط المصري، وضبط clue escalation/red herrings مع الحفاظ على mystery semantics. Done when: 6/6 تمر story validator/critic المستهدف + install E2E ولا يتغير mafia assignment بسبب gender.
-3. **Curated 4–5 & 6–7 library coverage.** بعد تنظيف الست الحالية، أضف/كيّف قضايا بحيث 4–5 و6–7 لهما coverage مقصودة وليست fallback، مع player-count validation وmatching local full-game E2E لأي عدد جديد (خصوصًا 4). Done when: selection لا يعتمد على unrelated-count fallback لهذه bands وكل case passes story/fairness validation.
-4. **Curated 8–10 expansion + gameplay proof.** صمم قضايا مناسبة لعدد أكبر بدل تمديد قصص صغيرة آليًا، واضبط mafia count/fairness، وأضف full-game E2E لـ8/9/10 قبل إعلان الدعم. Done when: curated selection + story QA + local full-game winner/tie/elimination evidence Green للأعداد المعلنة.
+- لا gameplay bug جديد ظهر أثناء الـrewrite.
+- semantic-role lexical matrix أحسن من name matrix بعد migration، لكنه ما زال لا يفهم الإشارات الضمنية أو قوة clue دلاليًا؛ يحتاج human/content review بجانب التقرير.
+- neutral fallback `bio` موجود للتوافق، لكن تجربة اللاعب الطبيعية مع gender معروف يجب أن تستخدم `bioByGender` عبر `install_case`؛ هذا contract مغطى سابقًا بالـgender install E2E.
+- player-count library ما زالت 5/6/7 فقط؛ 4 و8–10 غير مدعومين كمكتبة curated حتى matching case + gameplay E2E.
 
 ### Deploy safety
-- هذا checkpoint docs-only؛ لا Production deploy/migration تم أو مطلوب.
-- تغييرات Session 16 أصبحت CI Green، لكن Production DB parity ما زال غير مثبت؛ لا تستخدم Green المحلي كدليل parity.
+- لا Production deploy، restore، migration، أو DB write حدث.
+- Production parity blocker مستقل ولم يُلمس.
+- لا تعتبر الـpreset migration deploy-safe حتى `validate` وfull `qa` على `8bb4e2b...` يقفلوا Green.
 
-## P1 — Story Quality backlog
-- [x] Story critic heuristic scaffold موجود.
-- [x] checkpoint inventory للست قصص وتحديد حدود critic والـplayer-count gaps.
-- [ ] measurable Story Quality Baseline & Fairness Matrix لـ6/6.
-- [ ] نقد/إعادة كتابة الست قصص: clarity, plausibility, fairness, ambiguity, escalation, Egyptian naturalness.
-- [ ] إزالة fictional preset identity ضمن rewrite منظم وإضافة role/gender wording.
-- [ ] منع clue واحد من كشف المافيا مبكرًا، وحتى الأخير يحتاج ربطًا بما قبله.
-- [ ] curated coverage: 4–5 ثم 6–7 ثم 8–10، مع matching gameplay E2E لأي player count جديد.
+## P1 — Story / library backlog
+- [x] deterministic Story Quality Baseline & Fairness Matrix لـ6/6.
+- [x] migrate/rewrite الست curated presets إلى semantic roles + gender-aware wording + simpler Egyptian Arabic.
+- [ ] close Session 19 only after Green CI; fix first real failure if any.
+- [ ] curated 4–5 & 6–7 coverage مع player-count selection contract وmatching local full-game E2E لأي عدد جديد، خصوصًا 4.
+- [ ] curated 8–10 expansion + full-game E2E لـ8/9/10 قبل إعلان الدعم.
+- [ ] لاحقًا: semantic/human story review أعمق للـfairness/plausibility بعد اتساع المكتبة.
 
 ## اتجاه المنتج
 **Core Stable → Identity/Story Contract Stable → Story Quality → Curated Case Library → New Gameplay Features → Polish/Launch**.
 
-الـAI generation جزء من المنتج لكنه ليس المصدر الوحيد للمحتوى؛ الهدف مكتبة curated قوية + AI generation تحت نفس قواعد الهوية والـfairness.
+الـAI generation جزء من المنتج، لكن الهدف مكتبة curated قوية + AI generation تحت نفس قواعد الهوية والـfairness.
 
-## الأولوية الدقيقة للجلسة التالية
-نفّذ vertical slice **Story Quality Baseline & Fairness Matrix** فقط، بدون rewrite للقصص في نفس الجلسة:
-1. افحص checks لهذا handoff commit أولًا؛ لو failure حقيقي أصلحه ضمن docs/checkpoint closure قبل scope جديد.
-2. وسّع deterministic story QA من language/length heuristic إلى machine-readable inventory يغطي 6/6: player/mafia counts، clue progression، legacy identity/gender variant coverage، وsuspect×clue/fairness signals قابلة للمراجعة.
-3. اجعل early-reveal/exclusive-clue risk ظاهرًا كwarning/report evidence بدل ادعاء semantic certainty لا يستطيع heuristic إثباتها.
-4. أضف regression/CI wiring اللازم بحيث baseline قابل لإعادة التشغيل بدون live AI/LLM.
-5. لا تبدأ rewrite للست قصص حتى baseline يحدد بالضبط أين مشاكل كل قصة.
+## الأولوية الدقيقة للجلسة التالية — بعد Session 19
+1. افحص checks للـcommit `8bb4e2b25cfe0132df78be670cdf6d4c5ab068a0` أولًا.
+2. إذا ظهر failure حقيقي: أصلح **أول failure فقط** داخل preset-migration objective مع regression مناسب، ولا تبدأ player-count expansion.
+3. إذا `validate` و`qa` Green: أغلق Session 19 ثم نفّذ vertical slice واحدًا **Curated 4–5 & 6–7 library coverage**. أضف/كيّف selection/content بحيث 4–5 و6–7 coverage مقصودة وليست unrelated-count fallback، وأضف matching local full-game E2E لأي عدد جديد—خصوصًا 4—قبل وصفه supported.
+4. لا تبدأ 8–10 في نفس الجلسة؛ ده slice مستقل بعد 4–7 Green.
+5. لا تغيّر mafia assignment بسبب gender.
 6. Production parity يظل blocked ولا يُلمس إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
-
-## Session 18 — 2026-09-11 — Story Quality Baseline & Fairness Matrix
-### Session type
-Delivery — vertical slice واحد للـdeterministic story-quality baseline فقط. لم تُعد كتابة أي قصة ولم تتغير game/runtime semantics.
-
-### Starting evidence
-- قُرئت `AGENTS.md` ثم `QA-OPERATING-MODE.md` ثم هذا handoff من default branch.
-- أحدث `main` عند البداية كان `27c4a35ae1882b7a93b5e2e5448476d992d604e0`.
-- checks للـcheckpoint commit `27c4a35...`: `validate` ✅ و`qa` ✅، لذلك لا يوجد failure يسبق الـStory Quality work.
-- Production parity ما زال blocked ولم يُلمس.
-
-### Exact objective
-تحويل `scripts/qa/story-critic.mjs` من language/length heuristic فقط إلى baseline machine-readable قابل لإعادة التشغيل لكل الست curated presets، مع fairness signals قابلة للمراجعة بدون ادعاء semantic certainty أو استخدام live AI.
-
-### Reproduction / design finding
-- الـcritic القديم كان يكتب `story-critic.json` فقط ويقيس jargon/stiffness/length/4-clue/solution basics.
-- لم يكن يخرج player/mafia inventory، suspect×clue matrix، early-exclusive warnings، legacy identity coverage، gender-variant coverage، أو player-count coverage summary.
-- بدل إدخال حكم fairness يدوي غير قابل لإعادة التشغيل، استخدمت baseline lexical واضح: هل اسم كل suspect مذكور صراحة في كل clue، مع فصل mafia/non-mafia mentions. هذا signal قابل للتحقق من النص لكنه **ليس** semantic guilt score.
-
-### What changed
-- commit `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4` — `qa: add deterministic story fairness baseline`.
-- `story-critic.mjs` يخرج الآن تقريرين:
-  - `qa/reports/story-critic.json` مع metrics القديمة + integrity + fairness baseline لكل قصة.
-  - `qa/reports/story-fairness-baseline.json` كـmachine-readable inventory مخصص.
-- لكل قصة أصبح التقرير يحتوي:
-  - `playerCount` و`mafiaCount` و`mafiaCharacterIndexes`.
-  - mafia/non-mafia names كما يفهمها preset الحالي.
-  - clue-by-clue `mentionMatrix` لكل suspect، و`namedSuspects`, `mafiaNamedSuspects`, `nonMafiaNamedSuspects`.
-  - `exclusiveNamedSuspect` وearly warnings عندما يكون clue قبل الأخير يذكر mafia حصريًا أو يستخدم decisive language بلا non-mafia mentions.
-  - `mentionCounts` و`unmentionedSuspects` للمساعدة في رؤية red-herring distribution blind spots.
-  - legacy identity warning إذا `role` coverage أقل من characters.
-  - `roleByGender` و`bioByGender` coverage warnings.
-  - aggregate `playerCountCoverage` للـlibrary الحالية.
-- baseline quality warnings تبقى report-mode ولا تفشل CI لمجرد أن القصص الحالية تحتاج rewrite.
-- **integrity corruption فقط** (لا characters، لا mafia indexes، index خارج المدى، أو لا clues) يفشل الـscript/CI حتى لا يصبح التقرير نفسه مضللًا.
-- لا live model/provider dependency أضيفت، ولا workflow جديد مطلوب لأن `game-qa.yml` يشغّل `story-critic.mjs` ويرفع `qa/reports/*.json` أصلًا.
-- لم يُحذف أو يُضعف أي اختبار.
-
-### Evidence / checks
-- prerequisite `27c4a35...`: `validate` ✅ و`qa` ✅.
-- على `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4` عند آخر فحص:
-  - TypeScript ✅
-  - Expo doctor ✅
-  - vote/gender/join/player-card/generated-case contracts ✅
-  - 60 full-game state simulations ✅
-  - **Story critic (report mode) ✅** مع الـbaseline الجديد
-  - full `qa` ما زال `in_progress` عند `Start clean local Supabase`; لم يظهر failure حتى لحظة handoff.
-- `validate`/full `qa` النهائيان لم يُعتبرا Green بعد لأن run ما زال مستمرًا وقت الإغلاق.
-
-### Newly discovered bugs / risks
-- لا gameplay bug جديد ظهر.
-- lexical mention matrix يقيس **explicit name mentions فقط**؛ clue قد يوجّه بقوة نحو suspect بطريقة ضمنية لا يلتقطها التقرير. لذلك warnings evidence وليست verdict.
-- preset identity/gender warnings متوقعة حاليًا لأن الست قصص legacy؛ هذه baseline evidence للـrewrite التالي وليست سببًا لكسر CI.
-- player-count coverage ما زال 5/6/7 فقط؛ 4 و8–10 يظلان unsupported curated bands حتى slices المكتبة اللاحقة.
-
-### Deploy safety
-- لا Production deploy أو migration أو DB write حدث.
-- هذا التغيير QA/report-only، لكن session لا تسجل deploy-safe نهائيًا قبل اكتمال checks على `f7d5504992...`.
-- Production DB parity الخارجي ما زال blocker مستقلًا.
-
-### Roadmap impact
-- Story Quality Baseline & Fairness Matrix أصبح implemented ومربوطًا بمسار CI الحالي.
-- لا تبدأ curated expansion قبل إصلاح/تحويل القصص الست الحالية اعتمادًا على baseline.
-
-## تحديث P1 بعد Session 18
-- [x] measurable Story Quality Baseline & Fairness Matrix لـ6/6 implemented في CI report mode.
-- [ ] Rewrite/Migrate الست curated presets end-to-end: semantic roles + gender-aware wording + Egyptian simplification + clue fairness/escalation، مع الحفاظ على mystery semantics وmafia assignment independence.
-- [ ] curated coverage 4–5 و6–7 مع matching E2E لأي عدد جديد.
-- [ ] curated coverage 8–10 مع matching full-game E2E قبل إعلان الدعم.
-
-## الأولوية الدقيقة للجلسة التالية — بعد Session 18
-1. افحص checks للـcommit `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4` أولًا.
-2. إذا ظهر failure حقيقي: أصلح **أول failure فقط** داخل نفس Story Quality baseline objective مع regression مناسب، ولا تبدأ rewrite.
-3. إذا `validate` و`qa` Green: نفّذ vertical slice واحدًا كاملًا **Rewrite/Migrate the existing six presets end-to-end** باستخدام baseline: إزالة fictional identity لصالح semantic roles، إضافة gender-aware role/bio wording، تبسيط المصري والجارجون، ومراجعة clue escalation/red-herring fairness للست قصص مع validator/install evidence.
-4. لا تغيّر mafia assignment بسبب gender، ولا تضف 4 أو 8–10 content في نفس الجلسة؛ curated player-count expansion يبقى slice لاحقًا.
-5. Production parity يظل blocked ولا يُلمس إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
