@@ -49,6 +49,7 @@
 - deterministic full-game simulations: 140 complete games، 20 لكل 4/5/6/7/8/9/10.
 - local Supabase full-game RPC E2E: 4/5/6/7/8/9/10.
 - eliminated Boss admin E2E + six-player tie/reconnect regression ضمن suite.
+- same-room rematch E2E مضاف في Session 27 ويغطي finish → Boss-only reset → lobby state cleanup → preserved players → fresh second case؛ نتيجة CI ما زالت pending وقت handoff.
 
 ## Recent milestones
 - Session 18 — Story Quality Baseline: `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4`; Green.
@@ -56,96 +57,66 @@
 - Session 20 — Curated 4–7 coverage: `b34067d54f4febb7a0dedab74e20d38fc8c9cf08`; Green.
 - Session 21 — Curated 8–10 expansion: `c3eb880e8a158545e71080dd5e91dc7a6f55ac12`; Green.
 - Session 22 — Checkpoint/Planning: `226322c62e1a5db421c47a5912f31d16707be72e`; Green.
-- Session 23 — Deep Curated Story Fairness Review: `a206c06d797827c2830e025c3e28d3427a64d064`; `validate` ✅ و`qa` ✅.
+- Session 23 — Deep Curated Story Fairness Review: `a206c06d797827c2830e025c3e28d3427a64d064`; Green.
+- Session 24 — Single Source of Truth for Curated Registry; runtime refactor Green after Session 25 repaired one stale QA shape assertion.
+- Session 25 — QA repair: `70efab2a87a9ba27b3548845e7748ee0d8db5d21`; `validate` ✅ and `qa` ✅.
+- Session 26 — Legacy DB Identity Compatibility Audit: code/QA commit `28fe8870accaa1f33a6a17c11cb56d393a65e1eb`; `validate` ✅ and `qa` ✅.
 
-## Session 24 — Single Source of Truth for Curated Registry
-Delivery slice أزال duplicated `CASES` registry من `api/case-start.ts`، وجعل `lib/server-stories` المصدر الوحيد للpreset lookup وAI reference selection.
-
-Commits:
-- `acdf4833c0c0a700767cf5b321e15ec380ba3a1c` — portable shared registry.
-- `8f3ddcfc1b24537f906c45d4ad1ca05bdc8b8324` — server API uses shared registry.
-- `d29c6e2fdccb8f455210526178c57610da69df52` — registry drift regression guard.
-
-Final check result discovered in the next session:
-- CI on `d29c6e2f...`: ✅ success.
-- Game QA on `d29c6e2f...`: ❌ failed at `Generated case role identity contract` before curated/full-game steps ran.
-- Failure was not runtime behavior: the contract still expected the pre-refactor wrapper shape `item.case.characters`, while `referenceCasesFor()` now intentionally returns reference DTOs with `item.characters`.
-
-## Session 25 — 2026-09-11 — Repair Session 24 QA regression
+## Session 27 — 2026-09-11 — Same-room Rematch
 ### Session type
-Delivery/repair — exactly one objective: resolve the first real failing check from Session 24. No legacy identity audit or new feature work started.
+Delivery — exactly one New Gameplay Feature vertical slice: let a finished group play a fresh case in the same room without rejoining. No second feature or destructive identity cleanup started.
 
 ### Starting evidence
-- Read `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff from default branch.
-- Latest main at start: `e067f837094e3b217cf29094230405022130faf5`.
-- Actions for `d29c6e2fdccb8f455210526178c57610da69df52`: CI completed/success; Game QA completed/failure.
-- Failed step: `Generated case role identity contract`.
-- Exact assertion expected `characters: item.case.characters.map(...)`, but the refactor intentionally made `referenceCasesFor()` return `{ id, playerCount, title, premise, characters, rounds, solution }`, so the real server prompt now correctly uses `item.characters.map(...)`.
+- Mandatory read order completed from default branch: `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff.
+- Latest main at start: `5b162d9e5f0fc775633210220796b016862bdd1b`.
+- Prerequisite `28fe8870accaa1f33a6a17c11cb56d393a65e1eb`: `validate` completed/success and `qa` completed/success.
+- Repository product evidence in `README.md` lists discussion timer, QR join, then "Rematch in the same room". Timer + QR were already implemented in current code, while finished-room UI only displayed the winner/solution and had no next-game action.
 
-### Fix
-Updated `scripts/qa/generated-case-role-contract.mjs` without weakening the underlying identity protection:
-- contract now asserts the current shared-reference DTO shape: `characters: item.characters.map((character) => ({ bio: character.bio }))`.
-- retained the key guarantee that AI reference payload strips identity fields before prompting.
-- added an explicit negative assertion preventing `name:` from being reintroduced into the mapped reference characters.
-- no production/runtime code, mafia logic, generation schema, story content, database code, or gameplay behavior changed.
-
-### Commit
-- `70efab2a87a9ba27b3548845e7748ee0d8db5d21` — `qa: align generated-case reference guard with shared registry`.
-
-### Checks / evidence
-- Previous `d29c6e2f...`: CI ✅; Game QA ❌ at generated-case contract.
-- Final checks for `70efab2a...`: `validate` ✅ and `qa` ✅.
-
-### Newly discovered risks
-- This failure shows structural regex contracts can drift when safe internal DTO shapes change. Keep assertions focused on semantic guarantees where possible while still catching identity regressions.
-- Production DB parity remains independently blocked and untouched.
-
-### Roadmap impact
-No roadmap expansion. The session repaired the QA gate created by the shared-registry refactor.
-
-## Session 26 — 2026-09-11 — Legacy DB Identity Compatibility Audit
-### Session type
-Delivery/audit — exactly one objective: classify and harden the `character_name` / `character_bio` compatibility boundary end-to-end. No New Gameplay Feature was started.
-
-### Starting evidence
-- Read `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff from default branch.
-- Latest main at start: `09fcd75de660876b23d915330224ef9ef6623328`.
-- Prerequisite `70efab2a87a9ba27b3548845e7748ee0d8db5d21`: `validate` completed/success and `qa` completed/success.
-- Initial schema still has nullable `players.character_name` and `players.character_bio`.
-- Current `room_snapshot` still exposes both as `characterName` / `characterBio`.
-- Current gender-aware `install_case` writes optional legacy `name` to `character_name`, writes resolved gender-aware bio to `character_bio`, and writes semantic role to `case_role`.
-- PlayerCard renders `nickname` and descriptive `characterBio`, but deliberately does not render `characterName`.
+### Exact objective
+Implement **Rematch in the same room** end-to-end while preserving real player identity/membership and guaranteeing no per-case state leaks into the next game.
 
 ### Reproduction / design finding
-- `character_name`: **compatibility-only**. Current identity UX does not need it; legacy snapshots/types preserve it for old persisted rooms/data. Destructive removal is not safe while Production parity/data contents are unknown.
-- `character_bio`: **runtime-required**. It is populated by the current install RPC, returned by snapshot, typed in `PlayerState`, and displayed in PlayerCard. It cannot be removed without a replacement schema/RPC/snapshot/UI contract.
-- Canonical identity remains `nickname`; `case_role` is semantic story role; gender remains wording-only.
+- A finished room was terminal from the product UI even though the same group commonly wants another case.
+- Reusing the same room is safe only if every case-scoped object is reset atomically: votes, eliminations, secret roles, rounds, case secret, character/case role text, winner/solution, timer, and elimination state.
+- Player rows themselves must remain so nickname/gender/user identity and room membership survive; `install_case` already re-randomizes player→character/mafia assignment for the next case.
 
-### Changes
-- Added `docs/qa/LEGACY-IDENTITY-COMPATIBILITY-AUDIT.md` with usage classification and migration-safe recommendation.
-- Added `scripts/qa/legacy-identity-contract.mjs` to guard the compatibility boundary.
-- Wired the new contract into Game QA immediately after the PlayerCard identity guard.
-- No DB migration, runtime gameplay behavior, story content, mafia logic, production service, or production data was changed.
+### Code / database / UI changes
+- Added migration `supabase/migrations/20260911123500_rematch_same_room.sql` with `reset_room_for_rematch(text)`:
+  - Boss-only and only when room status is `finished`.
+  - deletes votes, eliminations, player_roles, rounds, case_secrets.
+  - clears `character_name`, `character_bio`, `case_role`, and `is_eliminated` while retaining player rows.
+  - resets room to lobby: title/premise/round/winner/solution/timer state cleared.
+  - emits `room_rematched` so connected clients refresh through existing realtime flow.
+- Added `rematchRoom()` to `lib/game.ts`.
+- Finished-room UI now gives the Boss a clear "العبوا قضية جديدة بنفس الروم" action; non-host players are told the Boss can reopen the same room.
+- Client resets local role/vote reveal state on rematch and then uses the existing lobby/start-case path.
+
+### Regression / E2E
+- Added `scripts/qa/rematch-e2e.mjs` and wired it into Game QA.
+- E2E creates a 4-player room, installs/finishes case 1, proves non-host reset is rejected, performs Boss reset, verifies preserved player ids/nicknames plus complete old-case cleanup, then installs case 2 and verifies every preserved player gets a fresh role/story assignment.
 
 ### Commits
-- `034eebfccb7574009aa221156eed151bc39e0aeb` — legacy identity compatibility regression guard.
-- `0db3aec9e8945cd92fafcc3144eb9336139d39a6` — compatibility audit artifact.
-- `28fe8870accaa1f33a6a17c11cb56d393a65e1eb` — run the new contract in Game QA.
+- `55538c0705f2c855d7acedd0c9cbe9420a8013ad` — `feat: add safe same-room rematch RPC`.
+- `bf2942f8c2efb41217f7e08d35dba87e916aea08` — `feat: expose same-room rematch action`.
+- `40ce808e22f379825a4efd324a0105fd041108f5` — `feat: let Boss rematch in the same room`.
+- `5060ecd7f0c41a86fb70b92f8f57ec4baa4ec803` — `qa: cover same-room rematch end to end`.
+- `51183f896368d0a568dd22b569c4c5a520811269` — `qa: run same-room rematch E2E`.
 
-### Checks / evidence
-- Checks on `28fe8870...` were created successfully; at last inspection both `validate` and `qa` were queued, with no failure available yet.
-- Session 26 is **not deploy-safe yet** until the relevant checks close Green.
+### Checks / evidence at handoff
+- Checks for `51183f896368d0a568dd22b569c4c5a520811269` were created successfully.
+- At last inspection: `validate` in progress; `qa` in progress. Game QA had started dependency installation; no failing step was available yet.
+- Because the relevant CI + the new local Supabase rematch E2E have not completed yet, Session 27 is **not deploy-safe**.
 
-### Newly discovered risks
-- `character_name` is dead for current visible identity but still externally observable through snapshot/type compatibility; deleting it without production data evidence could break old rooms or unknown clients.
-- `character_bio` has a misleading legacy name but remains active product data. A future cleanup should introduce a deliberately named replacement end-to-end before considering column removal.
-- Production DB parity remains blocked independently; no destructive recommendation should advance until read-only parity/data inspection is possible.
+### Newly discovered bugs / risks
+- Production DB parity remains blocked independently. The new RPC is a migration and must not be applied to Production while that blocker remains or before this session's full E2E is Green and deploy-safe is explicitly recorded.
+- Rematch intentionally retains room settings (`max_players`, difficulty, theme, case mode/template) and existing members. Changing settings/roster between matches is a separate product decision and was not added to this objective.
+- Existing `README.md` roadmap is partially stale because timer and QR are already implemented; that documentation cleanup is not required to make rematch function and should be handled as ordinary docs polish, not mixed into this feature session.
 
 ### Deploy-safety status
-Not deploy-safe yet: checks for the audit/guard commit are still pending. No production deployment or migration occurred.
+**Not deploy-safe yet.** No production deployment, restore, migration, or production-data write occurred.
 
 ### Roadmap impact
-Technical Drift Cleanup is now evidence-backed rather than ambiguous. The identity contract itself is stable; remaining destructive cleanup is gated by Production parity and is not a reason to delay product work once this session is Green.
+This is the first bounded Milestone E gameplay/product feature after Core + Identity/Story + Story Quality + Curated Library foundations. The safety gate remains the existing full-game suite plus the new rematch E2E.
 
 ## Backlog / roadmap
 - [x] Core/full-game 4–10 stable in deterministic + local RPC suites.
@@ -153,10 +124,8 @@ Technical Drift Cleanup is now evidence-backed rather than ambiguous. The identi
 - [x] Curated library exact coverage 4–10.
 - [x] Deep semantic/human fairness review for all 14 curated cases.
 - [x] Remove duplicated server/API curated registry.
-- [x] Session 25 repair Green on `70efab2a87a9ba27b3548845e7748ee0d8db5d21`.
-- [x] Legacy DB identity compatibility audit + migration-safe recommendation + regression guard.
-- [ ] Session 26 checks Green on `28fe8870accaa1f33a6a17c11cb56d393a65e1eb`.
-- [ ] Then begin one clear New Gameplay Feature end-to-end, selected from repository/product evidence rather than speculative scope.
+- [x] Legacy DB identity compatibility audit + regression guard; Session 26 prerequisite Green.
+- [ ] Session 27 same-room rematch checks Green on `51183f896368d0a568dd22b569c4c5a520811269` (pending at handoff).
 - [ ] Production parity remains separately blocked.
 - [ ] Future destructive identity cleanup only after read-only Production parity/data evidence; `character_bio` additionally requires a replacement contract first.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
@@ -165,4 +134,4 @@ Technical Drift Cleanup is now evidence-backed rather than ambiguous. The identi
 **Core Stable → Identity/Story Contract Stable → Story Quality Hardening → Curated Library Stable (4–10) → Technical Drift Cleanup → New Gameplay Features → Polish/Launch**.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص checks لـ`28fe8870accaa1f33a6a17c11cb56d393a65e1eb` أولًا. لو failure حقيقي ظهر، أصلح أول failure فقط. لو `validate` و`qa` Green: ابدأ **New Gameplay Feature واحد end-to-end** فقط، لكن اختَر الـfeature من أعلى قيمة مثبتة في repository evidence الحالية، وحافظ على full-game suite كحاجز أمان. لا تعمل destructive identity migration طالما Production parity محجوبة.
+افحص `validate` و`qa` لـ`51183f896368d0a568dd22b569c4c5a520811269` أولًا. لو failure حقيقي ظهر، أصلح أول failure فقط. لو الاتنين Green: اعمل **Checkpoint/Planning session فقط** لأن آخر checkpoint كان Session 22 وتلاه Sessions 23–27؛ راجع full-game/rematch evidence، Production blocker، story/library status، technical debt، وأعلى 3–4 milestones/features التالية قبل أي implementation جديد.
