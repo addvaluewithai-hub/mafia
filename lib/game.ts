@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 
 import { classifyTelemetryError, emitGameplayTelemetry, observeGameplayOperation } from '@/lib/observability';
 import type { CaseMode, PlayerGender, RoomSnapshot } from '@/lib/types';
-import { ensureAnonymousSession, supabase } from '@/lib/supabase';
+import { ensureAnonymousSession, getAbuseInstallationKey, supabase } from '@/lib/supabase';
 
 export function normalizeRoomCode(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -62,7 +62,7 @@ export async function createRoomV3(input: {
 }) {
   return observeGameplayOperation('create', async () => {
     await ensureAnonymousSession();
-    const { data, error } = await supabase.rpc('create_room_v3', {
+    const { data, error } = await supabase.rpc('create_room_v4', {
       p_boss_name: input.bossName.trim(),
       p_boss_gender: input.bossGender,
       p_max_players: input.maxPlayers,
@@ -70,6 +70,7 @@ export async function createRoomV3(input: {
       p_theme: input.theme,
       p_case_mode: input.caseMode,
       p_story_template_id: input.storyTemplateId,
+      p_abuse_key: getAbuseInstallationKey(),
     });
     if (error) throw new Error(errorToMessage(error, 'تعذر إنشاء الروم'));
     return String(data);
@@ -79,7 +80,12 @@ export async function createRoomV3(input: {
 export async function joinRoom(code: string, nickname: string, gender: PlayerGender) {
   return observeGameplayOperation('join', async () => {
     await ensureAnonymousSession();
-    const { data, error } = await supabase.rpc('join_room_v2', { p_code: normalizeRoomCode(code), p_nickname: nickname.trim(), p_gender: gender });
+    const { data, error } = await supabase.rpc('join_room_v3', {
+      p_code: normalizeRoomCode(code),
+      p_nickname: nickname.trim(),
+      p_gender: gender,
+      p_abuse_key: getAbuseInstallationKey(),
+    });
     if (error) throw new Error(errorToMessage(error, 'تعذر دخول الروم'));
     return String(data);
   });
@@ -135,9 +141,6 @@ export async function resolveVote(code: string) {
   return observeGameplayOperation(
     'resolve',
     async () => {
-      // Computer players commit their votes at the same moment the Boss settles the
-      // table. Humans still vote normally; bots never block a solo game waiting for
-      // an auth session they do not have.
       await castAiVotes(code);
       const { data, error } = await supabase.rpc('resolve_vote', { p_code: normalizeRoomCode(code) });
       if (error) throw new Error(errorToMessage(error, 'تعذر حسم التصويت'));
@@ -178,7 +181,11 @@ export async function generateAndStartCase(code: string) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         cache: 'no-store',
-        body: JSON.stringify({ roomCode: normalizeRoomCode(code), sessionToken: session.access_token }),
+        body: JSON.stringify({
+          roomCode: normalizeRoomCode(code),
+          sessionToken: session.access_token,
+          abuseKey: getAbuseInstallationKey(),
+        }),
       });
     } catch (error) {
       throw new Error(errorToMessage(error, 'مش قادرين نوصل لسيرفر تجهيز القضية. جرّب تاني.'));
