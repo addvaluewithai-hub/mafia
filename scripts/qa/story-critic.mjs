@@ -87,6 +87,7 @@ const stories = files.map((file) => {
     const decisiveLanguageHits = decisivePhrases.filter((phrase) => clue.includes(phrase));
     const earlyExclusiveMafia = Boolean(!isFinalClue && exclusive && mafiaIdentities.includes(exclusive));
     const earlyDecisiveMafia = Boolean(!isFinalClue && mafiaMentioned.length > 0 && nonMafiaMentioned.length === 0 && decisiveLanguageHits.length > 0);
+    const preFinalOnlyMafia = Boolean(!isFinalClue && mafiaMentioned.length > 0 && nonMafiaMentioned.length === 0);
     return {
       round: clueIndex + 1,
       mentionedRoles: mentioned,
@@ -97,6 +98,7 @@ const stories = files.map((file) => {
       warnings: [
         ...(earlyExclusiveMafia ? ['early-exclusive-mafia-mention'] : []),
         ...(earlyDecisiveMafia ? ['early-decisive-mafia-language'] : []),
+        ...(preFinalOnlyMafia ? ['pre-final-only-mafia-roles'] : []),
         ...(mentioned.length === 0 ? ['no-explicit-role-mention'] : []),
       ],
       mentionMatrix: Object.fromEntries(identities.map((identity) => [identity, clue.includes(identity)])),
@@ -106,6 +108,13 @@ const stories = files.map((file) => {
   const mentionCounts = Object.fromEntries(identities.map((identity) => [identity, clueMatrix.filter((row) => row.mentionedRoles.includes(identity)).length]));
   const unmentionedRoles = identities.filter((identity) => mentionCounts[identity] === 0);
   const earlyRevealWarnings = clueMatrix.flatMap((row) => row.warnings.filter((warning) => warning.startsWith('early-')).map((warning) => ({ round: row.round, warning })));
+  const preFinalOnlyMafiaWarnings = clueMatrix.flatMap((row) => row.warnings.filter((warning) => warning === 'pre-final-only-mafia-roles').map((warning) => ({ round: row.round, warning })));
+  const finalClue = clueMatrix.at(-1);
+  const finalMafiaRolesMissing = mafiaIdentities.filter((identity) => !finalClue?.mafiaMentionedRoles.includes(identity));
+
+  const fairnessErrors = [];
+  if (preFinalOnlyMafiaWarnings.length) fairnessErrors.push(`pre-final clue(s) mention mafia role(s) without any explicit non-mafia alternative: rounds ${preFinalOnlyMafiaWarnings.map((item) => item.round).join(', ')}`);
+  if (finalMafiaRolesMissing.length) fairnessErrors.push(`final clue does not explicitly reconnect all mafia roles: ${finalMafiaRolesMissing.join(', ')}`);
 
   return {
     file,
@@ -114,6 +123,7 @@ const stories = files.map((file) => {
     metrics: { playerCount: identities.length, mafiaCount: mafiaCharacterIndexes.length, jargonHits, stiffHits, longClues, longBios, clues: clues.length, bios: bios.length, roles: roles.length, legacyNames: names.length, roleByGender: roleByGenderCount, bioByGender: bioByGenderCount },
     issues,
     integrityErrors,
+    fairnessErrors,
     fairnessBaseline: {
       method: 'lexical semantic-role mentions per clue; deterministic baseline, not semantic guilt scoring',
       mafiaCharacterIndexes,
@@ -123,6 +133,8 @@ const stories = files.map((file) => {
       mentionCounts,
       unmentionedRoles,
       earlyRevealWarnings,
+      preFinalOnlyMafiaWarnings,
+      finalMafiaRolesMissing,
       identityWarnings: integrityErrors.filter((error) => error.includes('role') || error.includes('name') || error.includes('bio')),
     },
   };
@@ -130,13 +142,16 @@ const stories = files.map((file) => {
 
 const average = stories.reduce((sum, story) => sum + story.score, 0) / Math.max(1, stories.length);
 const integrityErrors = stories.flatMap((story) => story.integrityErrors.map((error) => `${story.file}: ${error}`));
+const fairnessErrors = stories.flatMap((story) => story.fairnessErrors.map((error) => `${story.file}: ${error}`));
 const playerCountCoverage = [...new Set(stories.map((story) => story.metrics.playerCount))].sort((a, b) => a - b);
 const baseline = {
   generatedBy: 'scripts/qa/story-critic.mjs',
   storyCount: stories.length,
   playerCountCoverage,
   totalEarlyRevealWarnings: stories.reduce((sum, story) => sum + story.fairnessBaseline.earlyRevealWarnings.length, 0),
-  stories: stories.map((story) => ({ file: story.file, title: story.title, playerCount: story.metrics.playerCount, mafiaCount: story.metrics.mafiaCount, identityWarnings: story.fairnessBaseline.identityWarnings, mentionCounts: story.fairnessBaseline.mentionCounts, unmentionedRoles: story.fairnessBaseline.unmentionedRoles, earlyRevealWarnings: story.fairnessBaseline.earlyRevealWarnings, clueMatrix: story.fairnessBaseline.clueMatrix })),
+  totalPreFinalOnlyMafiaWarnings: stories.reduce((sum, story) => sum + story.fairnessBaseline.preFinalOnlyMafiaWarnings.length, 0),
+  totalFinalMafiaRolesMissing: stories.reduce((sum, story) => sum + story.fairnessBaseline.finalMafiaRolesMissing.length, 0),
+  stories: stories.map((story) => ({ file: story.file, title: story.title, playerCount: story.metrics.playerCount, mafiaCount: story.metrics.mafiaCount, identityWarnings: story.fairnessBaseline.identityWarnings, mentionCounts: story.fairnessBaseline.mentionCounts, unmentionedRoles: story.fairnessBaseline.unmentionedRoles, earlyRevealWarnings: story.fairnessBaseline.earlyRevealWarnings, preFinalOnlyMafiaWarnings: story.fairnessBaseline.preFinalOnlyMafiaWarnings, finalMafiaRolesMissing: story.fairnessBaseline.finalMafiaRolesMissing, clueMatrix: story.fairnessBaseline.clueMatrix })),
 };
 
 const report = {
@@ -145,22 +160,28 @@ const report = {
   averageScore: Number(average.toFixed(1)),
   threshold: 8,
   integrityOk: integrityErrors.length === 0,
+  fairnessOk: fairnessErrors.length === 0,
   integrityErrors,
+  fairnessErrors,
   playerCountCoverage,
-  note: 'Language score is heuristic. fairnessBaseline uses semantic-role lexical evidence and does not replace semantic/human logic criticism.',
+  note: 'Language score is heuristic. fairnessBaseline uses semantic-role lexical evidence and does not replace semantic/human logic criticism. The enforced fairness guard only blocks pre-final clues that explicitly isolate mafia roles and final clues that fail to reconnect all mafia roles.',
   stories,
 };
 
 fs.writeFileSync(path.join(reportDir, 'story-critic.json'), JSON.stringify(report, null, 2));
 fs.writeFileSync(path.join(reportDir, 'story-fairness-baseline.json'), JSON.stringify(baseline, null, 2));
 for (const story of stories) {
-  const icon = story.score >= 8 ? 'PASS' : 'REWRITE';
-  console.log(`${icon} ${story.title}: ${story.score}/10 — players=${story.metrics.playerCount}, mafia=${story.metrics.mafiaCount}, earlyFairnessWarnings=${story.fairnessBaseline.earlyRevealWarnings.length}${story.issues.length ? ` — ${story.issues.join('; ')}` : ''}`);
+  const icon = story.score >= 8 && story.fairnessErrors.length === 0 ? 'PASS' : 'REWRITE';
+  console.log(`${icon} ${story.title}: ${story.score}/10 — players=${story.metrics.playerCount}, mafia=${story.metrics.mafiaCount}, earlyFairnessWarnings=${story.fairnessBaseline.earlyRevealWarnings.length}, enforcedFairnessErrors=${story.fairnessErrors.length}${story.issues.length ? ` — ${story.issues.join('; ')}` : ''}`);
 }
 console.log(`Story critic average: ${report.averageScore}/10`);
-console.log(`Story fairness baseline: ${stories.length} stories; player counts ${playerCountCoverage.join('/')}; early warnings ${baseline.totalEarlyRevealWarnings}`);
+console.log(`Story fairness baseline: ${stories.length} stories; player counts ${playerCountCoverage.join('/')}; early warnings ${baseline.totalEarlyRevealWarnings}; pre-final-only-mafia ${baseline.totalPreFinalOnlyMafiaWarnings}; final-mafia-missing ${baseline.totalFinalMafiaRolesMissing}`);
 if (!report.integrityOk) {
   console.error(`Story baseline integrity failed: ${integrityErrors.join('; ')}`);
+  process.exit(1);
+}
+if (!report.fairnessOk) {
+  console.error(`Story fairness guard failed: ${fairnessErrors.join('; ')}`);
   process.exit(1);
 }
 if (report.strict && !report.ok) process.exit(1);
