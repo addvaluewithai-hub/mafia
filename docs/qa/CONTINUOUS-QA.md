@@ -145,3 +145,79 @@ Checkpoint / Planning فقط. لم يبدأ story rewrite أو feature جديد�
 4. أضف regression/CI wiring اللازم بحيث baseline قابل لإعادة التشغيل بدون live AI/LLM.
 5. لا تبدأ rewrite للست قصص حتى baseline يحدد بالضبط أين مشاكل كل قصة.
 6. Production parity يظل blocked ولا يُلمس إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
+
+## Session 18 — 2026-09-11 — Story Quality Baseline & Fairness Matrix
+### Session type
+Delivery — vertical slice واحد للـdeterministic story-quality baseline فقط. لم تُعد كتابة أي قصة ولم تتغير game/runtime semantics.
+
+### Starting evidence
+- قُرئت `AGENTS.md` ثم `QA-OPERATING-MODE.md` ثم هذا handoff من default branch.
+- أحدث `main` عند البداية كان `27c4a35ae1882b7a93b5e2e5448476d992d604e0`.
+- checks للـcheckpoint commit `27c4a35...`: `validate` ✅ و`qa` ✅، لذلك لا يوجد failure يسبق الـStory Quality work.
+- Production parity ما زال blocked ولم يُلمس.
+
+### Exact objective
+تحويل `scripts/qa/story-critic.mjs` من language/length heuristic فقط إلى baseline machine-readable قابل لإعادة التشغيل لكل الست curated presets، مع fairness signals قابلة للمراجعة بدون ادعاء semantic certainty أو استخدام live AI.
+
+### Reproduction / design finding
+- الـcritic القديم كان يكتب `story-critic.json` فقط ويقيس jargon/stiffness/length/4-clue/solution basics.
+- لم يكن يخرج player/mafia inventory، suspect×clue matrix، early-exclusive warnings، legacy identity coverage، gender-variant coverage، أو player-count coverage summary.
+- بدل إدخال حكم fairness يدوي غير قابل لإعادة التشغيل، استخدمت baseline lexical واضح: هل اسم كل suspect مذكور صراحة في كل clue، مع فصل mafia/non-mafia mentions. هذا signal قابل للتحقق من النص لكنه **ليس** semantic guilt score.
+
+### What changed
+- commit `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4` — `qa: add deterministic story fairness baseline`.
+- `story-critic.mjs` يخرج الآن تقريرين:
+  - `qa/reports/story-critic.json` مع metrics القديمة + integrity + fairness baseline لكل قصة.
+  - `qa/reports/story-fairness-baseline.json` كـmachine-readable inventory مخصص.
+- لكل قصة أصبح التقرير يحتوي:
+  - `playerCount` و`mafiaCount` و`mafiaCharacterIndexes`.
+  - mafia/non-mafia names كما يفهمها preset الحالي.
+  - clue-by-clue `mentionMatrix` لكل suspect، و`namedSuspects`, `mafiaNamedSuspects`, `nonMafiaNamedSuspects`.
+  - `exclusiveNamedSuspect` وearly warnings عندما يكون clue قبل الأخير يذكر mafia حصريًا أو يستخدم decisive language بلا non-mafia mentions.
+  - `mentionCounts` و`unmentionedSuspects` للمساعدة في رؤية red-herring distribution blind spots.
+  - legacy identity warning إذا `role` coverage أقل من characters.
+  - `roleByGender` و`bioByGender` coverage warnings.
+  - aggregate `playerCountCoverage` للـlibrary الحالية.
+- baseline quality warnings تبقى report-mode ولا تفشل CI لمجرد أن القصص الحالية تحتاج rewrite.
+- **integrity corruption فقط** (لا characters، لا mafia indexes، index خارج المدى، أو لا clues) يفشل الـscript/CI حتى لا يصبح التقرير نفسه مضللًا.
+- لا live model/provider dependency أضيفت، ولا workflow جديد مطلوب لأن `game-qa.yml` يشغّل `story-critic.mjs` ويرفع `qa/reports/*.json` أصلًا.
+- لم يُحذف أو يُضعف أي اختبار.
+
+### Evidence / checks
+- prerequisite `27c4a35...`: `validate` ✅ و`qa` ✅.
+- على `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4` عند آخر فحص:
+  - TypeScript ✅
+  - Expo doctor ✅
+  - vote/gender/join/player-card/generated-case contracts ✅
+  - 60 full-game state simulations ✅
+  - **Story critic (report mode) ✅** مع الـbaseline الجديد
+  - full `qa` ما زال `in_progress` عند `Start clean local Supabase`; لم يظهر failure حتى لحظة handoff.
+- `validate`/full `qa` النهائيان لم يُعتبرا Green بعد لأن run ما زال مستمرًا وقت الإغلاق.
+
+### Newly discovered bugs / risks
+- لا gameplay bug جديد ظهر.
+- lexical mention matrix يقيس **explicit name mentions فقط**؛ clue قد يوجّه بقوة نحو suspect بطريقة ضمنية لا يلتقطها التقرير. لذلك warnings evidence وليست verdict.
+- preset identity/gender warnings متوقعة حاليًا لأن الست قصص legacy؛ هذه baseline evidence للـrewrite التالي وليست سببًا لكسر CI.
+- player-count coverage ما زال 5/6/7 فقط؛ 4 و8–10 يظلان unsupported curated bands حتى slices المكتبة اللاحقة.
+
+### Deploy safety
+- لا Production deploy أو migration أو DB write حدث.
+- هذا التغيير QA/report-only، لكن session لا تسجل deploy-safe نهائيًا قبل اكتمال checks على `f7d5504992...`.
+- Production DB parity الخارجي ما زال blocker مستقلًا.
+
+### Roadmap impact
+- Story Quality Baseline & Fairness Matrix أصبح implemented ومربوطًا بمسار CI الحالي.
+- لا تبدأ curated expansion قبل إصلاح/تحويل القصص الست الحالية اعتمادًا على baseline.
+
+## تحديث P1 بعد Session 18
+- [x] measurable Story Quality Baseline & Fairness Matrix لـ6/6 implemented في CI report mode.
+- [ ] Rewrite/Migrate الست curated presets end-to-end: semantic roles + gender-aware wording + Egyptian simplification + clue fairness/escalation، مع الحفاظ على mystery semantics وmafia assignment independence.
+- [ ] curated coverage 4–5 و6–7 مع matching E2E لأي عدد جديد.
+- [ ] curated coverage 8–10 مع matching full-game E2E قبل إعلان الدعم.
+
+## الأولوية الدقيقة للجلسة التالية — بعد Session 18
+1. افحص checks للـcommit `f7d5504992e209feeae4c99a16c2cd8bdc1f53f4` أولًا.
+2. إذا ظهر failure حقيقي: أصلح **أول failure فقط** داخل نفس Story Quality baseline objective مع regression مناسب، ولا تبدأ rewrite.
+3. إذا `validate` و`qa` Green: نفّذ vertical slice واحدًا كاملًا **Rewrite/Migrate the existing six presets end-to-end** باستخدام baseline: إزالة fictional identity لصالح semantic roles، إضافة gender-aware role/bio wording، تبسيط المصري والجارجون، ومراجعة clue escalation/red-herring fairness للست قصص مع validator/install evidence.
+4. لا تغيّر mafia assignment بسبب gender، ولا تضف 4 أو 8–10 content في نفس الجلسة؛ curated player-count expansion يبقى slice لاحقًا.
+5. Production parity يظل blocked ولا يُلمس إلا إذا Production أصبح active أو وُجد تصريح restore صريح.
