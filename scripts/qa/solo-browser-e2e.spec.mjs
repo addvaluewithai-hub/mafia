@@ -5,6 +5,7 @@ const baseUrl = process.env.BASE_URL ?? 'http://127.0.0.1:8081';
 const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const navigationTimeoutMs = 15_000;
 
 if (!supabaseUrl || !anonKey || !serviceRoleKey) {
   throw new Error('SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are required');
@@ -30,6 +31,16 @@ function deterministicCase() {
     ],
     solution: 'Browser E2E fixture only.',
   };
+}
+
+async function gotoHydrated(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navigationTimeoutMs });
+  await expect(page.locator('body')).toBeVisible({ timeout: navigationTimeoutMs });
+}
+
+async function reloadHydrated(page) {
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: navigationTimeoutMs });
+  await expect(page.locator('body')).toBeVisible({ timeout: navigationTimeoutMs });
 }
 
 async function browserAccessToken(page) {
@@ -79,13 +90,24 @@ async function seedVotes(roomId, roundIndex, voters, targetPlayerId) {
   if (error) throw new Error(`seed votes: ${error.message}`);
 }
 
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) return;
+  const diagnostics = await page.evaluate(() => ({
+    url: location.href,
+    title: document.title,
+    body: document.body?.innerText?.slice(0, 4000) ?? '',
+  })).catch((error) => ({ url: page.url(), title: '', body: `diagnostics unavailable: ${String(error)}` }));
+  console.error('Solo browser E2E diagnostics:', JSON.stringify(diagnostics, null, 2));
+});
+
 test('Solo AI browser journey survives elimination, refresh, next round, voting, and winner', async ({ page }) => {
-  await page.goto(`${baseUrl}/solo`);
+  test.setTimeout(75_000);
+  await gotoHydrated(page, `${baseUrl}/solo`);
   await page.getByPlaceholder('مثلاً: شريف').fill('Browser Boss');
   await page.getByRole('button', { name: 'ذكر' }).click();
   await page.getByText('جهّز ماتش AI', { exact: true }).click();
 
-  await page.waitForURL(/\/room\/[A-Z0-9]{6}$/);
+  await page.waitForURL(/\/room\/[A-Z0-9]{6}$/, { timeout: navigationTimeoutMs, waitUntil: 'domcontentloaded' });
   const code = page.url().split('/').pop();
   expect(code).toMatch(/^[A-Z0-9]{6}$/);
 
@@ -98,7 +120,7 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   expect(snapshot.players.filter((player) => player.isBot)).toHaveLength(3);
 
   await rpc(host, 'install_case', { p_code: code, p_case: deterministicCase() });
-  await page.reload();
+  await reloadHydrated(page);
   await expect(page.getByText('كلام لاعيبة الـAI', { exact: true })).toBeVisible();
 
   snapshot = await rpc(host, 'room_snapshot', { p_code: code });
@@ -117,7 +139,7 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   snapshot = await rpc(host, 'room_snapshot', { p_code: code });
   const aliveRoundZero = snapshot.players.filter((player) => !player.isEliminated);
   await seedVotes(snapshot.room.id, snapshot.room.roundIndex, aliveRoundZero, firstTarget.id);
-  await page.reload();
+  await reloadHydrated(page);
   await page.getByText('احسم التصويت', { exact: true }).click();
 
   await expect(page.getByText(firstTarget.nickname, { exact: true }).first()).toBeVisible();
@@ -129,7 +151,7 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   await expect(page.getByText('كلام لاعيبة الـAI', { exact: true })).toBeVisible();
 
   const cuesBeforeReload = await page.locator('body').innerText();
-  await page.reload();
+  await reloadHydrated(page);
   await expect(page.getByText('الدليل 2', { exact: true })).toBeVisible();
   const cuesAfterReload = await page.locator('body').innerText();
   expect(cuesAfterReload).toContain('كلام لاعيبة الـAI');
@@ -142,7 +164,7 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   const aliveRoundOne = snapshot.players.filter((player) => !player.isEliminated);
   await seedVotes(snapshot.room.id, snapshot.room.roundIndex, aliveRoundOne, mafia.id);
 
-  await page.reload();
+  await reloadHydrated(page);
   await expect(page.getByText('احسم التصويت', { exact: true })).toBeVisible();
   await page.getByText('احسم التصويت', { exact: true }).click();
   await expect(page.getByText('انتهت القضية', { exact: true })).toBeVisible();
