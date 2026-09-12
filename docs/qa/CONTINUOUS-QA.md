@@ -10,13 +10,14 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Latest `main` at Session 48 start: `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef` (`docs: record launch-safety migration rollout`).
+- Latest `main` at Session 49 start: `f103b7f33904c2c46bc1d293879fb43918274f10` (`docs: record exact-SHA web release blocker`).
 - Exact-SHA GitHub workflows on that SHA are Green: CI/`validate` completed/success ✅ and Game QA/`qa` completed/success ✅.
 - Core/full-game 4–10 remains Green; no known gameplay P0 surfaced.
 - Identity/story contract + curated 4–10 + fairness remain Green; no current evidence justifies 11–15 expansion.
-- Session 47 completed the approved Production DB rollout of `20260911204500_public_abuse_perimeter.sql`; post-migration object/ledger verification and migration parity were Green.
-- Production web project is Vercel `akher-kheit` (`prj_pSOvdKrKEZhabTtCxp722JpM7FN9`). The currently listed Production deployment is `dpl_So7A51KxPVdmh1eGbRsrB1Uzwagb`, READY and aliased to `akher-kheit.vercel.app`, but its Vercel metadata does not expose a repository commit SHA.
-- No new Vercel/web deploy or Production DB write occurred in Session 48.
+- Production DB already contains `20260911204500_public_abuse_perimeter.sql`; post-migration object/ledger verification and migration parity were Green in the rollout session.
+- The repository release invariant still requires the `Vercel Release Package` workflow for an exact 40-character `main` SHA, including read-only preflight before package creation.
+- The connected GitHub execution surface still exposes workflow/check reads plus rerun actions, but no workflow-dispatch action; therefore it cannot start the required package workflow with a `release_sha` input.
+- No Production web deploy or Production DB write occurred in Session 49.
 
 ## Roadmap status
 - [x] Core/full-game 4–10 stable.
@@ -29,61 +30,60 @@
 - [x] Anonymous-identity churn / public-launch abuse perimeter implementation + deterministic QA.
 - [x] Migration-history parity reconciliation implemented and exact-SHA CI Green.
 - [x] Launch-safety Production migration rollout + post-migration object/ledger verification.
-- [~] Web release readiness: DB parity and latest-main checks are Green, but the guarded exact-SHA package/deploy path could not be executed from the connected automation surface in Session 48.
+- [~] Web release readiness: DB parity and latest-main checks are Green, but the guarded exact-SHA package/deploy path remains blocked by unavailable workflow-dispatch capability in the connected automation surface.
 - [ ] AI Players snapshot identity + browser/live UX evidence; then decide LLM discussion scope.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 48 — 2026-09-12 — Exact-SHA web release readiness / deployment gate
+## Session 49 — 2026-09-12 — Guarded exact-SHA web release gate recheck
 
 ### Session type
-Delivery/release-readiness session. Exactly one coherent objective: resolve latest checks, then execute the repository-defined exact-SHA web release path only if every guardrail can be satisfied and verified. No feature work.
+Delivery/release-readiness session. Exactly one coherent objective: resolve the existing guarded exact-SHA web release gate without bypassing repository-owned safety invariants. No feature work.
 
 ### Starting evidence
 - Required repository truth read in order: `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff.
-- Latest `main` was `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`.
+- Latest `main` is `f103b7f33904c2c46bc1d293879fb43918274f10`.
 - CI/`validate` and Game QA/`qa` on that exact SHA are both completed/success.
-- `docs/operations/RELEASE-RUNBOOK.md` requires an exact 40-character main SHA, Green `validate` + `qa`, reconciled Production migrations, successful read-only preflight, and an explicit deploy-safe statement before packaging/deployment.
-- The canonical packaging path is the workflow `.github/workflows/package-vercel-source.yml`, which runs the read-only Production preflight before producing `vercel-source-<short-sha>`.
+- `docs/operations/RELEASE-RUNBOOK.md` still requires: exact 40-character `main` SHA, Green `validate` + `qa`, reconciled Production migrations, successful read-only release preflight, explicit deploy-safe handoff state, then the repository `Vercel Release Package` artifact path.
 
 ### Exact objective
-Attempt the exact-SHA release readiness/deploy verification objective without bypassing the repository-owned preflight/package invariant. Deploy only if the guarded package can be produced from the exact approved SHA and the resulting Production deployment can be verified and smoked.
+Attempt only the repository-defined guarded web release path for the latest Green SHA. Do not use a generic or unpinned Vercel deployment as a substitute.
 
 ### Reproduction / design finding
 - Latest-main checks are Green, so CI is not the blocker.
-- The connected GitHub surface in this run provides workflow/check reads and file writes, but no workflow-dispatch action. Therefore it cannot start the required `Vercel Release Package` workflow with `release_sha=4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`.
-- The connected Vercel surface exposes a generic `deploy_to_vercel` action, but the runbook explicitly forbids rebuilding from a moving/unpinned source and requires the exact guarded artifact. Using the generic deploy action without first producing/verifying that artifact would bypass the release invariant, so it was intentionally not called.
-- Current Vercel Production deployment `dpl_So7A51KxPVdmh1eGbRsrB1Uzwagb` is READY and owns the stable aliases, but its returned metadata contains no Git/repository SHA. It therefore cannot be used as evidence that the launch-safety source is already deployed.
-- This is an execution-surface blocker, not a product/CI failure. The safe next action is to dispatch the repository `Vercel Release Package` workflow for the exact latest Green SHA through an authorized GitHub Actions write surface, then deploy that exact artifact and verify deployment SHA/smoke.
+- Fresh capability discovery on the connected GitHub surface exposes workflow run/job/artifact reads and rerun operations, but no workflow-dispatch operation.
+- Rerunning an existing workflow cannot supply the required `workflow_dispatch` input `release_sha=<exact SHA>` and therefore cannot satisfy the packaging contract.
+- The runbook explicitly requires `Vercel Release Package` to check out the exact SHA and run read-only preflight before creating `vercel-source-<short-sha>`; bypassing that package would weaken provenance and release safety.
+- Therefore this remains an execution-surface blocker rather than a product defect, CI failure, or migration-parity failure.
 
 ### Code / database / test / doc changes
-- Runtime/schema/tests: no changes; no defect was found that justified changing product code.
+- Runtime/schema/tests: no changes; no product defect or failing check justified code changes.
 - Production DB: no writes, migrations, restores, or unrelated operations.
-- Vercel: read-only project/deployment inspection only; no deployment was started.
-- Docs: updated this rolling handoff with the exact release blocker and next action.
+- Production web/Vercel: no deployment started.
+- Docs: refreshed this rolling handoff with current exact-SHA evidence and the still-active execution blocker.
 
 ### Commits
-- Starting/latest source SHA: `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`.
-- Session 48 handoff commit: `docs: record exact-SHA web release blocker`.
+- Starting source SHA: `f103b7f33904c2c46bc1d293879fb43918274f10`.
+- Session 49 handoff commit: `docs: record guarded web release blocker recheck`.
 
 ### Check / test results at session close
-- `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`: CI/`validate` completed/success ✅; Game QA/`qa` completed/success ✅.
-- Repository release runbook/workflow contract inspected and unchanged.
-- Vercel current Production deployment: READY; stable alias present; exact source SHA not exposed in returned metadata.
-- Guarded release preflight/package: not run because the required workflow-dispatch capability is unavailable in the connected GitHub action surface. This is a hard stop under the runbook.
+- `f103b7f33904c2c46bc1d293879fb43918274f10`: CI/`validate` completed/success ✅; Game QA/`qa` completed/success ✅.
+- Repository release runbook inspected and unchanged in its exact-SHA package requirement.
+- Guarded release preflight/package: not run because the required workflow-dispatch capability is still unavailable in the connected GitHub action surface.
+- No test was weakened, skipped, deleted, or rewritten.
 - Handoff-only commit checks may be pending/absent at close; no runtime/schema behavior changed.
 
 ### Newly discovered bugs / risks
-- No new gameplay/story P0 discovered.
-- Production DB now contains the anonymous-churn perimeter while the exact web source using it is not yet proven deployed; the launch-safety web rollout therefore remains incomplete.
-- A generic Vercel deployment action is insufficient evidence of exact-SHA provenance in this repository's current release model. Bypassing the guarded package would weaken the release invariant and is prohibited.
+- No new gameplay/story P0 or regression discovered.
+- Launch-safety DB changes are present in Production while the matching web source is still not proven deployed through the guarded exact-SHA artifact path.
+- Repeated use of a generic/unpinned deploy would create unverifiable source provenance and remains prohibited by the runbook.
 
 ### Deploy-safety status
-**Not deploy-safe to perform a web deployment from the currently available automation surface.** CI and DB prerequisites are Green, but the required exact-SHA read-only preflight/package step cannot be dispatched here, and the current Vercel deployment does not expose enough provenance to prove it already contains the candidate SHA.
+**Not deploy-safe to perform a web deployment from the currently available automation surface.** The latest source checks are Green and prior DB parity/rollout evidence remains valid, but the mandatory exact-SHA preflight/package workflow cannot be dispatched here.
 
 No Production web deployment or DB mutation occurred in this session.
 
 ### Roadmap impact
-Launch-safety product/database work remains complete; web release completion is blocked only on executing the existing guarded exact-SHA packaging path through an authorized workflow-dispatch surface. Do not reopen product scope or AI Players until this release gate is either completed or explicitly deprioritized at a checkpoint.
+No roadmap reprioritization. Launch-safety implementation/database work remains complete; web rollout completion is blocked only on executing the existing guarded exact-SHA packaging path through an authorized workflow-dispatch surface. Do not reopen unrelated product scope while this release gate remains the explicit next priority unless a future checkpoint deliberately changes direction.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص latest `main` وchecks أولًا. إذا ظهر failure حقيقي، أصلح أول meaningful failure فقط. إذا بقي Green، أعد محاولة **exact-SHA guarded web release** فقط: dispatch `Vercel Release Package` للـlatest Green 40-char SHA عبر authorized GitHub Actions write capability؛ لا تستخدم generic/unpinned deploy كبديل. إذا نجح preflight وظهر artifact الصحيح، انشر نفس artifact إلى Vercel ثم أثبت deployment provenance/stable alias وproduction smoke وفق `docs/operations/RELEASE-RUNBOOK.md`. إذا ظلت workflow-dispatch capability غير متاحة، وثّق استمرار blocker ولا تنفذ deploy جانبي.
+افحص latest `main` وchecks أولًا. إذا ظهر failure حقيقي، أصلح أول meaningful failure فقط. إذا بقي Green، أعد محاولة **exact-SHA guarded web release** فقط عبر authorized GitHub Actions workflow-dispatch capability للـ`Vercel Release Package` مع full latest Green 40-char SHA. إذا نجح preflight وظهر artifact الصحيح، انشر نفس artifact ثم أثبت deployment provenance/stable alias وproduction smoke حسب `docs/operations/RELEASE-RUNBOOK.md`. إذا ظلت dispatch capability غير متاحة، وثّق blocker فقط ولا تستخدم generic/unpinned deploy كبديل.
