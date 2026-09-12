@@ -10,16 +10,16 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Latest pre-session `main` candidate: `3eed7d67ed92e75aef5102035bf240bfc2cea07b`.
-- Exact-SHA GitHub checks على هذا الـcandidate: `validate` completed/success ✅ و`qa` completed/success ✅. بذلك Session 40 anonymous-auth churn perimeter رجعت Green end-to-end بعد إصلاحات Sessions 41–42.
-- Core/full-game 4–10: Green على full Game QA الحالي، بما في ذلك deterministic 140 complete games + local Supabase RPC E2E لمسارات tie/reconnect/eliminated Boss/rematch والـabuse perimeter.
+- Latest pre-session `main`: `e2bc2715d343b16e036dbfc16bd67c4858e5a35b`.
+- Exact-SHA GitHub checks على هذا الـSHA: `validate` completed/success ✅ و`qa` completed/success ✅.
+- Core/full-game 4–10: Green على full Game QA الحالي، بما في ذلك deterministic complete-game coverage + local Supabase RPC E2E لمسارات tie/reconnect/eliminated Boss/rematch والـabuse perimeter. لا يوجد P0 gameplay معروف في هذا checkpoint.
 - Identity/story: nickname-only visible identity + gender wording + caseRole + curated/AI semantic-role contracts Green.
-- Curated library: 14 قضية، قصتان لكل عدد 4–10؛ آخر story critic/fairness evidence Green؛ لا دليل يبرر 11–15 الآن.
+- Curated library: 14 قضية، قصتان لكل عدد 4–10؛ آخر story critic/fairness evidence ما زال Green؛ لا دليل حالي يبرر 11–15.
 - Solo/AI Players MVP live in Production؛ snapshot identity + browser/live UX evidence ما زال gap قبل أي توسع AI discussion.
 - Production observability code موجود مع privacy-safe allowlist + release correlation + telemetry churn guard، لكنه غير مثبت كـdeployed runtime.
-- Anonymous-auth churn perimeter code Green لكنه **غير موجود في Production DB** حتى Session 43: `public.public_abuse_rate_limits`, `claim_public_abuse_slot`, `create_room_v4`, و`join_room_v3` كلها absent في read-only Production inspection.
-- Production Supabase project `mafia` كان `ACTIVE_HEALTHY` في Session 43. Dependencies التي تحتاجها migration الجديدة موجودة: `create_room_v3(text,text,integer,text,text,text,text)`, `join_room_v2(text,text,text)`, و`claim_case_generation_slot(text)`.
-- Production migration ledger الحالي لا يطابق repo migration filename versions: `supabase_migrations.schema_migrations` يحتوي server-recorded versions مختلفة عن الـ14-digit prefixes الموجودة في `supabase/migrations/`. لذلك preflight الحالي الذي يقارن النسختين حرفيًا سيعمل hard-stop حتى قبل احتساب migration `20260911204500_public_abuse_perimeter.sql` المفقودة. هذا operational release blocker وليس مبررًا لتجاوز guardrail.
+- Anonymous-auth churn perimeter code Green لكنه غير موجود في Production DB حسب آخر read-only inspection: `public.public_abuse_rate_limits`, `claim_public_abuse_slot`, `create_room_v4`, و`join_room_v3` absent.
+- Production Supabase project `mafia` كان `ACTIVE_HEALTHY` في آخر read-only inspection، ومقدمات migration المطلوبة موجودة.
+- Production migration ledger التاريخي لا يطابق repo migration filename versions. `scripts/release/preflight.mjs` يجمع الـ14-digit filename prefixes ويقارنها حرفيًا مع `supabase_migrations.schema_migrations.version`; و`release-preflight-contract.mjs` يختبر نفس الافتراض فقط. لذلك release guard الحالي hard-stops على Production legacy history حتى لو كانت الـschema الفعلية متوافقة.
 - limitation مقصودة للـabuse perimeter: clearing app/site storage يمكنه تدوير installation key؛ هذا perimeter ضد routine auth churn وليس fraud-proof device fingerprint، ولا يستخدم PII أو gameplay identity.
 
 ## Roadmap status
@@ -56,7 +56,6 @@ Delivery / release-readiness audit — exactly one coherent objective: prove exa
 - Read repository truth in required order: `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff.
 - Starting latest `main`: `3eed7d67ed92e75aef5102035bf240bfc2cea07b`.
 - GitHub check-runs for that exact SHA: `validate` completed/success ✅ and `qa` completed/success ✅.
-- Both CI and Game QA workflow runs for that SHA completed successfully.
 - Current release tooling requires an exact 40-character SHA, those two Green checks, exact migration-history parity, read-only preflight success, and explicit deploy-safe handoff evidence before packaging/deploy.
 
 ### Exact objective
@@ -65,38 +64,74 @@ Perform a fresh, read-only release-readiness check for the current launch-safety
 ### Reproduction / design finding
 - Production Supabase project `mafia` is `ACTIVE_HEALTHY`.
 - Read-only inspection confirms `public.public_abuse_rate_limits` and the new abuse-perimeter RPCs are absent in Production, so `20260911204500_public_abuse_perimeter.sql` is genuinely not deployed.
-- The migration's prerequisite Production RPCs are present with the expected signatures: `create_room_v3(text,text,integer,text,text,text,text)`, `join_room_v2(text,text,text)`, and `claim_case_generation_slot(text)`.
+- The migration's prerequisite Production RPCs are present with the expected signatures.
 - A second, older drift exists in migration bookkeeping: Production `supabase_migrations.schema_migrations` versions are server-recorded IDs that do not equal the filename prefixes in the repository. `scripts/release/preflight.mjs` currently compares those values literally, so its parity rule cannot pass against current Production history as-is.
-- This means the safe next action is **not** to bypass preflight and not to apply the new migration yet. First reconcile/repair the migration-ledger parity contract in repository tooling with durable evidence for the legacy Production history; then rerun the exact-SHA preflight. Only after that can a separately authorized migration/release session decide whether to mutate Production.
+- Safe next action is not to bypass preflight and not to apply the new migration yet. First reconcile/repair the migration-ledger parity contract in repository tooling with durable evidence for legacy Production history; then rerun exact-SHA preflight.
 
 ### Code / database / test / doc changes
 - No application/schema/runtime code changed.
-- No Production state changed; all Supabase operations in this session were read-only (`SELECT`/catalog inspection).
-- Updated this handoff with the exact Green candidate SHA, current Production absence of the perimeter objects, confirmed prerequisite RPC signatures, and the migration-ledger blocker.
-
-### Commits
-- Starting candidate: `3eed7d67ed92e75aef5102035bf240bfc2cea07b` — both required checks Green.
-- Handoff commit: `docs: record fresh release readiness audit`.
+- No Production state changed; all Supabase operations were read-only.
+- Updated handoff with exact Green candidate SHA, current Production absence of the perimeter objects, confirmed prerequisites, and migration-ledger blocker.
 
 ### Check/test results
 - Candidate `3eed7d67ed92e75aef5102035bf240bfc2cea07b`: `validate` success ✅; full `qa` success ✅.
 - Production DB health: `ACTIVE_HEALTHY` ✅.
 - Abuse-perimeter Production parity: FAIL / expected drift ❌ — limiter table and new RPCs absent.
 - Literal migration-ledger parity used by current preflight: FAIL ❌ — historical Production ledger versions do not match repo filename prefixes.
-- No release package or deployment was attempted because parity is a hard stop.
-
-### Newly discovered bugs / risks
-- Release tooling currently assumes Supabase migration ledger IDs are identical to repository filename timestamps. That assumption is false for this Production database's existing history, so the guardrail needs a reconciled source-of-truth/mapping before it can truthfully certify parity.
-- Applying `20260911204500_public_abuse_perimeter.sql` before fixing that contract would leave the exact-SHA release workflow unable to prove parity afterward and would encourage manual bypasses; do not do that.
-- No new P0 gameplay or story defect was discovered.
+- No release package or deployment attempted because parity is a hard stop.
 
 ### Deploy-safety status
-**Not deploy-safe for Production rollout.** Relevant E2E/QA is Green, but the required Production migration is absent and the current migration-history preflight cannot establish trustworthy parity because of legacy ledger/version mismatch. No Production mutation occurred.
+**Not deploy-safe for Production rollout.** Relevant E2E/QA is Green, but the required Production migration is absent and current migration-history preflight cannot establish trustworthy parity because of legacy ledger/version mismatch. No Production mutation occurred.
 
-### Roadmap impact
-- Anonymous-churn implementation itself is now QA-closed.
-- Launch-safety rollout remains blocked on one operational correctness objective: reconcile the migration-history parity contract without weakening the release gate.
-- AI Players UX evidence and unrelated features stay deferred until this launch-safety blocker is resolved or explicitly reprioritized at checkpoint.
+## Session 44 — 2026-09-12 — Migration parity / launch-safety checkpoint
+### Session type
+Checkpoint / planning only. No product feature, schema change, Production deploy, migration, restore, or Production DB write.
+
+### Starting evidence
+- Required repository truth read in order: `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff.
+- Latest `main` at checkpoint start: `e2bc2715d343b16e036dbfc16bd67c4858e5a35b` (`docs: record fresh release readiness audit`).
+- Exact-SHA GitHub checks on that commit: `validate` completed/success ✅ and `qa` completed/success ✅.
+- Four sessions elapsed since Session 39 checkpoint, so checkpoint cadence is due.
+
+### Exact objective
+Audit what is actually Green versus launch-blocked, verify the migration-history parity blocker in repository tooling, review gameplay/story/curated/AI evidence gaps, and set the next 3–4 substantial objectives without implementing unrelated scope.
+
+### Reproduction / design finding
+- No P0 gameplay regression surfaced. Core/full-game, identity/gender/caseRole, curated 4–10, abuse-perimeter QA, and current regression suites remain Green via the latest full `qa` check.
+- Release guard defect is confirmed in repository code, not just handoff prose: `preflight.mjs` derives local identity exclusively from 14-digit migration filename prefixes and compares them set-for-set to Production ledger `version` values.
+- Its deterministic contract test uses fixtures where remote versions intentionally equal those same local filename timestamps. Therefore the test proves strict literal equality behavior, but does **not** model or reconcile the known legacy Production ledger representation.
+- This should be repaired by introducing a deterministic repository-owned migration-history identity/reconciliation source of truth (or equivalent verified mapping) that can distinguish known legacy aliases from genuine missing/unexpected migrations. The guard must still hard-fail unknown drift; do not convert parity into a permissive count-only/schema-only check.
+- The genuinely absent `20260911204500_public_abuse_perimeter.sql` must remain detectable as missing after reconciliation. Fixing legacy identity mapping must not make that pending migration appear applied.
+- AI Players still has a separate evidence gap: live/browser snapshot identity and UX proof before further LLM discussion scope. It stays behind the launch-safety blocker.
+- Story/curated status does not justify new content scope now: 4–10 coverage is already Green and there is no evidence supporting 11–15 expansion.
+
+### Code / database / test / doc changes
+- Checkpoint only: no application, test, release script, schema, or Production state changed.
+- Updated this handoff to record latest Green `main`, confirm the exact faulty parity assumption in code/tests, and define the next milestones.
+
+### Commits
+- Starting checkpoint SHA: `e2bc2715d343b16e036dbfc16bd67c4858e5a35b` — `validate` + `qa` Green.
+- Checkpoint handoff commit: `docs: record migration parity checkpoint`.
+
+### Check/test results
+- `e2bc2715d343b16e036dbfc16bd67c4858e5a35b`: `validate` success ✅; `qa` success ✅.
+- No new runtime tests were introduced in this checkpoint.
+- Existing release-preflight contract still tests literal timestamp equality and therefore does not resolve the known Production ledger mismatch.
+
+### Newly discovered bugs / risks
+- The release-preflight test suite can be Green while the production-facing parity model is structurally incapable of recognizing the existing legacy migration ledger. This is a test-model coverage gap, not evidence that the production ledger is safe to rewrite.
+- A naive alias/mapping fix could accidentally hide genuinely missing migrations. The next implementation must include negative fixtures proving that an allowed legacy mapping still reports the absent abuse-perimeter migration and still rejects unknown remote/local drift.
+- Production observability remains code-complete but not runtime-proven deployed; do not treat it as live telemetry evidence until rollout is safely completed.
+- No new gameplay/story P0 discovered.
+
+### Deploy-safety status
+**Not deploy-safe for launch-safety Production rollout.** App/QA checks are Green, but migration-history parity is not truthfully provable yet and the abuse-perimeter migration remains absent in Production. No Production mutation occurred.
+
+### Roadmap impact / next milestones
+1. **Migration-history parity contract reconciliation** — repository-owned deterministic mapping/identity model + regression fixtures that preserve hard failure for unknown drift and still flag the pending abuse-perimeter migration.
+2. **Fresh exact-SHA release readiness rerun** — after objective 1 is Green, rerun `validate`/full `qa` and read-only Production preflight/parity; record whether the exact change is deploy-safe. No Production mutation in that proof session unless separately authorized and explicitly safe.
+3. **Launch-safety rollout verification** — only after explicit deploy-safe evidence: apply/verify the exact authorized migration/release change with smoke checks and rollback-aware evidence; otherwise stay blocked.
+4. **AI Players live UX/snapshot identity evidence** — browser/live validation before deciding any larger LLM discussion scope.
 
 ## الأولوية الدقيقة للجلسة التالية
-اعمل **Checkpoint/Planning session** لأن أربع جلسات تنفيذ/repair/readiness تمت منذ Session 39. راجع Green full-game evidence، launch-safety rollout blocker، والـmigration-ledger mismatch تحديدًا، ثم ثبّت 3–4 milestones تالية. إذا لم يظهر P0، اجعل أول objective تنفيذي بعد الـcheckpoint هو **reconcile Production migration-history parity contract** بطريقة read-only/deterministic تحفظ guardrail ولا تعتمد على مساواة خاطئة بين server-recorded migration IDs وrepo filename timestamps؛ لا تطبق `20260911204500_public_abuse_perimeter.sql` ولا deploy قبل نجاح ذلك الـcontract وإعادة preflight صريحة.
+إذا latest `main` ما زال Green، نفّذ **Migration-history parity contract reconciliation** كـvertical slice واحد: أضف source-of-truth/mapping deterministic للـlegacy Production migration identities، حدّث `preflight.mjs` ليستخدمه، وأضف regression fixtures تثبت (أ) known legacy history passes، (ب) `20260911204500_public_abuse_perimeter.sql` يظل missing حتى يُطبق فعلًا، و(ج) أي unknown local/remote drift يظل hard failure. لا تطبق migration ولا deploy Production في هذه الجلسة.
