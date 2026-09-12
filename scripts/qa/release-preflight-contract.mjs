@@ -15,6 +15,7 @@ for (const name of [
   '20260809180000_initial_game.sql',
   '20260910074600_sync_case_mode_and_snapshot.sql',
   '20260911204500_public_abuse_perimeter.sql',
+  '20260912113500_ai_snapshot_identity.sql',
 ]) {
   fs.writeFileSync(path.join(migrationsDir, name), '-- fixture\n');
 }
@@ -26,6 +27,7 @@ const historyMap = {
       { version: '20260813165239', name: 'add_curated_story_mode' },
       { version: '20260813172916', name: 'harden_curated_room_rpc' },
     ],
+    '20260912113500': [{ version: '20260912113608', name: 'ai_snapshot_identity' }],
   },
   historicalOnly: [
     { version: '20260813150033', name: 'temporary_deploy_source_bridge' },
@@ -62,6 +64,7 @@ function writeGreenFixtures() {
     `${[
       ...knownLegacyHistory,
       '20260912010101|20260911204500_public_abuse_perimeter',
+      '20260912113608|ai_snapshot_identity',
     ].join('\n')}\n`,
   );
 }
@@ -87,7 +90,7 @@ function run() {
 writeGreenFixtures();
 let result = run();
 if (result.status !== 0 || !result.stdout.includes('release-preflight: PASS')) {
-  throw new Error(`known legacy history should reconcile\n${result.stdout}\n${result.stderr}`);
+  throw new Error(`known legacy and rollout history should reconcile\n${result.stdout}\n${result.stderr}`);
 }
 
 const failedChecks = structuredClone(greenChecks);
@@ -99,10 +102,16 @@ if (result.status === 0 || !result.stderr.includes('required check qa is not com
 }
 
 fs.writeFileSync(checksFile, JSON.stringify(greenChecks));
-fs.writeFileSync(remoteFile, `${knownLegacyHistory.join('\n')}\n`);
+fs.writeFileSync(
+  remoteFile,
+  `${[
+    ...knownLegacyHistory,
+    '20260912010101|20260911204500_public_abuse_perimeter',
+  ].join('\n')}\n`,
+);
 result = run();
-if (result.status === 0 || !result.stderr.includes('missing in production: 20260911204500')) {
-  throw new Error(`pending abuse-perimeter migration must remain missing\n${result.stdout}\n${result.stderr}`);
+if (result.status === 0 || !result.stderr.includes('missing in production: 20260912113500')) {
+  throw new Error(`pending AI snapshot migration must remain missing\n${result.stdout}\n${result.stderr}`);
 }
 
 fs.writeFileSync(
@@ -113,6 +122,7 @@ fs.writeFileSync(
     '20260813151651|remove_temporary_deploy_source_bridge',
     '20260813165239|add_curated_story_mode',
     '20260912010101|20260911204500_public_abuse_perimeter',
+    '20260912113608|ai_snapshot_identity',
   ].join('\n')}\n`,
 );
 result = run();
