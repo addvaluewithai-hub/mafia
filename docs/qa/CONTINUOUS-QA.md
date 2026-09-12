@@ -10,13 +10,12 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Session 57 delivery started from latest `main` `328b1baee7450ea38a19fe152f909d8bd2ba744a`; exact-SHA `validate` and `qa` were both completed/success.
-- Core/full-game 4–10 remains Green with no known P0. Latest established QA evidence includes 140 deterministic simulations plus local Supabase full-game RPC coverage across every player count 4–10, tie reset, elimination, reconnect, next clue, Boss authority, winner, rematch, and AI Players identity.
-- Production migration parity remains closed: 17/17 repo migrations reconcile with 20/20 Production ledger records. No Production mutation occurred in Session 57.
+- Session 58 bounded product/UX review started from latest `main` `bcaf0825500d328f8f325487b076572662d526cc`; exact-SHA CI and Game QA were both completed/success.
+- Core/full-game 4–10 remains Green with no known P0. Established QA evidence includes 140 deterministic simulations plus local Supabase full-game RPC coverage across every player count 4–10, tie reset, elimination, reconnect, next clue, Boss authority, winner, rematch, and AI Players identity.
+- Production migration parity remains closed: 17/17 repo migrations reconcile with 20/20 Production ledger records.
 - Guarded web release remains externally blocked because the connected GitHub execution surface still exposes no authorized workflow-dispatch action for `Vercel Release Package` with exact `release_sha`. Generic/unpinned deploy remains prohibited.
-- Curated story library has 14 cases covering every count 4–10. The human semantic/Egyptian-Arabic quality milestone is now closed against the current library: the existing case-by-case fairness review was re-audited against current source and the one residual player-facing English game-design phrase found (`red herring` in `midnight-menu`) was replaced with natural Egyptian wording without changing clue semantics. The review remains the semantic authority; critic lexical zero-mention signals are not automatically defects.
-- Session 57 implementation commits: `7ceff5df990bd550c13dbf4c9014e7bbabf344d2` (`content: naturalize midnight menu discussion prompt`) and `99431603a7a6149f37e36b94126ac4373a3e339c` (`docs: close curated story human quality pass`).
-- At session close, CI and Game QA for `99431603...` were queued, so this session makes no new deploy-safe claim.
+- Curated story library has 14 cases covering every count 4–10; current human semantic/Egyptian-Arabic quality milestone is closed.
+- AI Players discussion decision: **no-go on LLM-generated bot discussion now**. The current product gap is that solo bots vote but do not visibly participate in discussion. The smallest justified next slice is deterministic, public-evidence-only bot discussion cues; LLM generation is deferred until that cheaper interaction proves useful.
 
 ## Roadmap status
 - [x] Core/full-game 4–10 stable with deterministic + local-RPC coverage.
@@ -28,58 +27,71 @@
 - [x] Migration-history parity reconciliation.
 - [x] Human semantic/Egyptian-Arabic quality pass for the current 14 curated 4–10 stories.
 - [~] Web rollout/live-browser evidence: product/check/DB prerequisites are Green, but guarded exact-SHA package dispatch is unavailable from the connected execution surface.
-- [ ] AI Players discussion-scope decision after guarded web/live evidence, or after a bounded local UX/product design review if release execution remains externally blocked.
+- [x] AI Players discussion-scope decision: deterministic public-evidence cues first; no LLM yet.
+- [ ] Deterministic AI discussion cues vertical slice, gated behind latest Green checks and continued release-dispatch unavailability.
+- [ ] LLM discussion only if deterministic UX evidence shows a concrete quality ceiling worth the privacy/cost/latency complexity.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 57 — 2026-09-12 — Delivery: curated 4–10 human semantic/Egyptian-Arabic quality closure
+## Session 58 — 2026-09-12 — Product/UX review: AI Players discussion scope
 
 ### Session type
-Delivery. Exactly one coherent objective: close the current-library human semantic/spoken-Egyptian story-quality pass without expanding player counts or adding unrelated gameplay.
+Bounded product/UX design review. Exactly one coherent objective: decide whether AI Players discussion needs LLM generation, define the smallest safe interaction contract and fallback, and record a go/no-go implementation objective. No feature implementation in this review session.
 
 ### Starting evidence
 - Required repository truth read in order: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → this handoff.
-- Latest `main` at start: `328b1baee7450ea38a19fe152f909d8bd2ba744a`.
-- Exact-SHA checks on that SHA: `validate` completed/success; `qa` completed/success.
-- Authorized exact-SHA release dispatch was not available, so the handoff's fallback story-quality objective was selected.
-- Existing `CURATED-STORY-FAIRNESS-REVIEW.md` already contained a full 14-case semantic matrix and two prior evidence-chain fixes; this session treated that durable evidence as the baseline and checked current source rather than pretending the review did not exist.
+- Latest `main` at start: `bcaf0825500d328f8f325487b076572662d526cc` (`docs: record curated story quality closure`).
+- Exact-SHA GitHub Actions on that SHA: CI completed/success; Game QA completed/success.
+- Authorized exact-SHA `Vercel Release Package` workflow-dispatch capability remains unavailable from the connected GitHub execution surface, so the handoff's bounded AI discussion review fallback was selected.
+- Current solo UX explicitly tells the human that three AI players join automatically and vote automatically; the room UI marks bots through authoritative `player.isBot`, but there is no bot discussion surface.
+- Current `cast_ai_votes` is server-side and intentionally constrained: innocent bots lean toward case roles appearing in revealed clues; mafia bots can use only their own secret-team knowledge to avoid teammates when an innocent target exists. The migration comment explicitly forbids exposing the solution/private case payload to clients.
 
 ### Exact objective
-Re-audit the current 14-story 4–10 curated library for spoken Egyptian naturalness, role clarity, plausible ambiguity, clue escalation, and critic zero-mention signals; fix only a real residual quality defect while preserving fairness and record why zero lexical mentions alone are not an automatic rewrite trigger.
+Decide whether bot discussion requires an LLM now; define the minimum useful player-facing contract, deterministic fallback, information boundary, and privacy/cost/latency/failure gates; leave one implementation-sized next objective without building it in this session.
 
 ### Reproduction / design finding
-- The current semantic review already documents all 14 stories case-by-case as fair after prior fixes to `garden-locker` and `midnight-menu`; the critic separately enforces pre-final mafia-isolation and final-mafia reconnection guards.
-- A residual spoken-language defect remained in `midnight-menu` round-2 discussion: player-facing copy literally used the English game-design term `red herring`. That is understandable to some players but is not natural Egyptian speech and exposes authoring jargon instead of inviting deduction.
-- Replacing it with `موجود بس عشان يشتتكم` preserves exactly the same clue function: distinguish a widespread, non-dispositive trace from evidence that actually narrows a suspect.
-- No evidence justified changing mafia assignment, clue timing, motive chains, or adding explicit mentions merely to improve lexical matrix counts. Some innocent roles can remain plausible through shared opportunity/evidence or bios without being named in every clue.
+- The actual UX gap is social presence, not reasoning correctness: bots already participate in the authoritative player/role/vote lifecycle and can complete votes, but the human sees no bot contribution during the discussion window.
+- An LLM is not required to test whether visible bot participation improves solo play. Introducing one now would add a second inference path, latency during a timed discussion phase, per-round cost, prompt-injection/content-quality surface, retry/failure UX, and a new privacy boundary around secret role/team data before there is evidence that generative prose is necessary.
+- The smallest useful contract is **one short, clearly AI-labeled Egyptian-Arabic discussion cue per alive bot per revealed round**, derived only from already-public game state: bot nickname, public caseRole/bio, revealed clue(s), discussion prompt, alive/eliminated public roster, and round number. It must never consume solution text, unrevealed clues, another player's private role, or mafia-team membership.
+- Cue semantics should be modest rather than pretending to be human reasoning: point to a public clue/case-role connection, express uncertainty, or ask the round's public discussion question. It must not claim hidden knowledge and must not announce a definitive culprit before public evidence supports that conclusion.
+- Determinism is the fallback and the first implementation path, not merely an outage mode: select from small Egyptian templates using stable public inputs so refresh/reconnect shows the same cue, no network call is needed, and tests can assert privacy and wording contracts.
+- Bot voting may continue to use the existing server-side secret-team rule for mafia self-preservation, but visible discussion cues must be computed from a stricter public-only projection. Discussion text must not become an input that changes mafia assignment, win probability, phase progression, or authoritative voting eligibility.
+
+### Go / no-go decision and gates
+- **NO-GO now: LLM-generated bot discussion.** There is no evidence yet that generative language adds enough value over deterministic cues to justify new operational and privacy risk.
+- **GO next, after Green gate: deterministic discussion-cue vertical slice.** Prefer a pure/shared function over new schema or persistence unless implementation evidence proves persistence is necessary. Stable inputs must make refresh/reconnect deterministic.
+- Privacy gate for any future LLM: construct an explicit public-context DTO allowlist; never send solution, unrevealed clues, private role/team fields, auth/session tokens, room secrets, or arbitrary database rows. Add regression proving forbidden fields are absent before any provider call.
+- Cost gate for any future LLM: hard maximum one bounded generation per bot/round (or one batched generation per round), explicit token/output cap, no generation on refresh/reconnect, and a documented per-full-game upper bound before enabling it.
+- Latency gate: discussion and voting must remain usable without waiting for inference; generation cannot block reveal, timer, vote, resolve, reconnect, or winner paths.
+- Failure gate: timeout/provider error/invalid output silently falls back to deterministic cues; no gameplay state transition depends on generated text.
+- Quality/safety gate: Egyptian-Arabic output must be short/read-aloud natural, nickname-led, non-abusive, and uncertainty-aware; deterministic tests cover no hidden-information leakage and no stale/eliminated-bot speaking.
+- Evidence gate before reconsidering LLM: collect browser/live or structured playtest evidence that deterministic cues are repetitive/confusing enough to harm solo deduction. Without that evidence, keep LLM deferred.
 
 ### Code / database / test / doc changes
-- Story content: `lib/server-stories/midnight-menu.ts` round-2 discussion prompt naturalized; no clue, role, mafia index, solution, or gameplay behavior changed.
-- Semantic QA doc: `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md` refreshed to 2026-09-12, records the spoken-language defect/fix, clarifies zero-mention interpretation, and closes the current 14-case human-quality pass.
-- Tests: no test weakened/deleted. Existing story critic/fairness guards remain unchanged and will exercise the content through Game QA.
-- Database/Production: none. No DDL/DML/migration/deploy/service operation.
+- Code: none by design; this was a bounded decision session.
+- Database/Production: none. No DDL, DML, migration, deploy, restore, or service mutation.
+- Tests: none changed or weakened. Existing Green AI/full-game suite remains the safety baseline.
+- Docs: this handoff now records the product decision, public/private information contract, operational gates, and exact implementation-sized next objective.
 
 ### Commits
-- `7ceff5df990bd550c13dbf4c9014e7bbabf344d2` — `content: naturalize midnight menu discussion prompt`.
-- `99431603a7a6149f37e36b94126ac4373a3e339c` — `docs: close curated story human quality pass`.
-- Session handoff commit: `docs: record curated story quality closure`.
+- Session handoff commit: `docs: decide AI discussion scope`.
 
 ### Check / test results at session close
-- Starting SHA `328b1bae...`: `validate` success; `qa` success.
-- On `99431603...`, both CI and Game QA had been created and were queued at last inspection. Therefore the new content has not yet earned a Green/deploy-safe claim.
-- No failing check was observed during this session.
+- Starting SHA `bcaf0825...`: CI completed/success; Game QA completed/success.
+- This session changes documentation only. Checks for the new handoff commit should be inspected first next session; no new deploy-safe claim is inferred until they are known.
 
 ### Newly discovered bugs / risks
-- Fixed: one English game-design term leaked into player-facing Egyptian discussion copy.
-- The story critic is intentionally heuristic; automated 9.9/10-style scores cannot prove semantic naturalness. Human review remains necessary after material story changes.
-- Lexical zero-mention roles are a review signal, not automatically a fairness defect; mechanically forcing every role into clues would make dialogue less natural and can reduce ambiguity.
+- Product gap, not a correctness bug: solo AI players are visually identified and vote, but provide no visible social/discussion presence.
+- LLM-first implementation would create unnecessary secret-context leakage risk because current bot voting legitimately has server-side mafia-team knowledge that visible discussion must not inherit.
+- Timed discussion makes inference latency especially dangerous if UI/gameplay waits on generation.
+- Refresh/reconnect can multiply cost or produce contradictory bot statements unless generation is persisted or deterministically keyed; deterministic public-input cues avoid that class of problem for the first slice.
 - Guarded web release/live-browser evidence remains externally blocked.
 - 11–15 remains unsupported absent gameplay/UX evidence.
 
 ### Deploy-safety status
-No Production change is authorized by this session. Starting state was Green, but checks for the new story/doc commits were still queued at close. Web deployment remains not authorized from the current execution surface until exact-SHA guarded packaging can be dispatched and provenance verified.
+No Production change is authorized by this session. Starting code is Green, but this review makes no deploy claim and performs no production/web/database mutation. Generic/unpinned web deployment remains prohibited while exact-SHA guarded packaging cannot be dispatched.
 
 ### Roadmap impact
-Milestone C (Story Quality) is closed for the current 14-case 4–10 library. Future human story review should be event-driven by new/rewritten content or regression evidence, not repeated hourly. The next roadmap decision can move to the already-planned AI Players discussion-scope evidence gate while keeping guarded release as the preferred blocker-clearing path when capability appears.
+The AI discussion question is no longer an open-ended "add LLM" feature. The roadmap now has a bounded evidence-first step: deterministic public-evidence discussion cues, then evaluate real UX evidence before considering generative language. This preserves core/full-game safety and avoids adding provider cost/privacy/latency complexity without demonstrated product value.
 
 ## الأولوية الدقيقة للجلسة التالية
-Resolve CI/Game QA for the latest handoff first. If Green and authorized exact-SHA `Vercel Release Package` dispatch has become available, execute the guarded release/live-smoke objective. If dispatch is still unavailable, perform one bounded **AI Players discussion-scope product/UX design review** using repository truth and existing local gameplay/AI evidence: decide whether bot discussion needs LLM generation at all, define the smallest safe interaction contract and deterministic fallback, identify privacy/cost/latency/failure-mode gates, and record a go/no-go implementation objective without implementing the feature in that same review session.
+Resolve CI/Game QA for this latest handoff first. If Green and authorized exact-SHA `Vercel Release Package` dispatch has become available, execute the guarded release/live-smoke objective. If dispatch is still unavailable, implement exactly one **deterministic AI discussion-cues vertical slice**: public-context-only cue derivation, Egyptian-Arabic bot lines in the room discussion UX, stable refresh/reconnect behavior, no eliminated-bot speaking, automated privacy/determinism/UI regressions, and docs. Do not add an LLM/provider, new player-count support, or unrelated gameplay in that session.
