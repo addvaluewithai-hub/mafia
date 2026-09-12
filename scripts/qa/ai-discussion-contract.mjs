@@ -27,11 +27,32 @@ assert.equal(changedRound.length, first.length, 'new rounds should keep one cue 
 
 const helperSource = await readFile(new URL('../../lib/ai-discussion.ts', import.meta.url), 'utf8');
 assert(/\bcaseRole\s*:/.test(helperSource), 'public cue helper may explicitly accept the public caseRole field');
+
+function typeFields(typeName) {
+  const match = helperSource.match(new RegExp(`(?:export\\s+)?type\\s+${typeName}\\s*=\\s*\\{([\\s\\S]*?)\\};`));
+  assert(match, `expected ${typeName} type declaration`);
+  return [...match[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\??\s*:/gm)].map((field) => field[1]);
+}
+
+assert.deepEqual(
+  typeFields('PublicAiDiscussionPlayer'),
+  ['id', 'nickname', 'caseRole', 'isBot', 'isEliminated'],
+  'AI discussion player projection must stay limited to explicit public identity/gameplay fields',
+);
+assert.deepEqual(
+  typeFields('PublicAiDiscussionRound'),
+  ['roundIndex', 'clue', 'discussionPrompt'],
+  'AI discussion round projection must stay limited to revealed public round fields',
+);
+assert.deepEqual(
+  typeFields('AiDiscussionInput'),
+  ['players', 'round'],
+  'AI discussion helper must accept only the public player projection and public round projection',
+);
+
 const forbiddenFields = ['role', 'winner', 'publicSolution', 'solution', 'mafiaCharacter', 'secret', 'team'];
 for (const forbidden of forbiddenFields) {
-  const declaration = new RegExp(`\\b${forbidden}\\s*:`);
   const propertyRead = new RegExp(`\\.${forbidden}\\b|\\[['\"]${forbidden}['\"]\\]`);
-  assert(!declaration.test(helperSource), `public cue helper must not declare forbidden private field: ${forbidden}`);
   assert(!propertyRead.test(helperSource), `public cue helper must not read forbidden private field: ${forbidden}`);
 }
 
