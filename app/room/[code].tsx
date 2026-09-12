@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams } from 'expo-router';
 import {
+  Bot,
   CheckCircle2,
   Clipboard,
   Copy,
@@ -71,6 +72,8 @@ function PlayerCard({
         <View className={`h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${selected ? 'border-case-gold/50 bg-case-gold/15' : 'border-white/10 bg-noir-700'}`}>
           {player.isEliminated ? (
             <LockKeyhole size={18} color="#ef5d68" strokeWidth={2.2} />
+          ) : player.isBot ? (
+            <Bot size={19} color={selected ? '#f2c14e' : '#fff6dc'} strokeWidth={2.1} />
           ) : (
             <Text className={`text-base font-black ${selected ? 'text-case-gold' : 'text-case-cream'}`}>{initial}</Text>
           )}
@@ -81,6 +84,7 @@ function PlayerCard({
             <Text numberOfLines={1} selectable className="min-w-0 flex-1 text-right text-base font-black text-case-cream">
               {player.nickname}
             </Text>
+            {player.isBot ? <Pill label="AI" tone="neutral" /> : null}
             {player.isHost ? <Pill label="BOSS" tone="gold" /> : null}
             {player.isEliminated ? <Pill label="في السجن" tone="red" /> : selected ? <Pill label="اختيارك" tone="gold" /> : null}
           </View>
