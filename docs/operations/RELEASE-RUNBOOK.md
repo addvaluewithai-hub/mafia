@@ -10,11 +10,23 @@ Before any production write or Vercel deployment, the same SHA must have:
 
 1. GitHub check `validate` completed with `success`.
 2. GitHub check `qa` completed with `success`.
-3. Production Supabase migration history exactly matching `supabase/migrations/` in that SHA.
+3. Production Supabase migration history reconciling exactly to `supabase/migrations/` in that SHA under the repository-owned migration-history rules.
 4. A successful read-only release preflight.
 5. An explicit `deploy-safe` statement in `docs/qa/CONTINUOUS-QA.md` for the exact change being released.
 
 The preflight never applies migrations and never deploys anything.
+
+## Migration-history identity rules
+
+Supabase Production contains legacy migration ledger entries whose server-recorded versions differ from the timestamps now used by the repository migration filenames. The release guard must not rewrite Production history and must not treat that legacy representation as arbitrary drift.
+
+`scripts/release/migration-history-map.json` is the narrow source of truth for known legacy identities:
+
+- `canonicalAliases` lists exact historical Production ledger records that together prove one canonical repository migration was already applied.
+- `historicalOnly` lists exact Production-only historical bookkeeping migrations that are intentionally not represented as current repository migrations.
+- Newer Supabase-applied migrations may reconcile by canonical timestamp embedded at the beginning of their ledger `name`, for example `20260911204500_public_abuse_perimeter`, even when Supabase assigns a different ledger `version`.
+
+Everything else is a hard failure. Unknown Production records, missing canonical repository migrations, incomplete multi-record legacy aliases, or stale mappings stop the release. Never add a mapping merely to make preflight Green; add or change one only with durable evidence that the exact Production history corresponds to the canonical repository migration.
 
 ## GitHub secret required
 
@@ -27,7 +39,7 @@ Do not put the connection string in repository files, workflow inputs, logs, or 
 1. Confirm the candidate SHA is on `main` and its `validate` and `qa` checks are Green.
 2. Run GitHub Actions → `Vercel Release Package` → `Run workflow`.
 3. Paste the full candidate SHA into `release_sha`.
-4. The workflow checks out that exact SHA, runs `scripts/release/preflight.mjs`, and stops immediately if either required check is not Green or migration history differs.
+4. The workflow checks out that exact SHA, runs `scripts/release/preflight.mjs`, and stops immediately if either required check is not Green or migration history cannot be reconciled exactly.
 5. Only after preflight passes does it create `vercel-source-<short-sha>` containing `vercel-source.zip` and `release-manifest.txt`.
 6. Use that exact artifact as the source for the existing Vercel `akher-kheit` project. Do not rebuild from a later `main` tip or an unpinned branch.
 7. After deployment, record deployment ID, stable alias result, live smoke evidence, and deploy-safety outcome in `docs/qa/CONTINUOUS-QA.md`.
@@ -46,9 +58,9 @@ export SUPABASE_PRODUCTION_DB_URL=<production-read-connection-string>
 node scripts/release/preflight.mjs
 ```
 
-Expected success output states that `validate` and `qa` are Green for the exact SHA and reports the number of migrations matching production.
+Expected success output states that `validate` and `qa` are Green for the exact SHA and reports how many repository migrations reconcile with how many Production ledger records.
 
-Any missing production migration, unexpected production migration, missing check, pending check, or failed check is a hard stop. Investigate and update the handoff; do not bypass the preflight and do not rewrite tests to obtain a release.
+Any missing production migration, unexpected production migration, incomplete legacy alias, missing check, pending check, or failed check is a hard stop. Investigate and update the handoff; do not bypass the preflight and do not rewrite tests to obtain a release.
 
 ## Production migration changes
 
