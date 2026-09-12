@@ -1,0 +1,24 @@
+{
+  "canonicalAliases": {
+    "20260809180000": [
+      { "version": "20260809180854", "name": "initial_game" }
+    ],
+    "20260809191000": [
+      { "version": "20260809180947", "name": "harden_rpc_permissions" }
+    ],
+    "20260810154600": [
+      { "version": "20260810125224", "name": "add_synced_discussion_timer" }
+    ],
+    "20260813154500": [
+      { "version": "20260813123407", "name": "boss_is_player" }
+    ],
+    "20260910074600": [
+      { "version": "20260813165239", "name": "add_curated_story_mode" },
+      { "version": "20260813172916", "name": "harden_curated_room_rpc" }
+    ]
+  },
+  "historicalOnly": [
+    { "version": "20260813150033", "name": "temporary_deploy_source_bridge" },
+    { "version": "20260813151651", "name": "remove_temporary_deploy_source_bridge" }
+  ]
+}
