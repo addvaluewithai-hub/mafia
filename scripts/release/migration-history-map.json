@@ -15,6 +15,9 @@
     "20260910074600": [
       { "version": "20260813165239", "name": "add_curated_story_mode" },
       { "version": "20260813172916", "name": "harden_curated_room_rpc" }
+    ],
+    "20260912113500": [
+      { "version": "20260912113608", "name": "ai_snapshot_identity" }
     ]
   },
   "historicalOnly": [
