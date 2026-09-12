@@ -10,90 +10,80 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Session 55 started from `d6ce0a92aeb1317cbef7088ef96dd36dc8adf3a5` (`docs: record AI snapshot production rollout`).
-- Exact-SHA GitHub checks are Green: `validate` completed/success and `qa` completed/success on `d6ce0a92aeb1317cbef7088ef96dd36dc8adf3a5`.
-- Core/full-game 4–10 remains Green; no known gameplay P0 surfaced.
-- Identity/story contract + curated 4–10 + fairness remain Green; no current evidence justifies 11–15 expansion.
-- Production DB contains the launch-safety public-abuse perimeter and AI snapshot identity rollout. `room_snapshot(text)` returns `players[].isBot` from `players.is_bot`; nickname remains the visible identity.
-- Production migration parity is now read-only verified against latest `main`: all 17 repo migrations reconcile with all 20 Production ledger records under `scripts/release/preflight.mjs` semantics and `scripts/release/migration-history-map.json`; there are zero missing canonical migrations and zero unexpected Production records.
-- The exact AI snapshot rollout ledger record `20260912113608|ai_snapshot_identity` reconciles only through the explicit canonical alias for repo migration `20260912113500`; unknown Production records still hard-fail preflight.
-- Guarded web release remains externally blocked because the connected GitHub execution surface still has no authorized `Vercel Release Package` workflow-dispatch operation with exact `release_sha` input. Generic/unpinned deployment remains prohibited.
-- No Production mutation or web deployment occurred in Session 55.
+- Session 56 checkpoint started from latest `main` `320a8864006aa4f62e74e19b1b1b76fe0ca6740c` (`docs: record production parity audit`).
+- Exact-SHA GitHub checks on that SHA are Green: `validate` completed/success and `qa` completed/success.
+- Core/full-game 4–10 remains Green with no known gameplay P0. Latest QA artifact proves 140 deterministic state simulations across 4–10 and local Supabase full-game RPC scenarios across every player count 4–10, including tie reset, elimination, reconnect before/after voting and resolution, next clue, Boss authority after elimination, and winner/solution.
+- Identity/story contract remains Green. AI Players E2E proves authoritative `isBot` survives case install, voting, and snapshot refresh while Boss remains explicitly human; nickname remains visible identity.
+- Curated story system currently has 14 stories covering every player count 4–10. Latest story critic is Green with average score 9.9/10, integrity/fairness Green, zero early-reveal warnings, zero pre-final only-mafia warnings, and zero missing-final-mafia-role warnings. The critic is heuristic and does not replace human semantic/Egyptian-Arabic quality review; some roles receive zero explicit lexical clue mentions, which is a quality-review signal rather than a current enforced failure.
+- Production DB contains launch-safety public-abuse perimeter and AI snapshot identity rollout. Production migration parity is closed: all 17 repo migrations reconcile with all 20 Production ledger records, zero missing and zero unexpected.
+- Guarded web release remains externally blocked because the connected GitHub execution surface has no authorized `Vercel Release Package` workflow-dispatch operation with exact `release_sha` input. Generic/unpinned deployment remains prohibited.
+- No Production mutation or web deployment occurred in Session 56.
 
 ## Roadmap status
-- [x] Core/full-game 4–10 stable.
-- [x] Identity/story contract + curated 4–10 + fairness + packs.
+- [x] Core/full-game 4–10 stable with deterministic + local-RPC coverage.
+- [x] Identity/story contract + gender-safe wording + caseRole + curated 4–10 fairness foundation.
 - [x] Same-room rematch.
 - [x] AI generation + room/join abuse protection per authenticated identity.
-- [x] Solo/AI Players MVP + relevant E2E + Production DB rollout.
-- [x] AI Players authoritative `isBot` snapshot contract + explicit UI consumption.
-- [x] Release parity + deployment guardrails implementation.
-- [x] Production observability implementation.
-- [x] Anonymous-identity churn / public-launch abuse perimeter implementation + deterministic QA.
-- [x] Migration-history parity reconciliation for known historical/tool-generated records.
-- [x] Launch-safety and AI snapshot Production migrations rolled out and verified.
-- [x] Latest exact-SHA Production migration parity audit: 17/17 repo migrations reconciled against 20/20 Production ledger records.
-- [~] Web rollout completion: DB/product/check prerequisites are Green, but guarded exact-SHA package dispatch is unavailable from the connected execution surface.
-- [ ] AI Players discussion-scope decision after guarded web/live evidence is complete.
+- [x] Solo/AI Players MVP + authoritative `isBot` snapshot/UI contract + Production DB rollout.
+- [x] Release parity/deployment guardrails + Production observability + public-launch abuse perimeter.
+- [x] Migration-history parity reconciliation; latest audit 17/17 repo migrations against 20/20 Production records.
+- [~] Web rollout/live-browser evidence: product/check/DB prerequisites are Green, but guarded exact-SHA package dispatch is unavailable from the connected execution surface.
+- [ ] Human semantic/Egyptian-Arabic quality pass on the curated 4–10 library, using critic output to target clue-role coverage and spoken clarity without weakening fairness.
+- [ ] AI Players discussion-scope decision after guarded web/live evidence, or after a bounded local UX/product design review if release execution remains externally blocked.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 55 — 2026-09-12 — Delivery: exact-SHA Production release/preflight parity audit
+## Session 56 — 2026-09-12 — Checkpoint: post-parity roadmap audit
 
 ### Session type
-Delivery/release-readiness audit. Exactly one coherent objective: resolve latest checks and perform the handoff-requested read-only exact-SHA migration parity audit against Production. No Production migration, DML, restore, service operation, web deploy, or unrelated feature work.
+Bounded Checkpoint/Planning session. No feature implementation and no Production change. Exactly one objective: audit what is actually Green after Production parity closure, identify remaining risk/evidence gaps, and set the next 3–4 substantial milestones in protocol order.
 
 ### Starting evidence
 - Required repository truth read in order: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → this handoff.
-- Latest `main` at start was `d6ce0a92aeb1317cbef7088ef96dd36dc8adf3a5`.
-- GitHub check-runs for that exact SHA show exactly the required release checks: `validate` completed/success and `qa` completed/success.
-- The latest tree contains 17 canonical repo migration files, ending with `20260912113500_ai_snapshot_identity.sql`.
-- `migration-history-map.json` explicitly maps the known legacy/tool-generated Production history, including canonical `20260912113500` → exact Production record `20260912113608|ai_snapshot_identity`, and separately recognizes the two historical-only temporary bridge records.
+- Latest `main` at start: `320a8864006aa4f62e74e19b1b1b76fe0ca6740c`.
+- Exact-SHA checks: `validate` completed/success; `qa` completed/success.
+- Latest Game QA artifact was inspected rather than relying only on workflow status.
 
 ### Exact objective
-Perform a read-only release/preflight parity audit for exact SHA `d6ce0a92aeb1317cbef7088ef96dd36dc8adf3a5`: verify required checks are Green and reconcile every repo migration against the current Production migration ledger using the same matching semantics as `scripts/release/preflight.mjs`, without changing Production.
+Audit current Green state, full-game coverage gaps, Production/DB drift blockers, web-release blocker, AI Players live-evidence gap, story/curated 4–10 quality, technical debt, and roadmap ordering; then record 3–4 substantial next objectives and one exact next-session priority.
 
 ### Reproduction / design finding
-- `scripts/release/preflight.mjs` requires a full 40-character SHA, successful `validate` and `qa` checks for that same SHA, and migration parity with no missing local canonical version and no unrecognized Production ledger record.
-- Fresh Production read-only ledger inspection returned 20 records.
-- Canonical migrations that were applied under the same timestamp reconcile directly by version; tool-applied records whose names begin with a canonical timestamp reconcile through the script's named-canonical rule.
-- Historical timestamp divergences reconcile only through the narrow explicit alias map. The composite curated-story alias requires both known Production records. The AI snapshot canonical migration requires the exact `20260912113608|ai_snapshot_identity` record.
-- Deterministic reconciliation using the current repo tree, current alias map, current historical-only list, and fresh Production ledger yields: 17 repo migrations applied/reconciled, 20 Production records recognized, `missingRemote=[]`, `unexpectedRemote=[]`.
-- Therefore the migration-parity portion of release preflight is Green for this exact source state. This does not itself authorize a web deployment because the guarded exact-SHA packaging/dispatch path remains unavailable.
+- Core correctness evidence is materially strong: 140 deterministic simulations cover player counts 4–10, and local Supabase E2E covers every 4–10 count through join/install/voting/tie/elimination/reconnect/next-clue/winner. Dedicated Boss-eliminated and same-room-rematch E2Es are Green. There is no evidence of a current P0/deadlock requiring priority inversion.
+- AI Players identity is no longer merely a static contract: local E2E verifies authoritative `isBot` through case install, voting, and refresh. What remains is live/browser UX evidence on a guarded deployed SHA, not a known identity correctness bug.
+- Story quality is quantitatively healthy but not finished as a human-quality milestone: 14 curated stories cover 4–10, critic average is 9.9, integrity/fairness are Green, and enforced fairness warning totals are zero. However the critic explicitly states its language/fairness analysis is heuristic; its report also exposes some roles with zero explicit lexical clue mentions. That should guide a bounded human semantic/Egyptian-Arabic review rather than be auto-fixed mechanically.
+- Production migration drift is no longer a blocker. The remaining release blocker is execution/provenance capability: exact-SHA guarded package dispatch is unavailable. Generic/unpinned deploy remains unsafe and prohibited.
+- No evidence currently justifies 11–15 expansion. Doing so before live UX evidence and a human curated-story quality pass would violate roadmap order.
 
 ### Code / database / test / doc changes
 - Code: none.
-- Production DB: read-only inspection only; queried `supabase_migrations.schema_migrations` ordered by version. No DDL/DML/migration was executed.
-- Tests/checks: no tests weakened, skipped, deleted, or rewritten. Existing exact-SHA `validate` and `qa` are Green.
-- Docs: refreshed this rolling handoff with the exact parity evidence, current blocker, deploy-safety status, roadmap impact, and next-session priority.
+- Database/Production: none; no DDL/DML/migration/deploy/service operation.
+- Tests: none modified or weakened. Latest QA artifact was audited for actual coverage and story metrics.
+- Docs: rolling handoff condensed and refreshed with checkpoint findings, risks, milestones, and exact next priority.
 
 ### Commits
-- Audited source/handoff SHA: `d6ce0a92aeb1317cbef7088ef96dd36dc8adf3a5` — `docs: record AI snapshot production rollout`.
-- Session 55 handoff: `docs: record production parity audit`.
+- Audited source SHA: `320a8864006aa4f62e74e19b1b1b76fe0ca6740c` — `docs: record production parity audit`.
+- Session 56 handoff: `docs: checkpoint post-parity roadmap`.
 
 ### Check / test results at session close
-- `d6ce0a92aeb1317cbef7088ef96dd36dc8adf3a5` `validate`: completed/success ✅.
-- `d6ce0a92aeb1317cbef7088ef96dd36dc8adf3a5` `qa`: completed/success ✅.
-- Repo migration count: 17.
-- Fresh Production ledger record count: 20.
-- Missing canonical migrations after reconciliation: 0 ✅.
-- Unexpected/unrecognized Production records after reconciliation: 0 ✅.
-- No product regression or gameplay P0 discovered.
-- No Production write or web deploy occurred.
+- Starting SHA `320a8864006aa4f62e74e19b1b1b76fe0ca6740c`: `validate` success ✅; `qa` success ✅.
+- Latest QA artifact: game simulation `ok=true`, 140 simulations, counts 4–10; local Supabase RPC E2E `ok=true`, counts 4–10; Boss-eliminated E2E `ok=true`; rematch E2E `ok=true`; AI Players E2E `ok=true`.
+- Story critic: `ok=true`, average 9.9, threshold 8, integrity Green, fairness Green, curated coverage 4–10. Fairness baseline: 14 stories; early reveal warnings 0; pre-final-only-mafia warnings 0; final-mafia-role-missing warnings 0.
+- No new gameplay P0 or Production parity drift discovered.
 
 ### Newly discovered bugs / risks
-- No new gameplay bug or migration drift was discovered.
-- The guarded web release remains an external execution-capability blocker, not a product/DB parity blocker: the current connected GitHub surface cannot dispatch `Vercel Release Package` with an exact `release_sha` input.
-- A generic/unpinned deploy would bypass the repository's provenance guard and remains prohibited.
-- Migration-history correctness depends on preserving narrow aliases; broadening alias matching would reduce drift detection and should not be done.
+- No new correctness bug was discovered.
+- Story critic remains intentionally heuristic; a high automated score must not be mistaken for proof of natural spoken Egyptian Arabic or semantic plausibility. Zero-mention roles in the lexical matrix are a targeted review signal.
+- Live/browser evidence for the latest AI Players UI remains blocked behind guarded web release provenance.
+- Exact-SHA web packaging remains an external capability blocker. Do not bypass it with generic/unpinned deployment.
+- 11–15 remains unsupported roadmap expansion absent gameplay/UX evidence.
 
 ### Deploy-safety status
-Production DB parity is Green and latest exact-SHA required checks are Green. No additional Production DB change is needed or authorized by this session. A web deployment is still **not authorized from the current execution surface** because the required guarded exact-SHA package workflow cannot be dispatched here. Do not substitute a generic/unpinned Vercel deployment.
+Production DB parity and current product checks are Green, but this checkpoint authorizes no Production change. Web deployment remains **not authorized from the current execution surface** until the repository's guarded exact-SHA package workflow can be dispatched and its provenance verified.
 
-### Roadmap impact
-- The Production migration/parity uncertainty created by the AI snapshot rollout is fully closed: repo and Production history reconcile with zero missing or unexpected records.
-- Database state is no longer the blocker for guarded web/live evidence.
-- The remaining release blocker is narrowly isolated to exact-SHA package dispatch/provenance execution.
-- The recent sequence has now completed enough implementation/safety sessions since the last planning checkpoint that the next run should use the protocol's bounded checkpoint cadence rather than inventing a new feature while release execution remains blocked.
+### Roadmap impact — next substantial objectives
+1. **Curated 4–10 human semantic/Egyptian-Arabic quality pass**: review all 14 current stories against spoken naturalness, role clarity, plausible ambiguity, clue escalation, and critic zero-mention signals; make only evidence-backed story/test changes as one coherent quality slice.
+2. **Guarded exact-SHA web release + live smoke/AI UX evidence** when authorized workflow dispatch becomes available: run preflight/package, deploy the exact artifact, prove deployed SHA/stable alias, then execute production smoke without DB mutation.
+3. **AI Players discussion-scope decision** after live evidence; if release remains externally blocked, perform a bounded local product/UX design review rather than prematurely implementing LLM discussion.
+4. **11–15 evidence gate** only after the above: assess whether gameplay pacing, voting UX, story readability, and curated-role coverage justify expansion; do not implement merely for count coverage.
 
 ## الأولوية الدقيقة للجلسة التالية
-نفّذ **Checkpoint/Planning session واحدة محدودة** وفق `QA-OPERATING-MODE.md`: راجع ما هو Green فعليًا بعد إغلاق DB parity، full-game coverage gaps، web-release execution blocker، AI Players live-evidence gap، story/curated 4–10 status، technical debt، وهل يجب تغيير الأولويات. حدّث الهاند أوف بـ3–4 أهداف/معالم substantial تالية وبأولوية جلسة واحدة دقيقة. لا تنفذ feature جديدة أو Production change أثناء الـcheckpoint.
+إذا لم تظهر قبل بداية الجلسة صلاحية authorized exact-SHA `Vercel Release Package` dispatch، نفّذ **curated 4–10 human semantic/Egyptian-Arabic quality pass واحدة كاملة** على الـ14 قصة الحالية: استخدم latest critic/fairness reports لتحديد zero-mention/clarity/escalation risks، راجع النصوص ككلام مصري يُقرأ بصوت عالٍ، أصلح فقط المشاكل الحقيقية مع الحفاظ على plausible ambiguity وعدم كشف المافيا مبكرًا، وحدّث/أضف deterministic story regressions عند الحاجة. إذا أصبحت guarded release dispatch متاحة قبل بدء هذا الهدف، ارجع للـexact-SHA release/live-evidence objective أولًا لأنه blocker سابق جاهز للتنفيذ.
