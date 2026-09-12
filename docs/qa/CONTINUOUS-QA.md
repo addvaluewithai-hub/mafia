@@ -10,17 +10,16 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Latest `main` before this handoff update: `e0988e819b84b28dd660c89b71a49ee3cfa45978`.
-- Exact-SHA GitHub checks on that candidate are Green: `validate` completed/success ✅ and full `qa` completed/success ✅.
+- Latest `main` at Session 47 start: `eba158539a7050ad45c620360859fec6c83deb7e`.
+- Exact-SHA GitHub workflows on that SHA are Green: CI/`validate` completed/success ✅ and Game QA/`qa` completed/success ✅.
 - Core/full-game 4–10 remains Green; no known gameplay P0 surfaced in this session.
 - Identity/story contract + curated 4–10 + fairness remain Green; no current evidence justifies 11–15 expansion.
-- Migration-history reconciliation is implemented and now proven against the current Production ledger shape.
-- Fresh read-only Production evidence shows every canonical repo migration before the public-abuse migration reconciles, with no unknown Production ledger record. The only missing canonical repo migration is `20260911204500_public_abuse_perimeter.sql`.
 - Production project `mafia` is `ACTIVE_HEALTHY`.
-- The public-abuse migration prerequisites exist in Production: `create_room_v3(text,text,integer,text,text,text,text)`, `join_room_v2(text,text,text)`, `claim_case_generation_slot(text)`, and `extensions.digest(text,text)`.
-- The objects introduced by that migration are still absent as expected before rollout: `public.public_abuse_rate_limits`, `claim_public_abuse_slot`, `create_room_v4`, `join_room_v3`, and `claim_case_generation_slot_v2`.
-- No Production write, migration, restore, or deployment occurred in Session 46.
-- Solo/AI Players MVP remains live in Production; snapshot identity + browser/live UX evidence is still a later gap before any AI discussion expansion.
+- Controlled launch-safety migration rollout completed successfully: Production ledger now records `20260911204500_public_abuse_perimeter` (server version `20260912033242`).
+- Post-migration object verification is Green: `public.public_abuse_rate_limits`, `claim_public_abuse_slot(text,text)`, `create_room_v4(...)`, `join_room_v3(...)`, and `claim_case_generation_slot_v2(text,text)` all exist; RLS is enabled on the rate-limit table.
+- Fresh Production migration reconciliation is now complete: all 16 canonical repo migrations reconcile and the new public-abuse migration is no longer missing; no unrelated Production migration was introduced.
+- Security advisor reports the new rate-limit table as RLS-enabled/no-policy, which is intentional because direct table privileges are revoked and access is through the bounded RPC. It also reports `claim_public_abuse_slot` as callable by anon/authenticated SECURITY DEFINER; this is intentional for the telemetry/public-abuse boundary and matches the reviewed migration contract. Existing unrelated advisor warnings remain out of scope for this rollout.
+- No Vercel/web deploy, restore, or unrelated Production DB write occurred in Session 47.
 
 ## Roadmap status
 - [x] Core/full-game 4–10 stable.
@@ -32,62 +31,63 @@
 - [x] Production observability implementation.
 - [x] Anonymous-identity churn / public-launch abuse perimeter implementation + deterministic QA.
 - [x] Migration-history parity reconciliation implemented and exact-SHA CI Green.
-- [x] Fresh read-only release readiness against Production using reconciled history model.
-- [~] Launch-safety rollout: exact migration is now approved for a later controlled Production migration session; post-migration exact-SHA preflight and rollout verification remain required before web packaging/deploy.
+- [x] Launch-safety Production migration rollout + post-migration object/ledger verification.
+- [~] Web release readiness: Production DB parity is now restored; a later separate session must perform the repository release preflight/package/deploy workflow and smoke verification before claiming the web release complete.
 - [ ] AI Players snapshot identity + browser/live UX evidence; then decide LLM discussion scope.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 46 — 2026-09-12 — Fresh exact-SHA release readiness rerun
+## Session 47 — 2026-09-12 — Controlled launch-safety migration rollout
 
 ### Session type
-Delivery/evidence session. Exactly one coherent objective: resolve Session 45 checks, then perform a fresh read-only exact-SHA launch-safety readiness audit against current Production migration history and migration prerequisites. No feature implementation, Production migration, deploy, restore, or Production DB write.
+Delivery/rollout session. Exactly one coherent objective: resolve the pending Session 46 handoff checks, apply only the explicitly approved `20260911204500_public_abuse_perimeter.sql` migration to Production, then verify its objects and migration parity. No Vercel/web deploy and no unrelated feature work.
 
 ### Starting evidence
 - Required repository truth read in order: `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff.
-- Starting latest `main`: `e0988e819b84b28dd660c89b71a49ee3cfa45978`.
-- Session 45 prerequisite resolved first: exact-SHA `validate` completed/success ✅ and `qa` completed/success ✅ on `e0988e819b84b28dd660c89b71a49ee3cfa45978`.
-- `scripts/release/preflight.mjs` requires exact-SHA Green checks and reconciles local canonical migrations against Production ledger using repository-owned aliases/historical-only rules; any missing or unknown record is a hard stop.
+- Starting latest `main`: `eba158539a7050ad45c620360859fec6c83deb7e`.
+- The previously pending handoff workflows resolved Green before mutation: Game QA completed/success and CI completed/success on exact SHA `eba158539a7050ad45c620360859fec6c83deb7e`.
+- Session 46 explicitly marked one Production change deploy-safe: applying only `supabase/migrations/20260911204500_public_abuse_perimeter.sql`; it explicitly prohibited a web deploy in the same session.
+- Pre-rollout Production ledger had 18 records and did not yet contain the public-abuse migration.
 
 ### Exact objective
-Prove, read-only, whether the reconciled release model now describes current Production truth and identify the exact remaining launch-safety change, including its prerequisites, without mutating Production.
+Perform the approved controlled Production migration rollout only, then prove the resulting schema/object presence and migration-ledger parity without starting web deployment or another product objective.
 
 ### Reproduction / design finding
-- Production migration ledger currently has 18 records: four exact legacy aliases for early canonical migrations, two historical-only temporary bridge records, the two-record composite curated-story alias, and ten newer records whose names carry canonical migration timestamps.
-- The repository candidate has 16 canonical migration files. Reconciliation accounts for 15 of them and recognizes all 18 current Production ledger records.
-- The one and only missing canonical migration is `20260911204500_public_abuse_perimeter.sql`; there is no unknown Production drift.
-- Production runtime prerequisites required by that migration already exist: `create_room_v3`, `join_room_v2`, `claim_case_generation_slot`, and `extensions.digest`.
-- None of the migration's new table/RPC objects exist yet, matching the expected pre-rollout state rather than a partial/ambiguous application.
+- The approved migration applied successfully through the managed Supabase migration operation.
+- Supabase recorded it as server migration version `20260912033242` with name `20260911204500_public_abuse_perimeter`; the repository reconciliation contract recognizes canonical timestamps carried in migration names, so this maps to canonical repo migration `20260911204500` without adding a new alias.
+- Post-migration SQL confirms the rate-limit table and all four expected RPC entry points exist. RLS is enabled on the table.
+- The Production ledger now has 19 records and includes the new named canonical migration. Under the repository reconciliation model, all 16 canonical repo migrations are now accounted for and there is no new unknown drift.
+- Security advisor observations on the new table/function match the intentional migration design: no direct table policy/privilege path, and the public claim RPC is the bounded SECURITY DEFINER API needed by the public telemetry boundary. No advisor-driven schema change was mixed into this rollout.
 
 ### Code / database / test / doc changes
-- No runtime, schema, test, or release-tool code changed.
-- Performed read-only GitHub exact-SHA check inspection.
-- Performed read-only Supabase project/migration inspection.
-- Performed one read-only SQL prerequisite/object-presence query; no DDL/DML or Production state mutation.
-- Updated this handoff with durable release-readiness evidence and the exact deploy-safety boundary.
+- Production DB: applied exactly `20260911204500_public_abuse_perimeter.sql`; no other migration or DDL/DML was performed.
+- Production verification: read-only object-presence/RLS query, fresh migration-ledger listing, and security-advisor inspection.
+- GitHub: no runtime/schema/test code changed in this session; updated this rolling handoff with durable rollout evidence.
 
 ### Commits
-- Session 45 candidate proven Green: `e0988e819b84b28dd660c89b71a49ee3cfa45978`.
-- Session 46 handoff commit: `docs: record fresh release readiness evidence`.
+- Exact rollout source / starting handoff SHA: `eba158539a7050ad45c620360859fec6c83deb7e`.
+- Session 47 handoff commit: `docs: record launch-safety migration rollout`.
 
 ### Check / test results at session close
-- Candidate SHA `e0988e819b84b28dd660c89b71a49ee3cfa45978`: `validate` completed/success ✅; `qa` completed/success ✅.
-- Existing Game QA therefore includes the deterministic public-abuse perimeter regression/E2E and release-preflight contract coverage for this exact candidate.
-- Fresh Production reconciliation evidence: only canonical `20260911204500` is missing; no unexpected Production record found.
-- Handoff-only commit checks may still be pending/absent at close; this documentation commit does not change the proven candidate code/schema.
+- Starting/latest rollout source SHA `eba158539a7050ad45c620360859fec6c83deb7e`: CI completed/success ✅; Game QA completed/success ✅.
+- Managed Production migration application: success ✅.
+- Post-migration object presence: table + `claim_public_abuse_slot` + `create_room_v4` + `join_room_v3` + `claim_case_generation_slot_v2` present ✅.
+- RLS on `public_abuse_rate_limits`: enabled ✅.
+- Post-migration ledger: public-abuse migration present; canonical migration parity restored under the tested reconciliation contract ✅.
+- Handoff-only commit checks may still be pending/absent at close; it does not change runtime/schema behavior.
 
 ### Newly discovered bugs / risks
 - No new gameplay/story P0 discovered.
-- Production remains intentionally one migration behind the candidate, so the current application/release cannot be packaged or deployed yet under the release invariant.
-- Applying the migration is not the end of release readiness: after application, the same exact candidate SHA must pass a fresh read-only preflight showing full parity before any Vercel source package/deploy.
-- A migration application failure/partial state must be treated as a hard stop and investigated; do not manually fabricate ledger history or aliases.
+- The database rollout is complete, but the web release has not happened; the currently deployed web client may therefore still be an older source until a separately gated release session packages/deploys the exact approved source.
+- Supabase security advisor flags intentional public SECURITY DEFINER access for `claim_public_abuse_slot` and RLS-without-policy on the private rate-limit table. These are expected by design, but any future widening of that RPC or table privileges must be treated as security-sensitive.
+- Existing unrelated advisor warnings were not changed in this session to avoid mixing objectives.
 
 ### Deploy-safety status
-**Deploy-safe for one exact Production change only:** applying `supabase/migrations/20260911204500_public_abuse_perimeter.sql` from candidate `e0988e819b84b28dd660c89b71a49ee3cfa45978` in a separately controlled rollout session. This approval is based on exact-SHA `validate` + full `qa` Green, deterministic abuse-perimeter E2E/contract coverage in that QA, current Production prerequisite presence, and the absence of any other migration drift.
+**Production DB rollout complete and verified.** The exact approved migration was applied successfully and post-migration parity/object checks are Green.
 
-**Not yet deploy-safe for Vercel/web release.** After the approved migration is applied, rerun exact-SHA read-only preflight against Production. Web packaging/deploy is allowed only if that post-migration preflight is fully Green and the handoff records the resulting rollout verification. No Production mutation occurred in Session 46.
+**No Vercel/web deployment was performed in this session.** Database parity is no longer the blocker. A later separate release session may proceed only after resolving latest-main checks and running the repository's exact-SHA release preflight/package guardrails; it must then verify the deployed SHA and perform the prescribed production smoke checks before claiming web rollout complete.
 
 ### Roadmap impact
-The migration-history blocker is closed as a modeling/readiness issue. The launch-safety stack now has a single explicit Production delta with prerequisites proven present and no unrelated drift. The next session should stay inside this milestone: apply only that approved migration, verify post-migration objects/parity, and stop before unrelated product work.
+The launch-safety database milestone is closed: the anonymous-identity churn perimeter now exists in Production and migration parity is restored. The next session should stay within launch readiness and execute the separately gated web release workflow rather than reopening product scope.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص latest `main` وchecks أولًا. إذا ظهر failure حقيقي، أصلح أول meaningful failure فقط. إذا بقي candidate launch-safety code Green، نفّذ **controlled launch-safety migration rollout** كهدف واحد: طبّق فقط `20260911204500_public_abuse_perimeter.sql` على Production، ثم افحص وجود الجدول/RPCs وكرر exact-SHA read-only migration preflight/parity. لا تعمل Vercel/web deploy في نفس الجلسة؛ إذا أصبح post-migration preflight Green، سجّل ذلك كدليل deploy-safe للـweb release في جلسة لاحقة منفصلة.
+افحص latest `main` وchecks أولًا. إذا ظهر failure حقيقي، أصلح أول meaningful failure فقط. إذا بقي latest launch-safety source Green، نفّذ **exact-SHA web release readiness/deploy verification** كهدف واحد: شغّل release preflight ضد Production parity الحالية، package/deploy فقط إذا guardrails كلها Green، ثم تحقق من deployed SHA وproduction smoke وفق الـrunbook. لا تبدأ AI Players أو feature أخرى في نفس الجلسة.
