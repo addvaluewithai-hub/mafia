@@ -10,13 +10,16 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Session 59 started from latest `main` `ef9885d8e59a9109b423f8475558d1d9e4063025`; exact-SHA CI and Game QA were both completed/success before implementation.
-- Core/full-game 4–10 remains established Green with no known P0: deterministic simulations + local Supabase full-game RPC coverage include ties, elimination, reconnect, next rounds, Boss authority, winner, rematch, and AI Players identity.
+- Session 60 started from latest `main` `d0543a78a0f04103c34e0f0e5f6a732ee071a440`.
+- CI on that SHA was completed/success, but Game QA was completed/failure. The first meaningful failure was the newly added AI discussion cue privacy contract, so no new UX/product scope was started.
+- Failure diagnosis: `scripts/qa/ai-discussion-contract.mjs` searched for the raw substring `role:` and therefore falsely matched the allowed public field `caseRole:` in `lib/ai-discussion.ts`. The product helper did not accept or read a private `role` field.
+- The QA contract now checks forbidden fields structurally: exact field declarations such as `role:` and actual property reads such as `.role` / `['role']`, while explicitly asserting that public `caseRole` remains allowed. The privacy boundary remains strict for `role`, winner, solution fields, mafia-team fields, secret/team data, etc.; the test was corrected rather than weakened.
+- Fix commit: `36470062e247d73aed6efacb881a2792d36df996` (`test: make AI discussion privacy guard structural`). CI and Game QA for this exact SHA were queued at the latest inspection.
+- Core/full-game 4–10 remains previously established Green with deterministic simulations + local Supabase RPC E2E coverage for ties, elimination, reconnect, next rounds, Boss authority, winner, rematch, and AI Players identity.
 - Production migration parity remains closed: 17/17 repo migrations reconcile with 20/20 Production ledger records.
-- Guarded web release remains externally blocked because the connected GitHub execution surface exposes no authorized workflow-dispatch action for `Vercel Release Package` with exact `release_sha`. Generic/unpinned deploy remains prohibited.
-- Curated story library has 14 cases covering every count 4–10; human semantic/Egyptian-Arabic quality milestone is closed.
-- Deterministic AI discussion cues are now implemented: alive bots get one short clearly AI-labeled Egyptian-Arabic cue during voting/discussion, derived from an explicit public-only projection and stable across refresh/reconnect inputs. Eliminated bots do not speak. No LLM/provider, persistence, schema, or gameplay-state dependency was added.
-- Checks on implementation head `d59b0fa3b30ad77bd4fb1730a16b503bab0b47f1` were still in progress at session close; do not infer deploy-safe status until they resolve.
+- Guarded web release remains externally blocked because the connected GitHub execution surface exposes no authorized exact-SHA workflow-dispatch action for `Vercel Release Package`. Generic/unpinned deploy remains prohibited.
+- Curated story library remains 14 cases covering every count 4–10 with the human semantic/Egyptian-Arabic quality milestone closed.
+- Deterministic AI discussion cues remain implemented: alive bots get one short clearly AI-labeled Egyptian-Arabic cue during voting/discussion, derived from an explicit public-only projection and stable across refresh/reconnect inputs. Eliminated bots do not speak. No LLM/provider, persistence, schema, or gameplay-state dependency was added.
 
 ## Roadmap status
 - [x] Core/full-game 4–10 stable with deterministic + local-RPC coverage.
@@ -27,66 +30,64 @@
 - [x] Release parity/deployment guardrails + Production observability + public-launch abuse perimeter.
 - [x] Migration-history parity reconciliation.
 - [x] Human semantic/Egyptian-Arabic quality pass for the current 14 curated 4–10 stories.
-- [~] Web rollout/live-browser evidence: prerequisites were Green before this slice, but guarded exact-SHA package dispatch is unavailable from the connected execution surface.
+- [~] Web rollout/live-browser evidence: guarded exact-SHA package dispatch remains unavailable from the connected execution surface.
 - [x] AI Players discussion-scope decision: deterministic public-evidence cues first; no LLM yet.
-- [x] Deterministic AI discussion cues vertical slice implemented; latest checks pending.
-- [ ] Collect browser/live or structured playtest evidence for the deterministic cues before reconsidering LLM discussion.
+- [x] Deterministic AI discussion cues vertical slice implemented.
+- [~] AI discussion cue QA closure: false-positive privacy regression fixed; exact-SHA CI/Game QA pending.
+- [ ] Collect browser/live or structured playtest evidence for deterministic cues before reconsidering LLM discussion.
 - [ ] LLM discussion only if evidence shows a concrete quality ceiling worth privacy/cost/latency complexity.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 59 — 2026-09-12 — Delivery: deterministic AI discussion cues
+## Session 60 — 2026-09-12 — Delivery: fix AI discussion privacy contract false positive
 
 ### Session type
-Delivery. Exactly one coherent objective: implement deterministic, public-evidence-only discussion cues for AI Players end-to-end in room UX and regression coverage. No unrelated feature, LLM/provider, schema change, Production change, or player-count expansion.
+Delivery. Exactly one coherent objective: resolve the first meaningful failing check on latest `main` without weakening the privacy contract or starting new product scope.
 
 ### Starting evidence
 - Required repository truth read in order: `AGENTS.md` → `docs/qa/QA-OPERATING-MODE.md` → this handoff.
-- Latest `main` at start: `ef9885d8e59a9109b423f8475558d1d9e4063025` (`docs: decide AI discussion scope`).
-- Exact-SHA Actions on the starting SHA: CI completed/success; Game QA completed/success.
-- Handoff objective selected because guarded exact-SHA `Vercel Release Package` dispatch remains unavailable from this GitHub execution surface.
-- Existing room UX had authoritative `player.isBot` markers and server-side AI voting but no visible bot contribution during the discussion window.
+- Latest `main` at start: `d0543a78a0f04103c34e0f0e5f6a732ee071a440` (`docs: record deterministic AI discussion cues`).
+- Exact-SHA CI: completed/success.
+- Exact-SHA Game QA: completed/failure.
+- Failed step: `AI discussion cue contract`; all prior workflow steps through player-card identity passed, later QA steps were skipped because the job stopped at this failure.
 
 ### Exact objective
-Add one short Egyptian-Arabic discussion cue per alive bot for the current revealed round, clearly label it as AI, derive it strictly from public fields, keep identical inputs deterministic across refresh/reconnect, suppress eliminated bots, and add automated contract coverage to Game QA.
+Fix the AI discussion privacy regression so it distinguishes the allowed public `caseRole` field from an actual private `role` field/read, while preserving strict failure for private-role/solution/team leakage.
 
 ### Reproduction / design finding
-- No database persistence is required for the first slice. Refresh/reconnect can reproduce identical text from stable public inputs, avoiding network calls, duplicate cost, stale generated content, and schema/state coupling.
-- The safe information boundary is enforced structurally: the helper accepts only player id/nickname/caseRole/isBot/isEliminated plus current round index/clue/discussionPrompt. It does not accept `me.role`, winner, public solution, hidden solution, unrevealed clues, mafia-team membership, auth/session data, or arbitrary snapshot objects.
-- Deterministic selection uses stable hashing of the allowlisted public inputs and a small set of uncertainty-aware Egyptian templates. The visible cue does not affect voting, phase progression, role assignment, winner logic, or any authoritative gameplay transition.
-- UI only renders the cue surface in the active voting/discussion phase and only when at least one alive bot cue exists. Each line shows the bot nickname and an explicit `AI` label.
+- CI log assertion: `public cue helper must not accept or read forbidden private field: role:`.
+- Root cause was test logic, not product leakage: `helperSource.includes('role:')` matched the suffix of the public declaration `caseRole: string | null`.
+- `lib/ai-discussion.ts` accepts only `id`, `nickname`, `caseRole`, `isBot`, `isEliminated`, plus public round index/clue/discussionPrompt. No private role, winner, solution, mafia-team, auth/session, or whole-snapshot object is accepted.
+- Correct regression semantics are structural: reject exact forbidden field declarations and explicit property reads, not arbitrary substrings embedded in allowed identifiers.
 
 ### Code / database / test / doc changes
-- Added `lib/ai-discussion.ts` with typed public-only DTOs, deterministic stable selection, and alive-bot filtering.
-- Updated `app/room/[code].tsx` to build an explicit allowlisted projection from the room snapshot and render `كلام لاعيبة الـAI` beside the discussion timer. No whole snapshot or private player role is passed to the helper.
-- Added `scripts/qa/ai-discussion-contract.mjs` covering deterministic refresh/reconnect output, one cue per alive bot, eliminated-bot suppression, short/readable output, absence of private-role/solution claims, forbidden-field source boundary, and UI consumption/labeling.
-- Added the AI discussion contract to `.github/workflows/game-qa.yml` using Node 22 type stripping to execute the real TypeScript helper.
+- Updated `scripts/qa/ai-discussion-contract.mjs`:
+  - positively asserts that `caseRole` is an allowed public field;
+  - rejects exact forbidden field declarations using word-boundary regexes;
+  - rejects direct/dynamic forbidden property reads (`.role`, `['role']`, etc.);
+  - retains deterministic output, alive-bot-only, short/readable output, no visible private-role/solution claims, authoritative `isBot`, and UI-consumption checks.
+- No product helper/UI behavior changed.
 - Database/Production: none. No migration, DDL, DML, restore, service mutation, or web deploy.
 
 ### Commits
-- `8bbce5c5037c2845764c11bdeacc0a01bfa3f4ab` — `feat: add deterministic AI discussion cues`
-- `e651806157a50897322689cbbba3042d281192ca` — `test: cover deterministic AI discussion cues`
-- `aea5ca6c1cb2f45e9f81a580eedf7a7c9becd626` — `feat: show deterministic AI discussion cues`
-- `d59b0fa3b30ad77bd4fb1730a16b503bab0b47f1` — `test: run AI discussion contract in Game QA`
-- Session handoff: `docs: record deterministic AI discussion cues`.
+- `36470062e247d73aed6efacb881a2792d36df996` — `test: make AI discussion privacy guard structural`
+- Session handoff — `docs: record AI discussion QA contract fix`.
 
 ### Check / test results at session close
-- Starting SHA `ef9885d8...`: CI completed/success; Game QA completed/success.
-- On implementation head `d59b0fa3...`: CI `in_progress`; Game QA `in_progress` at the latest inspection.
-- Earlier intermediate implementation SHA `aea5ca6...`: CI and Game QA had started and were still in progress when superseded by the workflow-contract commit.
-- Because the latest checks are not yet complete, this session records no new deploy-safe claim.
+- Starting SHA `d0543a78...`: CI completed/success; Game QA completed/failure at the AI discussion cue contract.
+- Fix SHA `36470062...`: CI queued; Game QA queued at the latest inspection.
+- Because the exact fix checks are not complete, this session records no new deploy-safe claim.
 
 ### Newly discovered bugs / risks
-- No new gameplay correctness bug was discovered during implementation.
-- Template-based cues are intentionally modest and may become repetitive in real solo play; that is now a UX-evidence question rather than a reason to introduce an LLM preemptively.
-- If future code broadens helper inputs to a whole snapshot or private role/team data, it could create hidden-information leakage; the new contract is intended to fail that regression.
+- No product/gameplay bug or hidden-information leak was found; the defect was a false-positive source-text assertion in the new QA contract.
+- Source-scanning regressions can produce false positives when checking raw substrings; future privacy/static contracts should prefer syntax-aware or identifier-boundary checks.
 - Guarded web release/live-browser evidence remains externally blocked.
-- 11–15 remains unsupported absent gameplay/UX evidence.
+- Deterministic cue UX still lacks browser/live or structured playtest evidence; do not infer that template quality is sufficient from static tests alone.
 
 ### Deploy-safety status
-No Production change is authorized by this session. No Production/web/database mutation occurred. Latest implementation checks are still running, so the new slice is **not yet deploy-safe**. Generic/unpinned web deployment remains prohibited while exact-SHA guarded packaging cannot be dispatched.
+No Production change is authorized by this session. No Production/web/database mutation occurred. Exact-SHA checks for the fix are pending, so no new deploy-safe status is claimed. Generic/unpinned web deployment remains prohibited.
 
 ### Roadmap impact
-The previously identified AI social-presence gap now has a bounded implementation without new provider or database complexity. The next product question is evidence, not more feature scope: verify the cue UX in browser/live or structured playtesting, and only reconsider LLM generation if deterministic cues demonstrably harm clarity or engagement.
+This session does not expand feature scope. It restores the intended QA gate for the deterministic cue slice while keeping its public-only privacy boundary meaningful. UX evidence remains the next product question only after the latest checks are Green.
 
 ## الأولوية الدقيقة للجلسة التالية
-Resolve CI/Game QA for the latest handoff/implementation first. If any real product failure exists, fix the first meaningful failure without weakening tests. If Green and authorized exact-SHA `Vercel Release Package` dispatch has become available, execute the guarded release/live-smoke objective. If dispatch remains unavailable, perform one bounded verification session for **deterministic AI discussion cue UX evidence**: inspect actual room behavior across round change, elimination, refresh/reconnect, and voting; record whether cues are clear/natural/non-repetitive enough to keep the LLM deferred. Do not add an LLM/provider, Production change, 11–15 support, or unrelated gameplay in that session.
+Resolve CI/Game QA for the latest handoff/fix first. If a real failure remains, fix the first meaningful failure without weakening tests. If Green and authorized exact-SHA `Vercel Release Package` dispatch has become available, execute the guarded release/live-smoke objective. If dispatch remains unavailable, perform one bounded verification session for deterministic AI discussion cue UX evidence across round change, elimination, refresh/reconnect, and voting; record whether cues are clear, natural, and non-repetitive enough to keep the LLM deferred. Do not add an LLM/provider, Production change, 11–15 support, or unrelated gameplay in that session.
