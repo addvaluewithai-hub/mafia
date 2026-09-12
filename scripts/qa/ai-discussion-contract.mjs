@@ -26,8 +26,13 @@ const changedRound = buildAiDiscussionCues({ players, round: { ...round, roundIn
 assert.equal(changedRound.length, first.length, 'new rounds should keep one cue per alive bot');
 
 const helperSource = await readFile(new URL('../../lib/ai-discussion.ts', import.meta.url), 'utf8');
-for (const forbidden of ['role:', 'winner', 'publicSolution', 'solution', 'mafiaCharacter', 'secret', 'team']) {
-  assert(!helperSource.includes(forbidden), `public cue helper must not accept or read forbidden private field: ${forbidden}`);
+assert(/\bcaseRole\s*:/.test(helperSource), 'public cue helper may explicitly accept the public caseRole field');
+const forbiddenFields = ['role', 'winner', 'publicSolution', 'solution', 'mafiaCharacter', 'secret', 'team'];
+for (const forbidden of forbiddenFields) {
+  const declaration = new RegExp(`\\b${forbidden}\\s*:`);
+  const propertyRead = new RegExp(`\\.${forbidden}\\b|\\[['\"]${forbidden}['\"]\\]`);
+  assert(!declaration.test(helperSource), `public cue helper must not declare forbidden private field: ${forbidden}`);
+  assert(!propertyRead.test(helperSource), `public cue helper must not read forbidden private field: ${forbidden}`);
 }
 
 const roomSource = await readFile(new URL('../../app/room/[code].tsx', import.meta.url), 'utf8');
