@@ -10,16 +10,13 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Latest `main` at Session 47 start: `eba158539a7050ad45c620360859fec6c83deb7e`.
+- Latest `main` at Session 48 start: `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef` (`docs: record launch-safety migration rollout`).
 - Exact-SHA GitHub workflows on that SHA are Green: CI/`validate` completed/success ✅ and Game QA/`qa` completed/success ✅.
-- Core/full-game 4–10 remains Green; no known gameplay P0 surfaced in this session.
+- Core/full-game 4–10 remains Green; no known gameplay P0 surfaced.
 - Identity/story contract + curated 4–10 + fairness remain Green; no current evidence justifies 11–15 expansion.
-- Production project `mafia` is `ACTIVE_HEALTHY`.
-- Controlled launch-safety migration rollout completed successfully: Production ledger now records `20260911204500_public_abuse_perimeter` (server version `20260912033242`).
-- Post-migration object verification is Green: `public.public_abuse_rate_limits`, `claim_public_abuse_slot(text,text)`, `create_room_v4(...)`, `join_room_v3(...)`, and `claim_case_generation_slot_v2(text,text)` all exist; RLS is enabled on the rate-limit table.
-- Fresh Production migration reconciliation is now complete: all 16 canonical repo migrations reconcile and the new public-abuse migration is no longer missing; no unrelated Production migration was introduced.
-- Security advisor reports the new rate-limit table as RLS-enabled/no-policy, which is intentional because direct table privileges are revoked and access is through the bounded RPC. It also reports `claim_public_abuse_slot` as callable by anon/authenticated SECURITY DEFINER; this is intentional for the telemetry/public-abuse boundary and matches the reviewed migration contract. Existing unrelated advisor warnings remain out of scope for this rollout.
-- No Vercel/web deploy, restore, or unrelated Production DB write occurred in Session 47.
+- Session 47 completed the approved Production DB rollout of `20260911204500_public_abuse_perimeter.sql`; post-migration object/ledger verification and migration parity were Green.
+- Production web project is Vercel `akher-kheit` (`prj_pSOvdKrKEZhabTtCxp722JpM7FN9`). The currently listed Production deployment is `dpl_So7A51KxPVdmh1eGbRsrB1Uzwagb`, READY and aliased to `akher-kheit.vercel.app`, but its Vercel metadata does not expose a repository commit SHA.
+- No new Vercel/web deploy or Production DB write occurred in Session 48.
 
 ## Roadmap status
 - [x] Core/full-game 4–10 stable.
@@ -32,62 +29,61 @@
 - [x] Anonymous-identity churn / public-launch abuse perimeter implementation + deterministic QA.
 - [x] Migration-history parity reconciliation implemented and exact-SHA CI Green.
 - [x] Launch-safety Production migration rollout + post-migration object/ledger verification.
-- [~] Web release readiness: Production DB parity is now restored; a later separate session must perform the repository release preflight/package/deploy workflow and smoke verification before claiming the web release complete.
+- [~] Web release readiness: DB parity and latest-main checks are Green, but the guarded exact-SHA package/deploy path could not be executed from the connected automation surface in Session 48.
 - [ ] AI Players snapshot identity + browser/live UX evidence; then decide LLM discussion scope.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 47 — 2026-09-12 — Controlled launch-safety migration rollout
+## Session 48 — 2026-09-12 — Exact-SHA web release readiness / deployment gate
 
 ### Session type
-Delivery/rollout session. Exactly one coherent objective: resolve the pending Session 46 handoff checks, apply only the explicitly approved `20260911204500_public_abuse_perimeter.sql` migration to Production, then verify its objects and migration parity. No Vercel/web deploy and no unrelated feature work.
+Delivery/release-readiness session. Exactly one coherent objective: resolve latest checks, then execute the repository-defined exact-SHA web release path only if every guardrail can be satisfied and verified. No feature work.
 
 ### Starting evidence
 - Required repository truth read in order: `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff.
-- Starting latest `main`: `eba158539a7050ad45c620360859fec6c83deb7e`.
-- The previously pending handoff workflows resolved Green before mutation: Game QA completed/success and CI completed/success on exact SHA `eba158539a7050ad45c620360859fec6c83deb7e`.
-- Session 46 explicitly marked one Production change deploy-safe: applying only `supabase/migrations/20260911204500_public_abuse_perimeter.sql`; it explicitly prohibited a web deploy in the same session.
-- Pre-rollout Production ledger had 18 records and did not yet contain the public-abuse migration.
+- Latest `main` was `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`.
+- CI/`validate` and Game QA/`qa` on that exact SHA are both completed/success.
+- `docs/operations/RELEASE-RUNBOOK.md` requires an exact 40-character main SHA, Green `validate` + `qa`, reconciled Production migrations, successful read-only preflight, and an explicit deploy-safe statement before packaging/deployment.
+- The canonical packaging path is the workflow `.github/workflows/package-vercel-source.yml`, which runs the read-only Production preflight before producing `vercel-source-<short-sha>`.
 
 ### Exact objective
-Perform the approved controlled Production migration rollout only, then prove the resulting schema/object presence and migration-ledger parity without starting web deployment or another product objective.
+Attempt the exact-SHA release readiness/deploy verification objective without bypassing the repository-owned preflight/package invariant. Deploy only if the guarded package can be produced from the exact approved SHA and the resulting Production deployment can be verified and smoked.
 
 ### Reproduction / design finding
-- The approved migration applied successfully through the managed Supabase migration operation.
-- Supabase recorded it as server migration version `20260912033242` with name `20260911204500_public_abuse_perimeter`; the repository reconciliation contract recognizes canonical timestamps carried in migration names, so this maps to canonical repo migration `20260911204500` without adding a new alias.
-- Post-migration SQL confirms the rate-limit table and all four expected RPC entry points exist. RLS is enabled on the table.
-- The Production ledger now has 19 records and includes the new named canonical migration. Under the repository reconciliation model, all 16 canonical repo migrations are now accounted for and there is no new unknown drift.
-- Security advisor observations on the new table/function match the intentional migration design: no direct table policy/privilege path, and the public claim RPC is the bounded SECURITY DEFINER API needed by the public telemetry boundary. No advisor-driven schema change was mixed into this rollout.
+- Latest-main checks are Green, so CI is not the blocker.
+- The connected GitHub surface in this run provides workflow/check reads and file writes, but no workflow-dispatch action. Therefore it cannot start the required `Vercel Release Package` workflow with `release_sha=4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`.
+- The connected Vercel surface exposes a generic `deploy_to_vercel` action, but the runbook explicitly forbids rebuilding from a moving/unpinned source and requires the exact guarded artifact. Using the generic deploy action without first producing/verifying that artifact would bypass the release invariant, so it was intentionally not called.
+- Current Vercel Production deployment `dpl_So7A51KxPVdmh1eGbRsrB1Uzwagb` is READY and owns the stable aliases, but its returned metadata contains no Git/repository SHA. It therefore cannot be used as evidence that the launch-safety source is already deployed.
+- This is an execution-surface blocker, not a product/CI failure. The safe next action is to dispatch the repository `Vercel Release Package` workflow for the exact latest Green SHA through an authorized GitHub Actions write surface, then deploy that exact artifact and verify deployment SHA/smoke.
 
 ### Code / database / test / doc changes
-- Production DB: applied exactly `20260911204500_public_abuse_perimeter.sql`; no other migration or DDL/DML was performed.
-- Production verification: read-only object-presence/RLS query, fresh migration-ledger listing, and security-advisor inspection.
-- GitHub: no runtime/schema/test code changed in this session; updated this rolling handoff with durable rollout evidence.
+- Runtime/schema/tests: no changes; no defect was found that justified changing product code.
+- Production DB: no writes, migrations, restores, or unrelated operations.
+- Vercel: read-only project/deployment inspection only; no deployment was started.
+- Docs: updated this rolling handoff with the exact release blocker and next action.
 
 ### Commits
-- Exact rollout source / starting handoff SHA: `eba158539a7050ad45c620360859fec6c83deb7e`.
-- Session 47 handoff commit: `docs: record launch-safety migration rollout`.
+- Starting/latest source SHA: `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`.
+- Session 48 handoff commit: `docs: record exact-SHA web release blocker`.
 
 ### Check / test results at session close
-- Starting/latest rollout source SHA `eba158539a7050ad45c620360859fec6c83deb7e`: CI completed/success ✅; Game QA completed/success ✅.
-- Managed Production migration application: success ✅.
-- Post-migration object presence: table + `claim_public_abuse_slot` + `create_room_v4` + `join_room_v3` + `claim_case_generation_slot_v2` present ✅.
-- RLS on `public_abuse_rate_limits`: enabled ✅.
-- Post-migration ledger: public-abuse migration present; canonical migration parity restored under the tested reconciliation contract ✅.
-- Handoff-only commit checks may still be pending/absent at close; it does not change runtime/schema behavior.
+- `4ae823e4bbe6fe4fb5672558de115c1b03ee39ef`: CI/`validate` completed/success ✅; Game QA/`qa` completed/success ✅.
+- Repository release runbook/workflow contract inspected and unchanged.
+- Vercel current Production deployment: READY; stable alias present; exact source SHA not exposed in returned metadata.
+- Guarded release preflight/package: not run because the required workflow-dispatch capability is unavailable in the connected GitHub action surface. This is a hard stop under the runbook.
+- Handoff-only commit checks may be pending/absent at close; no runtime/schema behavior changed.
 
 ### Newly discovered bugs / risks
 - No new gameplay/story P0 discovered.
-- The database rollout is complete, but the web release has not happened; the currently deployed web client may therefore still be an older source until a separately gated release session packages/deploys the exact approved source.
-- Supabase security advisor flags intentional public SECURITY DEFINER access for `claim_public_abuse_slot` and RLS-without-policy on the private rate-limit table. These are expected by design, but any future widening of that RPC or table privileges must be treated as security-sensitive.
-- Existing unrelated advisor warnings were not changed in this session to avoid mixing objectives.
+- Production DB now contains the anonymous-churn perimeter while the exact web source using it is not yet proven deployed; the launch-safety web rollout therefore remains incomplete.
+- A generic Vercel deployment action is insufficient evidence of exact-SHA provenance in this repository's current release model. Bypassing the guarded package would weaken the release invariant and is prohibited.
 
 ### Deploy-safety status
-**Production DB rollout complete and verified.** The exact approved migration was applied successfully and post-migration parity/object checks are Green.
+**Not deploy-safe to perform a web deployment from the currently available automation surface.** CI and DB prerequisites are Green, but the required exact-SHA read-only preflight/package step cannot be dispatched here, and the current Vercel deployment does not expose enough provenance to prove it already contains the candidate SHA.
 
-**No Vercel/web deployment was performed in this session.** Database parity is no longer the blocker. A later separate release session may proceed only after resolving latest-main checks and running the repository's exact-SHA release preflight/package guardrails; it must then verify the deployed SHA and perform the prescribed production smoke checks before claiming web rollout complete.
+No Production web deployment or DB mutation occurred in this session.
 
 ### Roadmap impact
-The launch-safety database milestone is closed: the anonymous-identity churn perimeter now exists in Production and migration parity is restored. The next session should stay within launch readiness and execute the separately gated web release workflow rather than reopening product scope.
+Launch-safety product/database work remains complete; web release completion is blocked only on executing the existing guarded exact-SHA packaging path through an authorized workflow-dispatch surface. Do not reopen product scope or AI Players until this release gate is either completed or explicitly deprioritized at a checkpoint.
 
 ## الأولوية الدقيقة للجلسة التالية
-افحص latest `main` وchecks أولًا. إذا ظهر failure حقيقي، أصلح أول meaningful failure فقط. إذا بقي latest launch-safety source Green، نفّذ **exact-SHA web release readiness/deploy verification** كهدف واحد: شغّل release preflight ضد Production parity الحالية، package/deploy فقط إذا guardrails كلها Green، ثم تحقق من deployed SHA وproduction smoke وفق الـrunbook. لا تبدأ AI Players أو feature أخرى في نفس الجلسة.
+افحص latest `main` وchecks أولًا. إذا ظهر failure حقيقي، أصلح أول meaningful failure فقط. إذا بقي Green، أعد محاولة **exact-SHA guarded web release** فقط: dispatch `Vercel Release Package` للـlatest Green 40-char SHA عبر authorized GitHub Actions write capability؛ لا تستخدم generic/unpinned deploy كبديل. إذا نجح preflight وظهر artifact الصحيح، انشر نفس artifact إلى Vercel ثم أثبت deployment provenance/stable alias وproduction smoke وفق `docs/operations/RELEASE-RUNBOOK.md`. إذا ظلت workflow-dispatch capability غير متاحة، وثّق استمرار blocker ولا تنفذ deploy جانبي.
