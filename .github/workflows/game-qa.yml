@@ -65,7 +65,7 @@ jobs:
           EXPO_PID=$!
           trap 'kill "$EXPO_PID" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 60); do
-            if curl --fail --silent "$BASE_URL/solo" > /dev/null; then
+            if curl --max-time 3 --fail --silent "$BASE_URL/solo" > /dev/null; then
               break
             fi
             if [ "$attempt" -eq 60 ]; then
@@ -74,7 +74,7 @@ jobs:
             fi
             sleep 2
           done
-          npx playwright test scripts/qa/solo-browser-e2e.spec.mjs --reporter=line
+          timeout 90s npx playwright test scripts/qa/solo-browser-e2e.spec.mjs --reporter=line
       - name: Player identity schema contract
         shell: bash
         run: |
