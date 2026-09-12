@@ -14,6 +14,7 @@ export type PlayerState = {
   characterBio: string | null;
   isEliminated: boolean;
   isHost: boolean;
+  isBot: boolean;
 };
 
 export type EvidenceRound = {
