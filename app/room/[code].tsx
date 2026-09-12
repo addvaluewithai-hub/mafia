@@ -26,6 +26,7 @@ import Animated, { FadeInDown, FadeInUp, LinearTransition, ZoomIn } from 'react-
 import { DiscussionTimer } from '@/components/discussion-timer';
 import { GenderPicker } from '@/components/gender-picker';
 import { Body, Button, Card, Divider, ErrorText, Eyebrow, Field, MiniStat, Pill, Screen, SectionTitle, Title } from '@/components/game-ui';
+import { buildAiDiscussionCues } from '@/lib/ai-discussion';
 import {
   castVote,
   errorToMessage,
@@ -195,6 +196,25 @@ export default function RoomScreen() {
     () => snapshot?.players.filter((player) => !player.isEliminated) ?? [],
     [snapshot?.players],
   );
+
+  const aiDiscussionCues = useMemo(() => {
+    if (!snapshot || snapshot.room.status !== 'playing') return [];
+    const round = snapshot.rounds.find((item) => item.roundIndex === snapshot.room.roundIndex) ?? null;
+    return buildAiDiscussionCues({
+      players: snapshot.players.map((player) => ({
+        id: player.id,
+        nickname: player.nickname,
+        caseRole: player.caseRole,
+        isBot: player.isBot,
+        isEliminated: player.isEliminated,
+      })),
+      round: round ? {
+        roundIndex: round.roundIndex,
+        clue: round.clue,
+        discussionPrompt: round.discussionPrompt,
+      } : null,
+    });
+  }, [snapshot]);
 
   const doAction = async (action: () => Promise<unknown>) => {
     setActionLoading(true);
@@ -515,6 +535,32 @@ export default function RoomScreen() {
               disabled={actionLoading}
               onRestart={async (seconds) => { await doAction(() => restartDiscussionTimer(code, seconds)); }}
             />
+          ) : null}
+
+          {votePhaseOpen && aiDiscussionCues.length ? (
+            <Animated.View className="w-full min-w-0" entering={FadeInDown.duration(240)}>
+              <Card>
+                <View className="flex-row-reverse items-center gap-2">
+                  <Bot size={18} color="#f2c14e" strokeWidth={2.2} />
+                  <View className="min-w-0 flex-1">
+                    <SectionTitle title="كلام لاعيبة الـAI" caption="ملاحظات مبنية على الأدلة العلنية في الجولة دي بس" />
+                  </View>
+                  <Pill label="AI" tone="neutral" />
+                </View>
+                <View className="w-full gap-2">
+                  {aiDiscussionCues.map((cue) => (
+                    <View key={cue.playerId} className="rounded-2xl border border-white/10 bg-noir-800 px-4 py-3">
+                      <View className="flex-row-reverse items-center gap-2">
+                        <Bot size={15} color="#a6a7b2" />
+                        <Text selectable className="min-w-0 flex-1 text-right text-sm font-black text-case-cream">{cue.nickname}</Text>
+                        <Pill label="AI" tone="neutral" />
+                      </View>
+                      <Text selectable className="pt-2 text-right text-sm leading-6 text-case-muted">{cue.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            </Animated.View>
           ) : null}
 
           <View className="w-full min-w-0 gap-3">
