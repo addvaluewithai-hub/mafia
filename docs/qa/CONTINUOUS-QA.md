@@ -3,105 +3,63 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 65 is a delivery session constrained to the first meaningful prerequisite failure from Session 64. The implementation SHA `b61332119e680a5fbcb1de5877860df44b3cc88f` finished with CI Green but Game QA failed specifically at the new `Solo AI browser E2E` step; all static contracts, TypeScript, Expo doctor, full-game simulations, story critic, clean local Supabase startup, and browser runtime installation before that step were Green. The downstream local RPC E2E steps were skipped because the browser step failed.
+Session 66 is a delivery session constrained to the first meaningful prerequisite failure from Session 65. At session start, `main` was `15e0d3da716fad09ac2ea47badb869818ef195bf`: CI run 34723045893 was `completed/success`, while Game QA run 34723045894 was `completed/failure` specifically at `Solo AI browser E2E`. Every preceding step was Green: dependencies, TypeScript, Expo doctor, all static identity/story/AI contracts, full-game state simulations, story critic, clean local Supabase startup, and browser runtime installation. Downstream schema/RPC E2E steps were skipped because the browser step failed.
 
-The browser harness has now been changed to build the same Expo Router server-output web application first with `expo export --platform web`, then serve that exported application with the repository's production-style `expo serve` command before Playwright runs. This removes the dev-server/Metro startup path from the browser acceptance test while keeping the existing bounded health probe and 90-second Playwright cap. No product gameplay code or assertions were weakened.
+The browser step had already been moved from Metro/dev-server startup to exported production-style Expo web serving in Session 65, yet the same browser step still failed. The connected GitHub read surface exposes the exact failed step and timestamps but not the underlying Playwright log. The run duration shows the browser boundary remained long-running, so this session hardened the browser journey itself rather than increasing global timeouts or weakening gameplay assertions.
 
 Core full-game coverage for 4–10 remains previously Green across deterministic and local RPC suites, including ties, elimination, reconnect, next rounds, Boss authority, winner, rematch, and AI Players identity/voting. The curated library remains 14 reviewed Egyptian-Arabic cases covering 4–10, and database migration parity remains closed.
 
 The connected GitHub surface still has no authorized exact-SHA dispatch action for the guarded Vercel release workflow, so do not substitute an unpinned release. LLM discussion and 11–15 expansion remain deferred until gameplay/UX evidence justifies them.
 
-## Session 65 — 2026-09-13 — Delivery
+## Session 66 — 2026-09-13 — Delivery
 
 ### Starting evidence
-- `main` started at `7da2c75d4c00789b3ff7ed10388db10a9c81a4f7` (`docs: record session 64 browser E2E slice`).
-- Required prerequisite implementation SHA `b61332119e680a5fbcb1de5877860df44b3cc88f` resolved as:
-  - CI run 34720594206: `completed/success`.
-  - Game QA run 34720594230: `completed/failure`.
-- The Game QA job shows every step through `Install browser QA runtime` Green, then `Solo AI browser E2E` failed; subsequent schema/RPC E2E steps were skipped.
-- The uploaded QA reports still show deterministic full-game simulations Green (`140` simulations) and story critic Green (`9.9/10`, 4–10 coverage, no enforced fairness errors).
+- `main` started at `15e0d3da716fad09ac2ea47badb869818ef195bf` (`docs: record session 65 browser QA failure fix`).
+- Exact-SHA CI run 34723045893: `completed/success`.
+- Exact-SHA Game QA run 34723045894: `completed/failure`.
+- Game QA job 103632273295 shows all steps through `Install browser QA runtime` Green, then `Solo AI browser E2E` failed; all downstream schema/RPC E2E steps were skipped.
+- No new product gameplay P0/P1 was established by the available evidence.
 
 ### Objective
-Fix the first meaningful failing check from the new local Solo browser-E2E harness without weakening the browser journey or starting new launch-readiness scope.
+Fix the first meaningful browser-QA reliability boundary without weakening the Solo full-game browser journey or starting a second launch-readiness objective.
 
 ### Reproduction / design finding
-The failing boundary is the new browser orchestration step rather than an already-established gameplay/static contract. The previous harness launched `expo start --web`, i.e. the development/Metro server, inside CI and then probed `/solo` before Playwright. The exact job evidence available from GitHub identifies the failing step but does not expose the underlying Playwright/dev-server log through the connected read surface, so this session does not claim an unverified selector or gameplay root cause.
+The exported-app change from Session 65 did not make the browser check Green. The connected GitHub surface still does not expose the Playwright step log, so this session does not invent a selector or gameplay root cause. The observable failure remains inside a long-running browser navigation/hydration path.
 
-The harness itself had a deterministic reliability weakness: a production acceptance browser test depended on a development server boot path. The repository already declares `web: expo serve` and `web.output: server`; building with `expo export --platform web` and serving that output exercises a stable production-style artifact and removes Metro/dev-server readiness as an avoidable source of CI failure.
-
-### Changes
-- Updated `.github/workflows/game-qa.yml` only.
-  - Replaced `CI=1 npx expo start --web --port 8081` with an explicit `npx expo export --platform web` build followed by `CI=1 npx expo serve --port 8081`.
-  - Kept the same local Supabase environment injected into the Expo build/server.
-  - Kept the bounded `/solo` health probe and 90-second Playwright outer timeout.
-  - Kept the full Solo browser assertions unchanged; no test was skipped, deleted, relaxed, or rewritten to mask a product failure.
-- No schema, migration, product gameplay code, Production database, provider, or deployed service was changed.
-
-### Commits
-- `da874464a608bc92e0a2ccc786aebaf6c305bfd4` — serve exported web app for browser E2E.
-
-### Checks
-- Baseline implementation SHA `b613321...`: CI success; Game QA failure specifically at `Solo AI browser E2E`.
-- At the first post-commit inspection for `da874464...`, GitHub had not created exact-SHA workflow runs yet (`total_count = 0`). Therefore the fix is pending CI/Game QA evidence and is **not** deploy-safe from this session.
-
-### Newly discovered bugs / risks
-- No new gameplay P0/P1 was proven by the failed run; the failure boundary is the newly introduced browser QA step.
-- Because the connected GitHub read surface does not expose the detailed browser-step log, the change deliberately addresses the observable harness reliability weakness rather than inventing an unverified selector/application diagnosis.
-- If the production-style exported server still fails, the next session must inspect the new exact-SHA failure evidence and fix that first meaningful failure only; do not bypass or weaken the browser assertions.
-- Browser/live Production evidence remains weaker than local evidence until an authorized guarded exact-SHA release can be run.
-
-### Deploy safety
-Not deploy-safe from this session yet because exact-SHA CI/Game QA for `da874464a608bc92e0a2ccc786aebaf6c305bfd4` have not reported. No Production deploy, restore, migration, DB write, or provider mutation was performed.
-
-### Roadmap impact
-This session stays inside the Session 64 browser-coverage milestone and does not start a second objective. If the exported-app browser E2E becomes Green together with the downstream RPC suite, the next remaining major evidence gap returns to guarded live/deployed smoke and launch-readiness rather than new AI architecture. LLM discussion and 11–15 expansion remain deferred.
-
-## Session 64 — 2026-09-13 — Delivery
-
-### Starting evidence
-- `main` started at `bb38b59145594896f9ab7acd0759daf36ec2b46c` (`docs: record session 63 checkpoint`).
-- Exact-SHA Game QA run 34717342390: `completed/success`.
-- Exact-SHA CI run 34717342392: `completed/success`.
-- Guarded exact-SHA release dispatch remained unavailable from the connected GitHub action surface, so the checkpoint fallback objective applied.
-
-### Objective
-Add one substantial local browser-E2E vertical slice for the highest-value UI journey not already proven by static/RPC tests: Solo AI discussion and round change → elimination → refresh/reconnect → voting → winner.
-
-### Reproduction / design finding
-The previous suite proved server/state contracts but never launched the real React Native Web UI in a browser. That left a genuine confidence gap around rendered controls, browser auth persistence, AI discussion visibility, UI refresh after server transitions, and winner rendering.
-
-The first browser harness attempt also exposed a QA-infrastructure defect: the Expo health probe used `curl` without a request timeout, so a partially accepting dev server could leave the Game QA step hanging instead of producing a bounded failure. The harness was tightened rather than weakening product assertions: each health probe now has a 3-second cap and the Playwright command has a 90-second outer cap.
+The browser spec previously used default `page.goto`, `page.reload`, and URL-navigation waiting semantics. Those can wait on broader page lifecycle behavior than this acceptance test actually needs. For a React/Expo app backed by Supabase realtime, the stable contract is: receive DOM content, then assert the hydrated UI/state explicitly. Browser navigation should therefore be independently bounded and diagnostics should identify the last rendered URL/body when the journey fails.
 
 ### Changes
-- Added `scripts/qa/solo-browser-e2e.spec.mjs`.
-  - Opens `/solo` in Chromium and creates the room through the actual UI.
-  - Uses browser-persisted anonymous auth to call Boss-only `install_case` against local Supabase.
-  - Confirms 4-player Solo composition with 3 authoritative `isBot` players.
-  - Verifies `كلام لاعيبة الـAI` renders during gameplay.
-  - Performs the Boss human vote through the rendered player cards and `ثبّت صوتي` control.
-  - Uses deterministic local-only vote seeding to force one innocent elimination, verifies `في السجن`, advances to `الدليل 2`, reloads the browser, and verifies the round/UI survive refresh.
-  - Forces the final mafia elimination and verifies `انتهت القضية` / `الأبرياء كشفوا المافيا.` plus server `winner = innocents`.
-- Updated `.github/workflows/game-qa.yml` to install Playwright/Chromium, start Expo web against clean local Supabase, and run the browser test before the remaining schema/RPC E2E checks.
+- Updated `scripts/qa/solo-browser-e2e.spec.mjs` only.
+- Added `gotoHydrated` and `reloadHydrated` helpers using `waitUntil: 'domcontentloaded'` with a 15-second navigation cap.
+- Bounded `waitForURL` to the same 15-second navigation contract.
+- Added a 75-second Playwright test-level timeout, intentionally below the workflow's existing 90-second outer cap so Playwright can report the failure instead of being killed first.
+- Added failure-only diagnostics that print the current URL, document title, and up to 4000 characters of rendered body text. This preserves actionable evidence on the next failure.
+- Kept all gameplay assertions unchanged: room creation through the real UI, 1 human + 3 AI, case install, AI discussion visibility, human voting, deterministic local vote seeding, innocent elimination, next clue, refresh/reconnect, mafia elimination, winner UI, and final server snapshot.
 - No product gameplay code, schema, migration, Production database, provider, or deployed service was changed.
 
 ### Commits
-- `bbc05b421a8c1942131dc2aa50a53dd1fa78d250` — add Solo browser full-game E2E.
-- `cace7973fd9c73f22505cb0c432f0dc4a413e31f` — wire browser E2E into Game QA.
-- `b61332119e680a5fbcb1de5877860df44b3cc88f` — bound browser harness startup/runtime.
+- `9d62c6611f728982d28dcdbcd6770abafc601dec` — bound Solo browser navigation and add failure diagnostics.
 
 ### Checks
-- Before implementation, checkpoint SHA `bb38b591...`: CI success; Game QA success.
-- Final result later resolved in Session 65: CI success; Game QA failed specifically at `Solo AI browser E2E`.
+- Baseline `15e0d3da...`: CI success; Game QA failure at `Solo AI browser E2E`.
+- At the post-change inspection for `9d62c661...`:
+  - CI run 34725685575: `in_progress`.
+  - Game QA run 34725685563: `in_progress`.
+- Therefore this session does **not** claim the browser fix is Green or deploy-safe yet.
 
 ### Newly discovered bugs / risks
-- Browser QA adds material confidence but uses local-only direct vote seeding to make elimination/winner transitions deterministic. Keep the existing real `cast_ai_votes` E2E as the authority for AI voting behavior.
-- Browser/live Production evidence remains weaker than local browser + local RPC evidence until an authorized guarded exact-SHA release can be run.
+- The browser E2E still has no proven product defect from the evidence currently exposed; the failure remains in the browser acceptance boundary until the new run resolves.
+- If `9d62c661...` fails, the new bounded Playwright failure should finish before the shell timeout and emit last-page diagnostics, which must be treated as the next session's first evidence rather than bypassing the test.
+- Browser/live Production evidence remains weaker than local evidence until an authorized guarded exact-SHA release can run.
 
 ### Deploy safety
-Session 64 itself did not make a deploy-safe claim. No Production deploy, restore, migration, DB write, or provider mutation was performed.
+Not deploy-safe from this session because exact-SHA CI/Game QA for `9d62c6611f728982d28dcdbcd6770abafc601dec` are still running. No Production deploy, restore, migration, DB write, or provider mutation was performed.
 
 ### Roadmap impact
-Session 64 introduced the local-browser coverage slice; Session 65 is fixing its first exact-SHA failure before any next scope begins.
+This session remains inside the browser-coverage milestone and does not start launch-readiness or any second product objective. LLM discussion and 11–15 expansion remain deferred.
+
+## Prior handoff
+Session 65 moved the browser QA server from `expo start --web` to `expo export --platform web` + `expo serve`, preserving the browser assertions. Its implementation did not close the browser check: latest evidence at Session 66 start was CI Green and Game QA failing specifically at `Solo AI browser E2E`.
 
 ## Exact next-session priority
-Resolve exact-SHA CI/Game QA for `da874464a608bc92e0a2ccc786aebaf6c305bfd4` first. If `Solo AI browser E2E` or another check fails, inspect and fix the first meaningful failure without weakening coverage and do not start new scope. If both are Green and authorized exact-SHA Vercel release dispatch is available, execute one guarded release plus live smoke/playtest covering create/Solo, AI discussion, elimination, refresh/reconnect, voting, and winner. If dispatch is still unavailable, perform one bounded launch-readiness hardening objective driven by the combined browser/RPC evidence; do not add LLM discussion or expand to 11–15 without new evidence.
+Resolve exact-SHA CI/Game QA for `9d62c6611f728982d28dcdbcd6770abafc601dec` first. If `Solo AI browser E2E` or another check fails, inspect the newly bounded failure evidence/diagnostics and fix the first meaningful failure without weakening coverage or starting new scope. If both are Green and authorized exact-SHA Vercel release dispatch is available, execute one guarded release plus live smoke/playtest covering create/Solo, AI discussion, elimination, refresh/reconnect, voting, and winner. If dispatch is still unavailable, perform one bounded launch-readiness hardening objective driven by combined browser/RPC evidence; do not add LLM discussion or expand to 11–15 without new evidence.
