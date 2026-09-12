@@ -61,7 +61,8 @@ jobs:
           export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
           export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
           export BASE_URL="http://127.0.0.1:8081"
-          CI=1 npx expo start --web --port 8081 > /tmp/akher-kheit-expo-web.log 2>&1 &
+          npx expo export --platform web > /tmp/akher-kheit-expo-web.log 2>&1
+          CI=1 npx expo serve --port 8081 >> /tmp/akher-kheit-expo-web.log 2>&1 &
           EXPO_PID=$!
           trap 'kill "$EXPO_PID" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 60); do
