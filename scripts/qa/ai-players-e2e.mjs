@@ -54,11 +54,14 @@ const code = await rpc('create_room_v3', {
 const bot1 = await rpc('add_ai_player', { p_code: code });
 const bot2 = await rpc('add_ai_player', { p_code: code });
 const bot3 = await rpc('add_ai_player', { p_code: code });
+const botIds = new Set([bot1.playerId, bot2.playerId, bot3.playerId]);
 assert.equal(new Set([bot1.nickname, bot2.nickname, bot3.nickname]).size, 3, 'AI nicknames must be unique');
 
 let snapshot = await rpc('room_snapshot', { p_code: code });
 assert.equal(snapshot.playerCount, 4, 'one human plus three AI players must fill the four-player room');
-assert.equal(snapshot.players.filter((p) => p.nickname.startsWith('AI ')).length, 3, 'three AI players must be visible in lobby');
+assert.equal(snapshot.players.filter((p) => p.isBot).length, 3, 'snapshot must expose three server-owned AI identities');
+assert(snapshot.players.filter((p) => p.isBot).every((p) => botIds.has(p.id)), 'snapshot AI identity must match the exact players created by add_ai_player');
+assert(snapshot.players.filter((p) => !p.isBot).every((p) => !botIds.has(p.id)), 'human identity must never be inferred as AI from nickname or wording');
 
 const { error: overfillError } = await client.rpc('add_ai_player', { p_code: code });
 assert(overfillError, 'AI player creation must respect maxPlayers');
@@ -68,6 +71,8 @@ snapshot = await rpc('room_snapshot', { p_code: code });
 assert.equal(snapshot.room.status, 'playing');
 assert.equal(snapshot.eligibleVoters, 4);
 assert(snapshot.me?.playerId, 'human Boss must remain a normal player');
+assert.equal(snapshot.players.filter((p) => p.isBot).length, 3, 'AI identity must survive case installation and gameplay snapshots');
+assert.equal(snapshot.players.find((p) => p.id === snapshot.me.playerId)?.isBot, false, 'Boss player must remain explicitly human in the snapshot');
 
 const target = snapshot.players.find((p) => p.id !== snapshot.me.playerId);
 assert(target, 'human needs a valid target');
@@ -78,6 +83,7 @@ assert.equal(aiResult.votesCast, 3, 'all three living AI players must vote exact
 snapshot = await rpc('room_snapshot', { p_code: code });
 assert.equal(snapshot.votesCast, 4, 'human + AI votes must satisfy the same server vote count');
 assert.equal(snapshot.eligibleVoters, 4);
+assert.equal(snapshot.players.filter((p) => p.isBot).length, 3, 'AI identity must remain stable after votes and snapshot refresh');
 
 const secondAiResult = await rpc('cast_ai_votes', { p_code: code });
 assert.equal(secondAiResult.votesCast, 0, 'AI voting must be idempotent within a round');
@@ -91,6 +97,8 @@ const report = {
   roomCode: code,
   assertions: [
     'Boss can fill a lobby with three server-owned AI players',
+    'room_snapshot exposes authoritative isBot identity instead of requiring nickname-prefix inference',
+    'AI identity remains stable through case install, voting, and snapshot refresh while the Boss remains explicitly human',
     'AI players respect room capacity and receive normal randomized case roles',
     'AI votes use the same votes table and eligible-voter accounting as humans',
     'AI voting is idempotent per round and cannot deadlock resolution',
