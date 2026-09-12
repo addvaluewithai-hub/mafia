@@ -10,15 +10,16 @@
 - الجلسة العادية vertical slice واحد؛ checkpoint حسب `QA-OPERATING-MODE.md`.
 
 ## الحالة الحالية
-- Latest handoff SHA at Session 53 start: `13222a1745264b3be727aa49dd85accac80ce5e5` (`docs: record AI identity UI session`).
-- Session 52 latest handoff is now Green: CI/`validate` completed/success ✅ and Game QA/`qa` completed/success ✅ on exact SHA `13222a1745264b3be727aa49dd85accac80ce5e5`.
+- Session 54 started from `f28c1947dfcf1521de52b636d834d5ee4dcb6829` (`docs: record AI snapshot migration readiness`).
+- Initial `validate` on that SHA was completed/success. Initial `qa` failed only at `supabase/setup-cli@v1` because resolving `version: latest` hit a GitHub rate limit; every product/static QA step before it was Green. The same exact job was rerun without code/test changes and completed/success, including clean local Supabase, AI Players E2E, full-game RPC E2E 4–10, eliminated-Boss controls, and rematch.
 - Core/full-game 4–10 remains Green; no known gameplay P0 surfaced.
 - Identity/story contract + curated 4–10 + fairness remain Green; no current evidence justifies 11–15 expansion.
-- Production DB already contains launch-safety migration `20260911204500_public_abuse_perimeter.sql`; no Production mutation occurred in Session 53.
+- Production DB contains launch-safety migration `20260911204500_public_abuse_perimeter.sql` and now also the AI snapshot identity contract from repo migration `20260912113500_ai_snapshot_identity.sql`.
+- Production `room_snapshot(text)` now returns `players[].isBot` from `players.is_bot`; nickname remains the visible identity and bot identity is server-authoritative.
+- Production execute boundary after rollout is verified: `anon` cannot execute `room_snapshot(text)`; `authenticated` and `service_role` can.
+- Supabase recorded the controlled rollout as ledger record `20260912113608|ai_snapshot_identity` rather than the canonical repo filename timestamp. The repo migration-history map now explicitly reconciles that exact Production record to canonical migration `20260912113500`, with deterministic contract coverage added. Unknown Production records still hard-fail release preflight.
 - Guarded web release remains externally blocked because the connected GitHub surface still has no authorized `Vercel Release Package` workflow-dispatch operation with exact `release_sha` input. Generic/unpinned deployment remains prohibited.
-- AI Players snapshot identity is implemented end-to-end in the repository: DB snapshot contract → TypeScript → deterministic E2E → explicit PlayerCard `isBot` consumption, with nickname remaining the visible identity.
-- Fresh read-only Production parity audit confirms `players.is_bot` already exists, current Production `room_snapshot(text)` still omits `players[].isBot`, and `20260912113500_ai_snapshot_identity.sql` is the only new canonical repo migration not yet represented in the Production ledger.
-- `20260912113500_ai_snapshot_identity.sql` is explicitly **deploy-safe for a separate controlled Production migration session only** against the Green exact SHA lineage above. This is not authorization for a web/Vercel deploy or any unrelated migration.
+- Latest implementation SHA for the parity reconciliation is `a58a424f0603b1dcdec37667e954a802d4dc8cea`; at Session 54 close its `validate` and `qa` checks are still in progress, so no new web deploy-safe claim is made.
 
 ## Roadmap status
 - [x] Core/full-game 4–10 stable.
@@ -29,65 +30,75 @@
 - [x] Release parity + Vercel deployment guardrails implementation.
 - [x] Production observability implementation.
 - [x] Anonymous-identity churn / public-launch abuse perimeter implementation + deterministic QA.
-- [x] Migration-history parity reconciliation implemented and exact-SHA CI Green.
+- [x] Migration-history parity reconciliation implemented for known historical/tool-generated records.
 - [x] Launch-safety Production migration rollout + post-migration object/ledger verification.
-- [~] Web rollout completion: code/DB/check prerequisites are Green, but guarded exact-SHA package dispatch is unavailable from the connected execution surface.
-- [~] AI Players snapshot identity: repository contract/UI/tests are Green and the Production migration has passed read-only safety/parity audit; controlled Production application remains pending.
-- [ ] AI Players discussion-scope decision after snapshot/live evidence is complete.
+- [x] AI Players snapshot identity DB contract rolled out to Production and ACL verified.
+- [~] Web rollout completion: DB/product prerequisites are present, but guarded exact-SHA package dispatch is unavailable from the connected execution surface and latest parity-reconciliation checks are still running.
+- [ ] AI Players discussion-scope decision after guarded web/live evidence is complete.
 - [ ] 11–15 only if later gameplay/UX evidence justifies expansion.
 
-## Session 53 — 2026-09-12 — Delivery: AI snapshot migration release-readiness audit
+## Session 54 — 2026-09-12 — Delivery: AI snapshot Production rollout + parity closure
 
 ### Session type
-Delivery/safety-gate session. Exactly one coherent objective: read-only exact-SHA Production parity and deploy-safety decision for the AI snapshot identity migration. No unrelated product feature work.
+Delivery/safety-gated rollout session. Exactly one coherent objective: apply the previously approved AI snapshot identity Production migration, verify the resulting contract/ACL/ledger, and close any migration-parity issue created by that exact rollout. No web deploy or unrelated feature work.
 
 ### Starting evidence
 - Required repository truth read in order: `AGENTS.md` → `QA-OPERATING-MODE.md` → this handoff.
-- Latest `main` at start was `13222a1745264b3be727aa49dd85accac80ce5e5`.
-- Fresh exact-SHA check-runs inspection showed `validate` completed/success and `qa` completed/success on `13222a1745264b3be727aa49dd85accac80ce5e5`.
-- No P0/full-game regression or failing check preceded the objective.
-- Session 52 handoff required a read-only parity audit before any Production decision for `20260912113500_ai_snapshot_identity.sql`.
+- Latest `main` at start was `f28c1947dfcf1521de52b636d834d5ee4dcb6829`.
+- `validate` was completed/success.
+- `qa` initially showed completed/failure. Job inspection proved the only failure was `Install Supabase CLI`: `Failed to resolve latest Supabase CLI release: rate limit exceeded`; TypeScript, Expo doctor, identity contracts, curated coverage, 140 full-game simulations, and story critic had already passed.
+- The failed QA job was rerun unchanged. Attempt 2 completed/success end-to-end, including all local Supabase schema/RPC/abuse/AI/full-game/Boss/rematch E2E steps.
+- Session 53 explicitly authorized exactly one Production DB change: `20260912113500_ai_snapshot_identity.sql` only, with post-migration ledger/function/ACL/parity verification.
 
 ### Exact objective
-Verify Production migration parity and the current `room_snapshot`/`players.is_bot` prerequisites read-only, determine whether `20260912113500_ai_snapshot_identity.sql` is the sole pending canonical migration, and record a bounded deploy-safety decision without applying it in this session.
+Perform the controlled Production rollout of `20260912113500_ai_snapshot_identity.sql` only, verify `room_snapshot players[].isBot` and function privileges, inspect the resulting Production migration ledger, and keep release preflight parity accurate without weakening drift detection.
 
 ### Reproduction / design finding
-- Repository tree at exact SHA includes 17 canonical migration files through `20260912113500_ai_snapshot_identity.sql`.
-- Production migration ledger currently contains the reconciled legacy/canonical history through `20260911204500_public_abuse_perimeter` and no record for `20260912113500_ai_snapshot_identity`.
-- The existing migration-history reconciliation rules recognize the known legacy aliases and hard-fail unknown drift; no new alias is needed for this migration.
-- Production `public.players.is_bot` exists as boolean, satisfying the only new data dependency used by the migration.
-- Production `public.room_snapshot(text)` is still the pre-identity version: it returns player nickname/gender/caseRole/character fields/elimination/host state but no `isBot` key.
-- The repository migration replaces that function while preserving the existing phase/voting/privacy semantics and adds only `'isBot', p.is_bot` to each player snapshot object.
-- Current Production function ACL is `{postgres, authenticated, service_role}` execute; the migration explicitly revokes `public`/`anon` and grants execute to `authenticated`, preserving the intended external access boundary.
+- Pre-rollout Production ledger ended at the already-approved public-abuse perimeter migration and did not contain the AI snapshot migration.
+- The applied repo SQL only replaces `public.room_snapshot(text)` and adds `'isBot', p.is_bot` to each player object while preserving existing room/phase/voting/privacy behavior and explicitly revoking `public`/`anon` execution.
+- The Production migration application succeeded.
+- Post-rollout `pg_get_functiondef` confirms `room_snapshot(text)` contains `'isBot', p.is_bot` in the player JSON object.
+- Post-rollout privilege checks show `anon_execute=false`, `authenticated_execute=true`, `service_role_execute=true`.
+- The Supabase migration API recorded the change as `20260912113608|ai_snapshot_identity`, not with canonical repo version `20260912113500`. The existing release preflight would therefore correctly classify it as both missing canonical migration and unexpected remote history unless reconciled.
+- Because this ledger record was created by the authorized controlled rollout and its exact SQL was the canonical repo migration, the correct parity fix is an explicit narrow alias for that exact version+name, not broad matching or weakened drift checks.
 
 ### Code / database / test / doc changes
-- Code/schema: no implementation change; this session intentionally performed a safety audit only.
-- Database: read-only inspection only (`list_migrations`, function definition, `players.is_bot`, function ACL). No DDL/DML, migration, restore, or service mutation.
-- Tests/checks: no test changed; exact-SHA `validate` + `qa` are Green.
-- Docs: updated this handoff with the parity evidence and explicit bounded deploy-safe decision.
+- Production DB: applied only the SQL from `supabase/migrations/20260912113500_ai_snapshot_identity.sql`. No other migration, DML, restore, service operation, or web deployment occurred.
+- Production verification: re-listed migration ledger; inspected `room_snapshot(text)` definition; verified execute privileges for anon/authenticated/service_role.
+- Release parity: added canonical alias `20260912113500` → exact Production record `{version: 20260912113608, name: ai_snapshot_identity}` in `scripts/release/migration-history-map.json`.
+- Regression: extended `scripts/qa/release-preflight-contract.mjs` with the AI snapshot migration fixture and exact rollout alias; it still proves failed QA blocks, missing canonical migration blocks, incomplete composite aliases block, and unknown Production history blocks.
+- Docs: updated this handoff with rollout evidence, transient-QA diagnosis, parity reconciliation, current checks, risks, and next priority.
 
 ### Commits
-- Starting exact SHA: `13222a1745264b3be727aa49dd85accac80ce5e5` — `docs: record AI identity UI session`.
-- Session handoff: `docs: record AI snapshot migration readiness`.
+- Starting handoff: `f28c1947dfcf1521de52b636d834d5ee4dcb6829` — `docs: record AI snapshot migration readiness`.
+- Parity map: `a8e797b48829b8d6fc114bb5313db279c1f04e54` — `fix: reconcile AI snapshot production migration`.
+- Parity regression: `a58a424f0603b1dcdec37667e954a802d4dc8cea` — `test: cover AI snapshot migration alias`.
+- Session handoff: `docs: record AI snapshot production rollout`.
 
 ### Check / test results at session close
-- Exact-SHA `13222a1745264b3be727aa49dd85accac80ce5e5`: `validate` completed/success ✅; `qa` completed/success ✅.
-- Read-only Production ledger inspection: all previously reconciled migrations are present through public-abuse perimeter; only `20260912113500_ai_snapshot_identity.sql` remains pending from the current repo tree.
-- Production prerequisite inspection: `players.is_bot boolean` exists ✅; `room_snapshot(text)` exists in the expected pre-migration form ✅; intended execute boundary is authenticated/service-side only ✅.
-- No failing test was weakened, deleted, skipped, or rewritten.
+- Starting SHA `f28c1947dfcf1521de52b636d834d5ee4dcb6829`: `validate` completed/success ✅.
+- Starting SHA Game QA attempt 1: failed only at Supabase CLI latest-release resolution due GitHub rate limit; no product/test failure was observed.
+- Starting SHA Game QA attempt 2: completed/success ✅; clean local Supabase + all schema/RPC/AI/full-game/Boss/rematch E2E passed.
+- Production migration application: success ✅.
+- Production ledger: includes `20260912113608|ai_snapshot_identity` ✅.
+- Production function contract: `room_snapshot(text)` includes `players[].isBot` from `p.is_bot` ✅.
+- Production ACL: anon execute denied; authenticated/service_role execute allowed ✅.
+- Latest implementation SHA `a58a424f0603b1dcdec37667e954a802d4dc8cea`: `validate` in progress; `qa` in progress at last inspection. Therefore the new parity-map/test commits are not yet considered Green or web deploy-safe.
+- No failing product test was weakened, deleted, skipped, or rewritten.
 
 ### Newly discovered bugs / risks
-- No gameplay P0 or new functional regression discovered.
-- Until the migration is applied, latest-source UI that expects `player.isBot` cannot receive that field from Production snapshots; this is a known deployment-order dependency rather than a repository regression.
-- Applying the migration and web rollout must remain separate safety-gated steps; generic/unpinned web deployment is still prohibited.
-- Latest-source live browser evidence remains unavailable until the guarded web release path is executable.
+- No gameplay P0 or functional regression discovered.
+- `version: latest` in `supabase/setup-cli@v1` can transiently fail when GitHub release resolution is rate-limited. This run recovered on an unchanged rerun; it is infrastructure flakiness, not evidence to weaken QA.
+- Supabase's migration application surface can create a ledger timestamp different from the canonical filename. This exact rollout record is now explicitly reconciled, while unknown drift remains a hard failure.
+- Latest-source live browser evidence remains blocked until the guarded exact-SHA web release path is executable.
 
 ### Deploy-safety status
-**Deploy-safe for exactly one controlled Production DB change:** apply repository migration `20260912113500_ai_snapshot_identity.sql` only, from the Green exact-SHA lineage represented by `13222a1745264b3be727aa49dd85accac80ce5e5`. After application, verify the ledger record, confirm `room_snapshot(text)` contains `players[].isBot`, re-check function privileges, and re-run read-only migration parity. This does **not** authorize Vercel/web deployment, any other migration, or unrelated Production mutation.
+The authorized Production DB rollout is complete and post-migration verification passed. No additional Production DB change is authorized by this session. No Vercel/web deploy is authorized: latest parity-reconciliation commits still have running checks, and the guarded exact-SHA package path remains unavailable from the connected execution surface.
 
 ### Roadmap impact
-- AI Players authoritative identity has now cleared repository checks plus Production read-only migration prerequisites.
-- The next bounded milestone is Production DB contract rollout and post-migration verification; only after that and guarded web release/live evidence should the AI discussion-scope decision resume.
+- AI Players authoritative snapshot identity is now complete through Production DB contract/ACL, eliminating the known deployment-order gap for `players[].isBot` at the database layer.
+- Migration parity now accounts for the exact ledger identity produced by this rollout without relaxing unknown-drift protection.
+- Guarded web/live evidence remains the remaining prerequisite before any AI Players discussion-scope decision.
 
 ## الأولوية الدقيقة للجلسة التالية
-إذا ظل latest `main` Green، نفّذ **controlled Production rollout لـ`20260912113500_ai_snapshot_identity.sql` فقط** وفق الـdeploy-safe decision أعلاه، ثم تحقق من ledger و`room_snapshot players[].isBot` والـACL وأعد read-only parity. لا تنفذ Vercel/web deploy ولا تبدأ LLM discussion feature في نفس الجلسة.
+حل نتيجة checks على latest `main` أولًا. إذا أصبحت `validate` و`qa` Green، نفّذ **read-only exact-SHA release/preflight parity audit ضد Production** للتأكد أن كل repo migrations—بما فيها `20260912113500_ai_snapshot_identity.sql`—تتصالح مع ledger الحالي بلا missing أو unexpected records. لا تنفذ أي Production migration أو generic/unpinned web deploy في نفس الجلسة.
