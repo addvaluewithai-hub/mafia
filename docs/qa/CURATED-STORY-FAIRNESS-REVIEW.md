@@ -1,6 +1,6 @@
 # Curated Story Fairness Review — 4–10 Players
 
-Date: 2026-09-11
+Date: 2026-09-12
 Scope: all 14 curated cases currently shipped for exact player counts 4–10.
 
 This is the semantic/human review layer that complements `scripts/qa/story-critic.mjs`. The script can prove lexical role-distribution properties; this review judges whether the actual story logic leaves plausible alternatives alive, escalates clues fairly, and reads naturally in spoken Egyptian Arabic.
@@ -31,8 +31,8 @@ A case passes when:
 | 8 | `rooftop-envelope` — ظرف السطح | إدارة الفندق + الصوت | تنظيم الحفلة/الضيافة compete for office corridor; الديكور and others share key/tool evidence | key checkout + sound power log explain two overlapping but independent actions | PASS |
 | 8 | `backstage-pass` — تصريح الكواليس | إدارة الكواليس + تسجيل النتائج | تنسيق العرض/الإضاءة/الصوت compete for corridor; لجنة التحكيم compete around score sheets | pass-drawer timing + print-account evidence resolves the two acts | PASS |
 | 9 | `gallery-ledger` — دفتر المعرض | التنسيق الفني + الحسابات | إدارة المعرض/المبيعات/المخزن compete around office; العلاقات العامة/mخزن compete around card materials | card checkout + two-file office exit separate label swap from ledger removal | PASS |
-| 9 | `garden-locker` — دولاب الجنينة | إدارة النادي + الاستقبال | الصيانة/تنظيم اليوم compete for key/log; المخزن/الأنشطة/الضيافة compete for replacement box | **fixed in this review**: pen-log evidence now assigns the log edit to إدارة النادي; visit order assigns the replacement to الاستقبال | PASS AFTER FIX |
-| 10 | `midnight-menu` — منيو نص الليل | إدارة المطعم + الحسابات + الدعم التقني | الحجوزات/الصالة/التصوير compete around office; المطبخ/المخزن compete around printer; shared purple-mark evidence keeps reservation path ambiguous | **fixed in this review**: final camera evidence now links the reviewed reservation sheet to الحسابات, while door/printer logs separate all three acts | PASS AFTER FIX |
+| 9 | `garden-locker` — دولاب الجنينة | إدارة النادي + الاستقبال | الصيانة/تنظيم اليوم compete for key/log; المخزن/الأنشطة/الضيافة compete for replacement box | pen-log evidence assigns the log edit to إدارة النادي; visit order assigns the replacement to الاستقبال | PASS |
+| 10 | `midnight-menu` — منيو نص الليل | إدارة المطعم + الحسابات + الدعم التقني | الحجوزات/الصالة/التصوير compete around office; المطبخ/المخزن compete around printer; shared purple-mark evidence keeps reservation path ambiguous | final camera evidence links the reviewed reservation sheet to الحسابات, while door/printer logs separate all three acts | PASS AFTER SPOKEN-LANGUAGE CLEANUP |
 | 10 | `archive-seal` — ختم الأرشيف | تسجيل الاستلام + الشؤون القانونية + إدارة المشروع | إدارة الأرشيف/الحسابات compete for original access; التصوير/المراجعة/mراسلات provide copy/seal alternatives | door camera + e-pen record + office printer cleanly separate three acts | PASS |
 
 ## Defects found and corrected
@@ -53,16 +53,24 @@ Fix:
 - round 3 keeps multiple reservation/printer alternatives alive;
 - final clue shows the marked reservation sheet inside the accounts file, giving the final deduction a direct but appropriately late anchor.
 
-## Deterministic regression added
+### 3. `midnight-menu`: English game-design jargon leaked into player-facing speech
+The full spoken-language pass found one remaining player-facing phrase, `red herring`, in a discussion prompt. It describes the design mechanic rather than how Egyptian players would naturally discuss the evidence aloud.
 
-`story-critic.mjs` now fails QA when either of these conditions is true:
+Fix:
+- round 2 now asks which widespread trace is "موجود بس عشان يشتتكم" instead. This preserves the exact deduction/fairness function while making the prompt natural spoken Egyptian Arabic.
+
+## Deterministic regression baseline
+
+`story-critic.mjs` fails QA when either of these conditions is true:
 1. a pre-final clue explicitly mentions mafia role(s) but no explicit non-mafia role alternative;
 2. the final clue fails to reconnect every mafia role to the evidence chain.
 
-This is intentionally narrower than semantic judgment. It does not claim that lexical mentions prove guilt or innocence; it only prevents a common unfair structure from silently returning while the human review remains the source for motive/plausibility/escalation quality.
+It also scores jargon/stiff phrasing, clue density, and bio density. This remains intentionally narrower than semantic judgment. Lexical mentions do not prove guilt or innocence; the human review remains the source for motive/plausibility/escalation quality.
 
 ## Review conclusion
 
-All 14 curated cases are acceptable for the current 4–10-player library after the two fixes above. The larger 8–10-player cases use multiple independent acts rather than one oversized conspiracy, which keeps mafia counts compatible with the game while making the evidence separable. No player-count expansion beyond 10 is justified by this review.
+All 14 curated cases pass the current 4–10-player human semantic/fairness review. The 2026-09-12 follow-up rechecked the existing case-by-case reasoning against the latest sources and closed the remaining obvious spoken-language leak in `midnight-menu`; no fairness, motive-chain, or early-reveal rewrite was justified beyond that. Zero lexical mentions for some innocent roles remain a review signal, not a defect by themselves: a role can be a plausible alternative through opportunity, shared evidence, or bio context without being named in every clue.
+
+The larger 8–10-player cases use multiple independent acts rather than one oversized conspiracy, which keeps mafia counts compatible with the game while making the evidence separable. No player-count expansion beyond 10 is justified by this review.
 
 The next story-quality review should be triggered by a material content rewrite, a new curated case, or a regression signal—not by a fixed hourly cadence.
