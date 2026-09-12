@@ -31,12 +31,31 @@ function migrationVersions(dir) {
     .sort();
 }
 
-function parseVersions(text) {
+function parseRemoteRecords(text) {
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => /^\d{14}$/.test(line))
-    .sort();
+    .filter(Boolean)
+    .map((line) => {
+      const separator = line.indexOf('|');
+      const version = separator === -1 ? line : line.slice(0, separator).trim();
+      const name = separator === -1 ? '' : line.slice(separator + 1).trim();
+      if (!/^\d{14}$/.test(version)) fail(`invalid production migration record: ${line}`);
+      return { version, name };
+    });
+}
+
+function loadMigrationHistoryMap(file) {
+  if (!fs.existsSync(file)) fail(`migration history map not found: ${file}`);
+  const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return {
+    canonicalAliases: parsed.canonicalAliases || {},
+    historicalOnly: Array.isArray(parsed.historicalOnly) ? parsed.historicalOnly : [],
+  };
+}
+
+function recordKey(record) {
+  return `${record.version}|${record.name || ''}`;
 }
 
 async function loadChecks({ file, repo, sha, token }) {
@@ -71,11 +90,11 @@ function verifyChecks(payload, sha) {
   }
 }
 
-function loadRemoteVersions({ file, dbUrl }) {
-  if (file) return parseVersions(fs.readFileSync(file, 'utf8'));
+function loadRemoteRecords({ file, dbUrl }) {
+  if (file) return parseRemoteRecords(fs.readFileSync(file, 'utf8'));
   if (!dbUrl) fail('SUPABASE_PRODUCTION_DB_URL is required');
 
-  const query = 'select version from supabase_migrations.schema_migrations order by version;';
+  const query = "select version || '|' || coalesce(name, '') from supabase_migrations.schema_migrations order by version;";
   const result = spawnSync(
     'psql',
     [dbUrl, '-X', '-A', '-t', '-q', '-v', 'ON_ERROR_STOP=1', '-c', query],
@@ -90,14 +109,58 @@ function loadRemoteVersions({ file, dbUrl }) {
     fail(`production migration read failed: ${result.stderr.trim() || `psql exit ${result.status}`}`);
   }
 
-  return parseVersions(result.stdout);
+  return parseRemoteRecords(result.stdout);
 }
 
-function verifyMigrationParity(local, remote) {
+function verifyMigrationParity(local, remote, historyMap) {
   const localSet = new Set(local);
-  const remoteSet = new Set(remote);
-  const missingRemote = local.filter((version) => !remoteSet.has(version));
-  const unexpectedRemote = remote.filter((version) => !localSet.has(version));
+  const remoteKeys = new Set(remote.map(recordKey));
+  const applied = new Set();
+  const recognizedRemote = new Set();
+
+  for (const canonical of Object.keys(historyMap.canonicalAliases)) {
+    if (!localSet.has(canonical)) {
+      fail(`migration history map references unknown local migration: ${canonical}`);
+    }
+  }
+
+  for (const record of remote) {
+    const key = recordKey(record);
+
+    if (localSet.has(record.version)) {
+      applied.add(record.version);
+      recognizedRemote.add(key);
+      continue;
+    }
+
+    const namedCanonical = record.name.match(/^(\d{14})_/i)?.[1];
+    if (namedCanonical && localSet.has(namedCanonical)) {
+      applied.add(namedCanonical);
+      recognizedRemote.add(key);
+      continue;
+    }
+  }
+
+  for (const [canonical, aliases] of Object.entries(historyMap.canonicalAliases)) {
+    if (!Array.isArray(aliases) || aliases.length === 0) {
+      fail(`migration history map has empty alias set for ${canonical}`);
+    }
+    const aliasKeys = aliases.map(recordKey);
+    for (const key of aliasKeys) {
+      if (remoteKeys.has(key)) recognizedRemote.add(key);
+    }
+    if (aliasKeys.every((key) => remoteKeys.has(key))) applied.add(canonical);
+  }
+
+  for (const record of historyMap.historicalOnly) {
+    const key = recordKey(record);
+    if (remoteKeys.has(key)) recognizedRemote.add(key);
+  }
+
+  const missingRemote = local.filter((version) => !applied.has(version));
+  const unexpectedRemote = remote
+    .filter((record) => !recognizedRemote.has(recordKey(record)))
+    .map((record) => recordKey(record));
 
   if (missingRemote.length || unexpectedRemote.length) {
     const details = [];
@@ -116,6 +179,9 @@ if (!sha || !/^[0-9a-f]{40}$/i.test(sha)) {
 const repoRoot = path.resolve(args.root || process.cwd());
 const migrationsDir = path.join(repoRoot, 'supabase', 'migrations');
 if (!fs.existsSync(migrationsDir)) fail(`migration directory not found: ${migrationsDir}`);
+const historyMapPath = path.resolve(
+  args['migration-history-map'] || path.join(repoRoot, 'scripts', 'release', 'migration-history-map.json'),
+);
 
 const checks = await loadChecks({
   file: args['checks-file'] || process.env.PREFLIGHT_CHECK_RUNS_FILE,
@@ -126,13 +192,14 @@ const checks = await loadChecks({
 verifyChecks(checks, sha);
 
 const local = migrationVersions(migrationsDir);
-const remote = loadRemoteVersions({
+const remote = loadRemoteRecords({
   file: args['remote-migrations-file'] || process.env.PREFLIGHT_REMOTE_MIGRATIONS_FILE,
   dbUrl: process.env.SUPABASE_PRODUCTION_DB_URL,
 });
-verifyMigrationParity(local, remote);
+const historyMap = loadMigrationHistoryMap(historyMapPath);
+verifyMigrationParity(local, remote, historyMap);
 
 console.log(`release-preflight: PASS ${sha}`);
 console.log(
-  `release-preflight: checks ${requiredChecks.join(', ')} are green; ${local.length} migrations match production`,
+  `release-preflight: checks ${requiredChecks.join(', ')} are green; ${local.length} repo migrations reconcile with ${remote.length} production ledger records`,
 );
