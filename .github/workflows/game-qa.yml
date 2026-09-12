@@ -47,6 +47,34 @@ jobs:
           version: latest
       - name: Start clean local Supabase
         run: supabase start
+      - name: Install browser QA runtime
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Solo AI browser E2E
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export EXPO_PUBLIC_SUPABASE_URL="$API_URL"
+          export EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export BASE_URL="http://127.0.0.1:8081"
+          CI=1 npx expo start --web --port 8081 > /tmp/akher-kheit-expo-web.log 2>&1 &
+          EXPO_PID=$!
+          trap 'kill "$EXPO_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "$BASE_URL/solo" > /dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/akher-kheit-expo-web.log
+              exit 1
+            fi
+            sleep 2
+          done
+          npx playwright test scripts/qa/solo-browser-e2e.spec.mjs --reporter=line
       - name: Player identity schema contract
         shell: bash
         run: |
