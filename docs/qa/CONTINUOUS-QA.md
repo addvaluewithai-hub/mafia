@@ -3,100 +3,105 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 83 is a delivery session focused only on curated-content launch readiness for the 4–5-player band. Core/full-game confidence remains strong for supported counts 4–10; no P0 gameplay regression was present at session start.
+Session 84 is a delivery session focused only on curated-content launch readiness for the 6–7-player band. Core/full-game confidence remains strong for supported counts 4–10; no P0 gameplay regression was present at session start.
 
-The Session 82 implementation SHA `49f58a2a66097ed4d5db276f24cb047557a8891b` and handoff SHA `c812294c6235f2abc68b27e28e7c1f295f904534` are fully Green:
-- implementation `validate`: `completed/success` (run `34765908334`).
-- implementation `qa`: `completed/success` (run `34765908278`).
-- handoff `validate`: `completed/success` (run `34765945687`).
-- handoff `qa`: `completed/success` (run `34765945643`).
+The Session 83 implementation SHA `5a7f68019ab44d20a9b3b195cdedf461cd0e08f9` and handoff SHA `77e504f3b5de66cca048f4452cec3486f3c8d577` are fully Green:
+- implementation `validate`: `completed/success` (run `34769001734`).
+- implementation `qa`: `completed/success` (run `34769001726`).
+- handoff `validate`: `completed/success` (run `34769066132`).
+- handoff `qa`: `completed/success` (run `34769066124`).
 
-The connected GitHub surface still exposes no authorized workflow-dispatch action, so production release preflight/live smoke was not bypassed or simulated.
+The connected GitHub surface still exposes no authorized workflow-dispatch write action, so production release preflight/live smoke was not bypassed or simulated.
 
-## Session 83 — 2026-09-13 — Delivery
+## Session 84 — 2026-09-13 — Delivery
 
 ### Starting evidence
 - Read, in order, `AGENTS.md`, `docs/qa/QA-OPERATING-MODE.md`, and this handoff from the default branch.
-- `main` started at `c812294c6235f2abc68b27e28e7c1f295f904534`.
-- Resolved the prerequisite first: exact-SHA CI and Game QA are Green for both the Session 82 implementation and handoff descendant.
-- Audited `lib/story-catalog.ts`, `lib/server-stories`, `scripts/qa/curated-player-count-contract.mjs`, `scripts/qa/story-critic.mjs`, and `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md`.
-- The library had 14 cases: exactly two for every supported count 4–10. The meaningful launch-breadth gap was theme diversity in the smallest bands: both 4-player cases were `home-social`, while both 5-player cases were `work-records`.
-- Existing semantic review considered all 14 cases fair; the gap was breadth/replay variety, not a known story-correctness defect.
+- `main` started at `77e504f3b5de66cca048f4452cec3486f3c8d577`.
+- Resolved the prerequisite first: exact-SHA CI and Game QA are Green for both the Session 83 implementation and handoff descendant.
+- Audited `lib/story-catalog.ts`, the existing 6-player `last-rehearsal`/`blue-notebook` cases, the existing 7-player `fourth-floor`/`silent-auction` cases, `lib/server-stories/index.ts`, `scripts/qa/curated-player-count-contract.mjs`, and `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md`.
+- The 6-player and 7-player bands each had exactly two cases, split only between `stage-events` and `work-records`; neither offered a `home-social` case. This was a launch breadth/replay-variety gap, not a known correctness defect.
 
 ### Exact objective
-Improve one coherent curated-content band only: expand exact-count coverage for 4–5 players from two to three reviewed cases each, add theme diversity without changing gameplay/player-count semantics, preserve nickname/gender/case-role contracts, and add deterministic coverage protection so the launch breadth cannot silently regress.
+Improve one coherent curated-content band only: expand exact-count coverage for 6–7 players from two to three reviewed cases each, add the missing `home-social` theme so each count spans all three reviewed packs, preserve nickname/gender/case-role and mafia-fairness contracts, and add deterministic coverage protection without touching 8–10 or unsupported player counts.
 
 ### Reproduction / design finding
-- `curated-player-count-contract.mjs` enforced exactly two stories for every count, which was appropriate for the previous milestone but would reject any legitimate library expansion.
-- 4 players had only `home-social` choices; 5 players had only `work-records` choices. This made the most common/smallest launch band feel narrower than the overall three-pack catalog suggested.
-- The safest bounded slice was to add one `stage-events` 4-player case and one `home-social` 5-player case, then raise only the completed 4–5 contract. Counts 6–10 remain unchanged for later coherent slices.
+- `curated-player-count-contract.mjs` intentionally kept 6–10 at two cases after the previous 4–5 expansion.
+- 6 players had `stage-events` + `work-records`; 7 players had `work-records` + `stage-events`. Adding one high-quality `home-social` case to each count is therefore the smallest coherent expansion and avoids duplicating an already-covered theme.
+- Existing 6–7 cases use two independent mafia acts, so the new stories preserve that deduction model rather than introducing a large conspiracy or gender-dependent role logic.
 
 ### Code / database / test / doc changes
-- Added `lib/server-stories/soundcheck-ticket.ts` for exactly 4 players in `stage-events`:
-  - mafia role: `الصوت`;
-  - four clue rounds with ordinary backstage access as real innocent alternatives;
-  - shared silver-tape evidence is deliberately non-exclusive;
-  - final accidental-video evidence places the missing stamped envelope in sound gear only after earlier timing/opportunity evidence has accumulated;
-  - full neutral role/bio plus male/female wording for every role.
-- Added `lib/server-stories/family-fridge.ts` for exactly 5 players in `home-social`:
-  - mafia role: `تنظيم السفر`;
-  - domestic kitchen movement keeps all innocents plausible through rounds 1–3;
-  - paper/magnet evidence remains shared/non-exclusive;
-  - final photo links the missing safe-number note to the travel file only after prior knowledge + distraction-window evidence;
-  - full neutral role/bio plus male/female wording for every role.
-- Registered both stories in `lib/story-catalog.ts` and `lib/server-stories/index.ts`; no fallback to unrelated player counts was added.
+- Added `lib/server-stories/birthday-envelope.ts` for exactly 6 players in `home-social`:
+  - mafia roles: `تجهيز الزينة` + `تنظيم المفاجأة`;
+  - independent acts: one creates a temporary key copy; the other later discovers/uses it to steal the gift envelope;
+  - rounds 1–3 keep real alternatives through shared kitchen/side-room movement and non-exclusive putty/paper evidence;
+  - final evidence separates the two acts using a pre-party photo and an independent 9:44 guest video;
+  - neutral role/bio plus explicit male/female wording for every role.
+- Added `lib/server-stories/beach-house-key.ts` for exactly 7 players in `home-social`:
+  - mafia roles: `توزيع المصاريف` + `حجز العربية`;
+  - independent acts: one swaps the safe-code card; the other later steals the spare beach-house key;
+  - rounds 1–3 retain innocent alternatives through shared note-paper, shelf contact, and ordinary travel movement;
+  - final evidence separates pressure-mark/photo proof for the card swap from the driver-call interval + exit video for the key theft;
+  - neutral role/bio plus explicit male/female wording for every role.
+- Registered both cases in `lib/story-catalog.ts` and `lib/server-stories/index.ts`; no cross-count fallback was added.
 - Updated `scripts/qa/curated-player-count-contract.mjs`:
-  - catalog baseline is now 16 reviewed cases;
-  - 4 and 5 players require exactly three cases each and at least two theme packs per count;
-  - 6–10 remain exactly two cases each;
-  - existing shared-registry, exact-count, pack-filtering, file-existence, and unsupported-count guards remain intact.
-- Updated `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md` with semantic review for both new cases and the 4–5 breadth rationale.
-- No schema, migration, gameplay state machine, voting, winner logic, production config, AI discussion, or 11–15 support was changed.
+  - reviewed catalog baseline is now 18 cases;
+  - 4–7 require exactly three cases per exact count;
+  - 6 and 7 must span all three declared theme packs;
+  - 4–5 retain their already-reviewed minimum two-pack rule;
+  - 8–10 remain exactly two cases each;
+  - exact-count, shared-registry, file-existence, pack-filtering, and unsupported-count guards remain intact.
+- Updated `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md` to cover all 18 cases and document the 6–7 semantic/fairness rationale.
+- No schema, migration, gameplay state machine, voting, reconnect, winner logic, production config, AI discussion, 8–10 expansion, or 11–15 support was changed.
 - No Production deploy, restore, migration, DB write, provider mutation, or release workflow dispatch was performed.
 
 ### Commits
-- `dacf83b27209d085b2a471ad511f960d82ba0134` — add 4-player `soundcheck-ticket` case.
-- `1cedd74fd0e893caece913b2507f5e75f9ecd076` — add 5-player `family-fridge` case.
-- `18764ad611f623fa4be4607b0178e4f6ddabbe7a` — broaden curated 4–5 catalog.
-- `35327b0a0a33b7ec287bfebf369a7ddf2615b224` — register new server-side curated cases.
-- `5a7f68019ab44d20a9b3b195cdedf461cd0e08f9` — enforce broader 4–5 coverage in QA.
-- `7c4e4e1c3b3cfa4746e0146d4c670192a209f48e` — document semantic/fairness review of expanded band.
-- Session 83 handoff commit: this commit (`docs: record curated 4-5 launch breadth session`).
+- `81a374de6ae365c77507d5a71a3675544c9883f6` — add 6-player `birthday-envelope` case.
+- `e24a63b08531823bd3ea47568cdf0e44615dff75` — add 7-player `beach-house-key` case.
+- `be41ceda742ea06b340ec5fb0a3d196087caf89b` — broaden curated 6–7 catalog.
+- `2fddd877c358da88d786d0a2921c5b3a875cfb34` — register new server-side curated cases.
+- `e567fee8f7407ef46aba301c039e6a9d590ab0d7` — enforce broader 6–7 coverage in QA.
+- `a6f14782f5800bd93a581c9e8b885140479d9d8d` — document semantic/fairness review of expanded band.
+- Session 84 handoff commit: this commit (`docs: record curated 6-7 launch breadth session`).
 
 ### Check / test results
-Starting Session 82 implementation/handoff:
-- `49f58a2a...`: `validate` and `qa` both `completed/success`.
-- `c812294c...`: `validate` and `qa` both `completed/success`.
+Starting Session 83 implementation/handoff:
+- `5a7f6801...`: `validate` and `qa` both `completed/success`.
+- `77e504f3...`: `validate` and `qa` both `completed/success`.
 
-Implementation/contract SHA `5a7f68019ab44d20a9b3b195cdedf461cd0e08f9` at the last inspection:
-- `validate`: `completed/success` (run `34769001734`).
-- `qa`: `in_progress` (run `34769001726`).
+Implementation/contract SHA `e567fee8f7407ef46aba301c039e6a9d590ab0d7` at the last inspection:
+- `validate`: `in_progress` (run `34771818413`).
+- `qa`: `in_progress` (run `34771818347`).
 
-The Game QA run includes the curated player-count contract and story critic before full local-Supabase/browser/RPC coverage. Because Game QA and the later documentation/handoff descendants are not yet fully Green, this session does not claim deploy safety.
+Documentation descendant `a6f14782f5800bd93a581c9e8b885140479d9d8d` at the last inspection:
+- `validate`: `in_progress` (run `34771841365`).
+- `qa`: `in_progress` (run `34771841386`).
+
+Because resulting CI/Game QA are not yet fully Green, this session does not claim deploy safety.
 
 ### Newly discovered bugs / risks
 - No P0 gameplay bug was discovered.
-- Counts 6–10 still have only two curated cases per exact count. This is known content breadth debt, not a correctness regression.
-- The new story semantic review is human-authored and is complemented, not replaced, by deterministic `story-critic.mjs`; resulting QA must still prove there are no lexical fairness/integrity regressions.
+- Counts 8–10 still have only two curated cases per exact count. This is known content breadth debt, not a correctness regression.
+- Semantic review of the two new cases is human-authored and is complemented, not replaced, by deterministic `story-critic.mjs`; resulting QA must still prove there are no lexical fairness/integrity regressions.
 - Production migration parity and guarded live smoke remain unproven because the approved manual release workflow cannot be dispatched from the current connected surface.
 
 ### Deploy safety
-- Not deploy-safe from this session yet: resulting Game QA/checks are still pending and production release preflight/live smoke were not executed.
+- Not deploy-safe from this session yet: resulting CI/Game QA are still running and production release preflight/live smoke were not executed.
 - Do not deploy, restore services, or apply production migrations from this state.
 
 ### Roadmap impact
 1. **Guarded exact-SHA release preflight + live smoke** remains the highest-value launch gate whenever an authorized dispatch path becomes available.
-2. **4–5 curated launch breadth is now expanded** from two to three cases per exact count with at least two theme packs each, pending Green resulting QA.
-3. **6–7 curated breadth** is the next coherent content gap if release dispatch remains unavailable after Session 83 is Green; both counts still have two cases and incomplete three-pack variety.
-4. Keep 8–10 expansion, production-derived alert thresholds, LLM discussion, and 11–15 support deferred until higher-priority evidence changes direction.
+2. **4–7 curated launch breadth** is now expanded to three cases per exact count; 6 and 7 span all three reviewed theme packs, pending Green resulting QA.
+3. **8–10 curated breadth** is the next coherent content gap only if release dispatch remains unavailable after Session 84 is Green.
+4. Keep production-derived alert thresholds, LLM discussion, and 11–15 support deferred until higher-priority evidence changes direction.
 
 ## Durable milestone summary
 - Core/full-game behavior is Green for supported counts 4–10 with deterministic simulations, local Supabase RPC E2E, Solo Chromium full-game E2E, and multi-client human browser E2E.
 - Identity/gender/case-role contracts are covered; gender remains wording-only and nickname remains visible identity.
 - Curated stories use exact-count shared catalog/server metadata with deterministic player-count and fairness contracts.
-- The curated library now contains 16 cases: three each for 4 and 5 players, and two each for 6–10 players. The 4–5 band spans at least two theme packs per exact count.
+- The curated library now contains 18 cases: three each for 4–7 players and two each for 8–10 players. Counts 6 and 7 span all three reviewed theme packs.
 - CI/tooling remains reproducible with lockfile-backed `npm ci`, immutable GitHub Action SHAs, exact Supabase CLI, pinned Playwright, bounded dependency-security debt, and privacy-safe operational observability.
 - LLM discussion and 11–15 remain deliberately deferred.
 
 ## Exact next-session priority
-First resolve exact-SHA CI/Game QA for `5a7f68019ab44d20a9b3b195cdedf461cd0e08f9` and the Session 83 documentation/handoff descendants. If any real failure appears, fix exactly the first meaningful curated-content/type/story-critic/player-count-contract regression without weakening tests or removing the new cases. If all are Green and an authorized exact-SHA release workflow dispatch is available, execute one guarded release-preflight + live-smoke session only. If all are Green and dispatch is still unavailable, execute one curated-content launch-readiness vertical slice for the 6–7-player band: audit pack/quality breadth first, then add the smallest coherent high-quality expansion without touching 8–10, LLM discussion, or 11–15.
+First resolve exact-SHA CI/Game QA for `e567fee8f7407ef46aba301c039e6a9d590ab0d7` and the Session 84 documentation/handoff descendants. If any real failure appears, fix exactly the first meaningful curated-content/type/story-critic/player-count-contract regression without weakening tests or removing the new cases. If all are Green and an authorized exact-SHA release workflow dispatch is available, execute one guarded release-preflight + live-smoke session only. If all are Green and dispatch is still unavailable, execute one bounded checkpoint/planning session before expanding 8–10, because Sessions 81–84 have completed four implementation/content slices since the last checkpoint; audit launch blockers, full-game evidence, production/DB drift, story-quality status, 8–10 breadth, technical debt, and set the next 3–4 milestones.
