@@ -24,6 +24,13 @@ assert.match(observability, /payload\.event === 'start'[\s\S]*event: 'generation
 assert.match(telemetryApi, /\.strict\(\)/, 'telemetry API must reject unknown fields');
 assert.match(telemetryApi, /raw\.length > 2048/, 'telemetry API must bound payload size');
 assert.match(telemetryApi, /VERCEL_GIT_COMMIT_SHA/, 'server release correlation is required');
+assert.match(telemetryApi, /akher_kheit\.telemetry_ingest/, 'telemetry ingest failures must emit structured operational evidence');
+assert.match(telemetryApi, /outcome: 'error'/, 'telemetry ingest diagnostics must identify failures');
+assert.match(telemetryApi, /reason,[\s\S]*status,[\s\S]*release: serverRelease\(\)/, 'telemetry ingest diagnostics must contain bounded reason, status, and release');
+
+for (const reason of ['missing_abuse_key', 'payload_too_large', 'invalid_json', 'invalid_telemetry', 'guard_unavailable', 'rate_limited']) {
+  assert.match(telemetryApi, new RegExp(`['"]${reason}['"]`), `missing telemetry ingest failure reason: ${reason}`);
+}
 
 const forbiddenTelemetryFields = [
   'roomCode',
@@ -42,5 +49,8 @@ const forbiddenTelemetryFields = [
 for (const field of forbiddenTelemetryFields) {
   assert.equal(telemetryApi.includes(field), false, `telemetry API must not accept/log sensitive field: ${field}`);
 }
+
+assert.equal(telemetryApi.includes('slotError.message'), false, 'telemetry ingest diagnostics must not log raw guard errors');
+assert.equal(telemetryApi.includes('abuseKey,'), false, 'telemetry ingest diagnostics must not log the installation key');
 
 console.log('observability contract: PASS');
