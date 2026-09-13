@@ -3,71 +3,71 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 81 is a delivery session focused only on operational observability readiness. Core/full-game confidence remains strong for supported counts 4–10; no P0 gameplay regression was present at session start.
+Session 82 is a delivery session focused only on launch dependency-security readiness. Core/full-game confidence remains strong for supported counts 4–10; no P0 gameplay regression was present at session start.
 
-The Session 80 handoff SHA `01a0eefca82204354c6e681e5150876ab3dda90a` is fully Green:
-- `validate`: `completed/success` (run `34760270198`).
-- `qa`: `completed/success` (run `34760270182`).
+The Session 81 handoff SHA `9d6610b39327f81fbc03cbe376a94da123f887b0` is fully Green:
+- `validate`: `completed/success` (run `34763145972`).
+- `qa`: `completed/success` (run `34763145976`).
 
 The connected GitHub surface still exposes no authorized workflow-dispatch action, so production release preflight/live smoke was not bypassed or simulated.
 
-## Session 81 — 2026-09-13 — Delivery
+## Session 82 — 2026-09-13 — Delivery
 
 ### Starting evidence
 - Read, in order, `AGENTS.md`, `docs/qa/QA-OPERATING-MODE.md`, and this handoff from the default branch.
-- `main` started at `01a0eefca82204354c6e681e5150876ab3dda90a`.
+- `main` started at `9d6610b39327f81fbc03cbe376a94da123f887b0`.
 - Resolved the prerequisite first: exact-SHA `validate` and `qa` are both `completed/success`.
-- Confirmed existing telemetry already emits bounded privacy-safe gameplay and ingest-failure JSON logs, but the operator guidance stopped at query dimensions and did not provide a deterministic incident-summary workflow.
+- Reviewed `qa/reports/npm-audit-baseline.json`: the production audit baseline is 13 moderate, 0 high, 0 critical vulnerabilities across 769 dependencies.
+- The reviewed findings are concentrated in the Expo / Expo Router transitive dependency graph. npm's advertised remediations include moving Expo 57 to Expo 46 and Expo Router 57-era code to Router 5, which is not a compatible launch-hardening change.
 - No authorized release workflow-dispatch write action is available from the connected GitHub tool surface, so the handoff fallback objective applies.
 
 ### Exact objective
-Turn the existing privacy-safe structured logs into a bounded operator-facing incident workflow: add a deterministic failure-summary tool, regression-test its privacy/filtering behavior, wire the contract into CI, and document a release-scoped triage sequence without inventing production alert thresholds.
+Bound the known moderate dependency debt without destabilizing the supported Expo 57 stack: turn the reviewed audit baseline into a deterministic CI regression contract, fail on any high/critical or unreviewed vulnerability growth, surface compatible improvements, and document how the baseline may be tightened safely.
 
 ### Reproduction / design finding
-- Existing gameplay logs already expose the right bounded dimensions: `release`, `event`, `outcome`, and coarse `errorClass`; telemetry-ingest logs expose `release`, allowlisted `reason`, and HTTP `status`.
-- The operational gap was consumption rather than instrumentation: an operator had to manually aggregate exported logs and could accidentally echo unrelated fields while doing so.
-- Production traffic baselines are not available in repository truth, so numeric alert thresholds would be speculative. The safe slice is deterministic aggregation + triage/runbook + CI privacy protection, while deferring alert thresholds until live evidence exists.
+- The existing CI gate `npm audit --omit=dev --audit-level=high` correctly blocked high/critical findings, but it did not detect a new moderate advisory or growth in the reviewed moderate set.
+- The current 13 moderate findings are not safely removable using npm's suggested automated fixes because those fixes propose incompatible major/downgrade moves in the Expo stack.
+- A forced audit fix or framework downgrade would trade a measured moderate dependency risk for a much larger runtime/gameplay compatibility risk and violates the repository's launch-stability direction.
+- The safe vertical slice is therefore to freeze the reviewed debt as an explicit upper bound while making future compatible remediation immediately visible.
 
 ### Code / database / test / doc changes
-- Added `scripts/operations/observability-summary.mjs`:
-  - reads JSONL from `--file` or stdin;
-  - accepts direct structured telemetry records and common `message`/`text`/`msg` wrappers;
-  - defaults to failures/recoveries only, with optional `--all` for a bounded denominator;
-  - supports exact `--release` filtering;
-  - outputs aggregate counts only for allowlisted operational dimensions and never echoes arbitrary input fields.
-- Added `scripts/qa/observability-operations-contract.mjs` with deterministic fixture coverage for release filtering, gameplay errors, reconnect recovery, telemetry-ingest failures, optional success inclusion, and non-echoing of injected nickname/room-code/installation-key values.
-- Extended `qa:observability` so both instrumentation privacy and operator-workflow contracts run together.
-- Updated CI naming to make the combined privacy/operations contract explicit.
-- Expanded `docs/operations/OBSERVABILITY.md` with exact CLI usage, release-scoped triage order, telemetry-channel caveats, and an explicit rule not to derive alert thresholds from local/test evidence.
-- No gameplay logic, schema, migration, story content, dependency version, production configuration, or telemetry payload schema changed.
+- Added `scripts/qa/dependency-security-contract.mjs`:
+  - runs a fresh production-only `npm audit --json`;
+  - fails on any high or critical vulnerability;
+  - fails if a vulnerability name appears outside the reviewed baseline;
+  - fails if the moderate count rises above the reviewed baseline;
+  - reports baseline vulnerability names that disappear and the moderate-count reduction so compatible upstream fixes are visible immediately;
+  - does not rewrite the baseline automatically.
+- Added `qa:dependencies` to `package.json`.
+- Replaced the CI's coarse audit command with `npm run qa:dependencies`, preserving the high/critical gate while adding reviewed-moderate regression protection.
+- Added `docs/operations/DEPENDENCY-SECURITY.md` with the current risk posture, why `npm audit fix --force` / Expo downgrades are not accepted remediations, the exact CI contract, baseline-update rules, and release posture.
+- Did not change Expo, React Native, routing, native module, application, schema, migration, story, or gameplay code.
 - No Production deploy, restore, migration, DB write, provider mutation, or release workflow dispatch was performed.
 
 ### Commits
-- `4f5b5c200c6dd862fa4c1e76a249a2e0bfb9caf9` — add privacy-safe observability summary tool.
-- `d771679d3b6a90adc647a24b7d677746469721ee` — add operator observability regression contract.
-- `c249f8fa13419eb2cb1de1b682a5b3ea76a704bc` — expose the operator tool and combine observability QA contracts.
-- `dd0ec3df974f5b614a968fd64d84f40b06edb958` — enforce the combined observability contract in CI.
-- `48c8284580ead1ff7c6656d91be44f9ccfc4ad1d` — document the operator incident workflow.
-- Session 81 handoff commit: this commit (`docs: record observability operations session`).
+- `6785783e93e9826aa2ada1208dd4d98d42a7c780` — add reviewed dependency-security regression contract.
+- `3563ad0dcfe65d141dc7e190844d8577070ea228` — expose dependency-security QA command.
+- `49f58a2a66097ed4d5db276f24cb047557a8891b` — enforce the reviewed audit baseline in CI.
+- `166e9294d69949cb46bd97b116284fbd47f3df92` — document dependency-security launch posture.
+- Session 82 handoff commit: this commit (`docs: record dependency security readiness session`).
 
 ### Check / test results
-Starting SHA `01a0eefca82204354c6e681e5150876ab3dda90a`:
+Starting SHA `9d6610b39327f81fbc03cbe376a94da123f887b0`:
 - `validate`: `completed/success`.
 - `qa`: `completed/success`.
 
-Implementation/documentation SHA `48c8284580ead1ff7c6656d91be44f9ccfc4ad1d` at the last inspection:
-- `validate`: `queued` (run `34763124275`).
-- `qa`: `queued` (run `34763124255`).
+Implementation SHA `49f58a2a66097ed4d5db276f24cb047557a8891b` at the last inspection:
+- `validate`: `in_progress` (run `34765908334`).
+- `qa`: `in_progress` (run `34765908278`).
 
-Because resulting checks are not yet Green, this session does not claim deploy safety. The next session must resolve these exact-SHA checks and the handoff descendant before any new objective or release action.
+Because resulting checks are not yet Green, this session does not claim deploy safety. The next session must resolve these exact-SHA checks and the Session 82 handoff descendant before any new objective or release action.
 
 ### Newly discovered bugs / risks
 - No new P0 gameplay bug was discovered.
-- The new operator summary is intentionally an offline/log-export helper, not a durable dashboard, analytics warehouse, or alerting system.
-- JSONL wrapper support is deliberately narrow (`message`, `text`, `msg`); unknown shapes are ignored rather than guessed or echoed.
+- The 13-moderate audit baseline remains launch debt. This session prevents silent regression; it does not claim the moderate findings are harmless or resolved.
+- The contract intentionally treats a new moderate vulnerability name as a CI failure even if the total count stays flat; this forces explicit review rather than allowing one advisory to silently replace another.
+- If a known baseline vulnerability disappears, CI remains Green and reports the improvement; the baseline should then be deliberately tightened in a later bounded maintenance change after confirming lockfile/runtime compatibility.
 - Production migration parity and guarded live smoke remain unproven because the approved manual release workflow cannot be dispatched from the current connected surface.
-- Numeric alert thresholds remain intentionally undefined until multiple real production windows provide a baseline.
-- Existing moderate-only npm dependency debt remains launch debt but was not expanded in this session.
 
 ### Deploy safety
 - Not deploy-safe from this session yet: resulting checks are pending and production release preflight/live smoke were not executed.
@@ -75,18 +75,18 @@ Because resulting checks are not yet Green, this session does not claim deploy s
 
 ### Roadmap impact
 1. **Guarded exact-SHA release preflight + live smoke** remains the highest-value launch gate whenever an authorized dispatch path becomes available.
-2. **Production-evidenced observability thresholds/durable alerting** should follow only after live windows exist; the operator query/runbook foundation is now implemented.
-3. **Launch dependency/content readiness**: compatible Expo-stack dependency review, then curated-case breadth reassessment for 4–10.
-4. Keep LLM discussion and 11–15 expansion deferred until launch gates close or product evidence changes priority.
+2. **Dependency security is now bounded rather than open-ended**: no high/critical and no unreviewed moderate growth are allowed; compatible upstream reductions should tighten the baseline when they appear.
+3. **Curated content launch readiness for supported 4–10** becomes the next fallback product objective if release dispatch remains unavailable after these checks are Green.
+4. Keep production-derived alert thresholds, LLM discussion, and 11–15 expansion deferred until live evidence or product evidence changes priority.
 
 ## Durable milestone summary
 - Core/full-game behavior is Green for supported counts 4–10 with deterministic simulations, local Supabase RPC E2E, Solo Chromium full-game E2E, and multi-client human browser E2E.
 - Identity/gender/case-role and curated story contracts are covered; gender remains wording-only and nickname remains visible identity.
 - Story critic passes the current curated set; LLM discussion and 11–15 remain deliberately deferred.
 - CI/tooling is reproducible: lockfile-backed `npm ci`, immutable GitHub Action SHAs, exact Supabase CLI, and pinned Playwright runtime.
-- Gameplay telemetry and telemetry-ingest failures have bounded privacy-safe operational evidence.
-- Deprecated local `[inbucket]` configuration has been removed and its runtime path is Green from Session 80.
-- Operator-facing observability now has a deterministic release-scoped JSONL summary tool, CI privacy/filtering regression coverage, and a bounded incident triage runbook; production baselines/alerting remain intentionally deferred.
+- Gameplay telemetry and telemetry-ingest failures have bounded privacy-safe operational evidence plus a deterministic release-scoped operator summary workflow.
+- Deprecated local `[inbucket]` configuration has been removed and its runtime path is Green.
+- Dependency audit debt is now explicitly bounded in CI: the reviewed baseline is 13 moderate / 0 high / 0 critical, and CI fails on high/critical, any unreviewed vulnerability name, or moderate-count growth.
 
 ## Exact next-session priority
-First resolve exact-SHA CI/Game QA for `48c8284580ead1ff7c6656d91be44f9ccfc4ad1d` and the Session 81 handoff descendant. If either fails, fix exactly the first meaningful observability-tool/CI compatibility regression before new scope. If both are Green and an authorized exact-SHA release workflow dispatch is available, execute one guarded release-preflight + live-smoke session only. If both are Green and dispatch is still unavailable, execute one launch dependency/content-readiness vertical slice based on repository evidence, preferring compatible dependency-risk reduction before expanding curated content; do not add speculative alert thresholds, LLM discussion, or 11–15 expansion.
+First resolve exact-SHA CI/Game QA for `49f58a2a66097ed4d5db276f24cb047557a8891b` and the Session 82 handoff descendant. If either fails, fix exactly the first meaningful dependency-contract/CI compatibility regression before new scope. If both are Green and an authorized exact-SHA release workflow dispatch is available, execute one guarded release-preflight + live-smoke session only. If both are Green and dispatch is still unavailable, execute one curated-content launch-readiness vertical slice for supported counts 4–10 based on repository evidence: audit coverage breadth and quality gaps first, then improve one coherent highest-value player-count band without expanding to 11–15 or adding unrelated features.
