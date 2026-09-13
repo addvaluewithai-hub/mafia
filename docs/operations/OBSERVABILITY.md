@@ -38,6 +38,19 @@ Server logs use `VERCEL_GIT_COMMIT_SHA` when available, with `RELEASE_SHA` as an
 
 This makes production logs searchable by deployed SHA without trusting client-supplied release metadata.
 
+## Telemetry-ingest diagnostics
+
+Gameplay telemetry is deliberately non-blocking, which means a broken telemetry transport must not break the game. That also means failures in the telemetry endpoint need their own bounded evidence or they can become operationally invisible.
+
+Rejected/failed telemetry ingestion now emits a second structured log type: `akher_kheit.telemetry_ingest`. It is emitted only for ingest failures and contains exactly the operational dimensions needed to diagnose the path:
+
+- `outcome: "error"`
+- an allowlisted `reason`: `missing_abuse_key`, `payload_too_large`, `invalid_json`, `invalid_telemetry`, `guard_unavailable`, or `rate_limited`
+- HTTP `status`
+- server `release`
+
+These diagnostics never include the installation key, request body, room/player identity, user-entered values, raw Supabase guard errors, or other exception text. `scripts/qa/observability-contract.mjs` guards both the reason vocabulary and the logger privacy boundary.
+
 ## Failure behavior
 
 Telemetry transport remains non-blocking for gameplay. A failure to send telemetry must never fail create/join/start/vote/resolve or room refresh. Client telemetry calls intentionally swallow telemetry transport failures. The telemetry endpoint itself returns `429` when its installation budget is exhausted and `503` if the server-authoritative guard cannot be checked; both are swallowed by gameplay callers.
@@ -46,7 +59,11 @@ Reconnect telemetry is intentionally low-noise: routine successful room snapshot
 
 ## Operational query shape
 
-Vercel logs contain JSON objects with `type: "akher_kheit.gameplay"`. Filter by that type, then by `release`, `event`, `outcome`, and `errorClass`. Do not add user-entered values to the schema when investigating an incident; add only bounded enumerated operational dimensions and extend the CI privacy contract at the same time.
+For gameplay events, Vercel logs contain JSON objects with `type: "akher_kheit.gameplay"`. Filter by that type, then by `release`, `event`, `outcome`, and `errorClass`.
+
+For telemetry transport incidents, filter on `type: "akher_kheit.telemetry_ingest"`, then by `release`, `reason`, and `status`. This separates "the game operation failed" from "the telemetry channel itself rejected or could not accept the report" without introducing user identity into either stream.
+
+Do not add user-entered values to either schema when investigating an incident; add only bounded enumerated operational dimensions and extend the CI privacy contract at the same time.
 
 ## Current limitation
 
