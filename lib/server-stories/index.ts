@@ -6,10 +6,12 @@ import { BEACH_HOUSE_KEY } from './beach-house-key';
 import { BIRTHDAY_ENVELOPE } from './birthday-envelope';
 import { BLUE_NOTEBOOK } from './blue-notebook';
 import { CLOCK_1117 } from './clock-1117';
+import { EXPENSE_LEDGER } from './expense-ledger';
 import { FAMILY_FRIDGE } from './family-fridge';
 import { FOURTH_FLOOR } from './fourth-floor';
 import { GALLERY_LEDGER } from './gallery-ledger';
 import { GARDEN_LOCKER } from './garden-locker';
+import { INVOICE_STAMP } from './invoice-stamp';
 import { LAST_REHEARSAL } from './last-rehearsal';
 import { LAST_TRAY } from './last-tray';
 import { MIDNIGHT_MENU } from './midnight-menu';
@@ -17,6 +19,7 @@ import { ROOFTOP_ENVELOPE } from './rooftop-envelope';
 import { ROOM_312 } from './room-312';
 import { SILENT_AUCTION } from './silent-auction';
 import { SOUNDCHECK_TICKET } from './soundcheck-ticket';
+import { VILLA_GUEST_LIST } from './villa-guest-list';
 
 export const CURATED_CASES = {
   'last-tray': { playerCount: 4, case: LAST_TRAY },
@@ -33,10 +36,13 @@ export const CURATED_CASES = {
   'beach-house-key': { playerCount: 7, case: BEACH_HOUSE_KEY },
   'rooftop-envelope': { playerCount: 8, case: ROOFTOP_ENVELOPE },
   'backstage-pass': { playerCount: 8, case: BACKSTAGE_PASS },
+  'invoice-stamp': { playerCount: 8, case: INVOICE_STAMP },
   'gallery-ledger': { playerCount: 9, case: GALLERY_LEDGER },
   'garden-locker': { playerCount: 9, case: GARDEN_LOCKER },
+  'expense-ledger': { playerCount: 9, case: EXPENSE_LEDGER },
   'midnight-menu': { playerCount: 10, case: MIDNIGHT_MENU },
   'archive-seal': { playerCount: 10, case: ARCHIVE_SEAL },
+  'villa-guest-list': { playerCount: 10, case: VILLA_GUEST_LIST },
 } as const;
 
 export type CuratedCaseId = keyof typeof CURATED_CASES;
