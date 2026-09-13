@@ -49,7 +49,8 @@ Release/live evidence also remains blocked by tooling authorization, not by a kn
 - Updated this handoff with audited Green evidence, remaining risks, milestone status, and the next ordered objectives.
 
 ### Commits
-- Checkpoint documentation commit: `docs: checkpoint after browser E2E milestone`.
+- `03cd6fd020a042902d7f182ca9c098c206e8e0bb` — `docs: checkpoint after browser E2E milestone`.
+- Follow-up documentation-only commit records the first exact-SHA check observation for the checkpoint commit.
 
 ### Check / test results
 Green baseline at checkpoint:
@@ -62,6 +63,7 @@ Green baseline at checkpoint:
 - Rematch E2E: pass.
 - Identity/gender/case-role/abuse/AI-player contracts and E2E: pass.
 - Story critic: 14 curated cases pass, average 9.9/10.
+- First post-commit inspection for checkpoint SHA `03cd6fd020a042902d7f182ca9c098c206e8e0bb` returned no workflow runs yet (`total_count: 0`), so this checkpoint does not claim its own documentation SHA Green; resolve it first next session.
 
 ### Audit: what is green vs. what remains risky
 **Green / closed enough to move forward cautiously**
@@ -94,4 +96,4 @@ No Production deploy, restore, migration, DB write, provider mutation, or releas
 Sessions 68–72 formed one browser-confidence milestone: canonical Solo room creation, bounded diagnostics, durable browser evidence, corrected human-vote selector, winner UI contract alignment, and finished-state locator disambiguation. Session 72's implementation `575b418c...` is now proven Green by both CI and Game QA.
 
 ## Exact next-session priority
-First resolve exact-SHA checks for this checkpoint documentation commit. If they remain Green and no new P0 appears, implement exactly one substantial **multi-client human browser E2E launch slice** using separate Boss + human browser identities and local Supabase, covering create/join → reveal/Boss controls → voting/elimination → refresh/reconnect → next round → winner. If an authorized exact-SHA release dispatch becomes available before implementation begins, the guarded release + live smoke may supersede this only if repository safety gates explicitly remain satisfied. Do not add LLM discussion or expand to 11–15 in the next session.
+First resolve exact-SHA checks for the latest Session 73 checkpoint documentation commit. If they remain Green and no new P0 appears, implement exactly one substantial **multi-client human browser E2E launch slice** using separate Boss + human browser identities and local Supabase, covering create/join → reveal/Boss controls → voting/elimination → refresh/reconnect → next round → winner. If an authorized exact-SHA release dispatch becomes available before implementation begins, the guarded release + live smoke may supersede this only if repository safety gates explicitly remain satisfied. Do not add LLM discussion or expand to 11–15 in the next session.
