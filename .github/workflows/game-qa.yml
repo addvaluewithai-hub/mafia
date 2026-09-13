@@ -76,6 +76,31 @@ jobs:
             sleep 2
           done
           timeout 90s npx playwright test scripts/qa/solo-browser-e2e.spec.mjs --reporter=line
+      - name: Multi-client human browser E2E
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          export EXPO_PUBLIC_SUPABASE_URL="$API_URL"
+          export EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export BASE_URL="http://127.0.0.1:8081"
+          npx expo export --platform web > /tmp/akher-kheit-human-web.log 2>&1
+          CI=1 npx expo serve --port 8081 >> /tmp/akher-kheit-human-web.log 2>&1 &
+          EXPO_PID=$!
+          trap 'kill "$EXPO_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --max-time 3 --fail --silent "$BASE_URL/create" > /dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/akher-kheit-human-web.log
+              exit 1
+            fi
+            sleep 2
+          done
+          timeout 120s npx playwright test scripts/qa/human-multiclient-browser-e2e.spec.mjs --reporter=line
       - name: Player identity schema contract
         shell: bash
         run: |
