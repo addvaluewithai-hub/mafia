@@ -4,6 +4,7 @@ import { BACKSTAGE_PASS } from './backstage-pass';
 import { BALCONY_KEY } from './balcony-key';
 import { BLUE_NOTEBOOK } from './blue-notebook';
 import { CLOCK_1117 } from './clock-1117';
+import { FAMILY_FRIDGE } from './family-fridge';
 import { FOURTH_FLOOR } from './fourth-floor';
 import { GALLERY_LEDGER } from './gallery-ledger';
 import { GARDEN_LOCKER } from './garden-locker';
@@ -13,12 +14,15 @@ import { MIDNIGHT_MENU } from './midnight-menu';
 import { ROOFTOP_ENVELOPE } from './rooftop-envelope';
 import { ROOM_312 } from './room-312';
 import { SILENT_AUCTION } from './silent-auction';
+import { SOUNDCHECK_TICKET } from './soundcheck-ticket';
 
 export const CURATED_CASES = {
   'last-tray': { playerCount: 4, case: LAST_TRAY },
   'balcony-key': { playerCount: 4, case: BALCONY_KEY },
+  'soundcheck-ticket': { playerCount: 4, case: SOUNDCHECK_TICKET },
   'clock-1117': { playerCount: 5, case: CLOCK_1117 },
   'room-312': { playerCount: 5, case: ROOM_312 },
+  'family-fridge': { playerCount: 5, case: FAMILY_FRIDGE },
   'last-rehearsal': { playerCount: 6, case: LAST_REHEARSAL },
   'blue-notebook': { playerCount: 6, case: BLUE_NOTEBOOK },
   'fourth-floor': { playerCount: 7, case: FOURTH_FLOOR },
