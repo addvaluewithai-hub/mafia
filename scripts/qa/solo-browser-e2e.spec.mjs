@@ -90,13 +90,21 @@ async function seedVotes(roomId, roundIndex, voters, targetPlayerId) {
   if (error) throw new Error(`seed votes: ${error.message}`);
 }
 
+async function boundedFailureDiagnostics(page) {
+  const fallback = { url: page.url(), title: '', body: 'diagnostics timed out before page inspection completed' };
+  return Promise.race([
+    (async () => {
+      const title = await page.title().catch(() => '');
+      const body = await page.locator('body').innerText({ timeout: 1_500 }).catch((error) => `body unavailable: ${String(error)}`);
+      return { url: page.url(), title, body: body.slice(0, 4000) };
+    })(),
+    new Promise((resolve) => setTimeout(() => resolve(fallback), 2_000)),
+  ]);
+}
+
 test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status === testInfo.expectedStatus) return;
-  const diagnostics = await page.evaluate(() => ({
-    url: location.href,
-    title: document.title,
-    body: document.body?.innerText?.slice(0, 4000) ?? '',
-  })).catch((error) => ({ url: page.url(), title: '', body: `diagnostics unavailable: ${String(error)}` }));
+  const diagnostics = await boundedFailureDiagnostics(page);
   console.error('Solo browser E2E diagnostics:', JSON.stringify(diagnostics, null, 2));
 });
 
