@@ -190,7 +190,10 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   expect(firstTarget).toBeTruthy();
   markStage('first-innocent-target-selected', firstTarget.nickname);
 
-  await page.getByText(firstTarget.nickname, { exact: true }).first().click();
+  const voteTarget = page.getByText(firstTarget.nickname, { exact: true }).last();
+  await voteTarget.click();
+  markStage('human-vote-target-clicked', firstTarget.nickname);
+  await expect(page.getByText('اختيارك', { exact: true })).toBeVisible();
   await page.getByText('ثبّت صوتي', { exact: true }).click();
   markStage('human-vote-submitted');
 
