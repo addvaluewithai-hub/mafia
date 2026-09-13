@@ -9,8 +9,10 @@ export type StoryPackId = (typeof STORY_PACKS)[number]['id'];
 export const STORY_CATALOG = [
   { id: 'last-tray', playerCount: 4, packId: 'home-social', title: 'آخر صينية', teaser: 'ظرف اختفى من درج البوفيه وقت دقيقة زحمة وكل أثر له أكتر من تفسير.' },
   { id: 'balcony-key', playerCount: 4, packId: 'home-social', title: 'مفتاح البلكونة', teaser: 'مفتاح اختفى من طبق في الصالة وظهر له أثر غريب جنب البلكونة.' },
+  { id: 'soundcheck-ticket', playerCount: 4, packId: 'stage-events', title: 'تذكرة الساوند تشيك', teaser: 'تذكرة مختومة اختفت من الكواليس وسط كابلات وورق متشابه ولحظة صفير شتتت الكل.' },
   { id: 'clock-1117', playerCount: 5, packId: 'work-records', title: 'الساعة 11:17', teaser: 'عقد اختفى من خزنة مقفولة وكاميرا فصلت أربع دقايق.' },
   { id: 'room-312', playerCount: 5, packId: 'work-records', title: 'مفتاح 312', teaser: 'ظرف اختفى من أوضة مقفولة مع إن سجل الباب بيقول محدش دخل.' },
+  { id: 'family-fridge', playerCount: 5, packId: 'home-social', title: 'ورقة التلاجة', teaser: 'ورقة رقم خزنة اختفت وسط وصفات وقوايم أثناء لمة وانشغال سريع في المطبخ.' },
   { id: 'last-rehearsal', playerCount: 6, packId: 'stage-events', title: 'آخر بروفة', teaser: 'قطعة نادرة اختفت والأدلة بتقول إن شخصين لعبوا في الحماية.' },
   { id: 'blue-notebook', playerCount: 6, packId: 'work-records', title: 'الكراسة الزرقا', teaser: 'أرقام سرية اتسربت والكراسة الأصلية اختفت في عملية منفصلة.' },
   { id: 'fourth-floor', playerCount: 7, packId: 'work-records', title: 'الدور الرابع مقفول', teaser: 'مظروف اختفى بعد زيارتين قصيرتين والسجل نفسه اتغير.' },
