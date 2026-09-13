@@ -25,5 +25,5 @@ jobs:
         run: node scripts/qa/ci-toolchain-pinning-contract.mjs
       - name: Release preflight contract
         run: npm run qa:release-preflight
-      - name: Observability privacy contract
+      - name: Observability privacy and operations contracts
         run: npm run qa:observability
