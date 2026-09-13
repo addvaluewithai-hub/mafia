@@ -2,6 +2,8 @@ import { storyMetadata } from '../story-catalog';
 import { ARCHIVE_SEAL } from './archive-seal';
 import { BACKSTAGE_PASS } from './backstage-pass';
 import { BALCONY_KEY } from './balcony-key';
+import { BEACH_HOUSE_KEY } from './beach-house-key';
+import { BIRTHDAY_ENVELOPE } from './birthday-envelope';
 import { BLUE_NOTEBOOK } from './blue-notebook';
 import { CLOCK_1117 } from './clock-1117';
 import { FAMILY_FRIDGE } from './family-fridge';
@@ -25,8 +27,10 @@ export const CURATED_CASES = {
   'family-fridge': { playerCount: 5, case: FAMILY_FRIDGE },
   'last-rehearsal': { playerCount: 6, case: LAST_REHEARSAL },
   'blue-notebook': { playerCount: 6, case: BLUE_NOTEBOOK },
+  'birthday-envelope': { playerCount: 6, case: BIRTHDAY_ENVELOPE },
   'fourth-floor': { playerCount: 7, case: FOURTH_FLOOR },
   'silent-auction': { playerCount: 7, case: SILENT_AUCTION },
+  'beach-house-key': { playerCount: 7, case: BEACH_HOUSE_KEY },
   'rooftop-envelope': { playerCount: 8, case: ROOFTOP_ENVELOPE },
   'backstage-pass': { playerCount: 8, case: BACKSTAGE_PASS },
   'gallery-ledger': { playerCount: 9, case: GALLERY_LEDGER },
