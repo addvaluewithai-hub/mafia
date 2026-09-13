@@ -9,7 +9,7 @@ const createSource = fs.readFileSync('app/create.tsx', 'utf8');
 const catalogEntries = [...catalogSource.matchAll(/\{ id: '([^']+)', playerCount: (\d+), packId: '([^']+)', title:/g)]
   .map((match) => ({ id: match[1], playerCount: Number(match[2]), packId: match[3] }));
 
-assert.equal(catalogEntries.length, 14, 'curated catalog should contain exactly fourteen cases for the 4–10 milestone');
+assert.equal(catalogEntries.length, 16, 'curated catalog should contain sixteen reviewed cases for the current 4–10 milestone');
 
 const declaredPacks = [...catalogSource.matchAll(/\{ id: '(home-social|stage-events|work-records)', label:/g)].map((match) => match[1]);
 assert.deepEqual(new Set(declaredPacks), new Set(['home-social', 'stage-events', 'work-records']), 'curated browsing must expose the three reviewed theme packs');
@@ -18,7 +18,11 @@ assert(new Set(catalogEntries.map((entry) => entry.packId)).size === 3, 'all dec
 
 for (const playerCount of [4, 5, 6, 7, 8, 9, 10]) {
   const matching = catalogEntries.filter((entry) => entry.playerCount === playerCount);
-  assert.equal(matching.length, 2, `expected exactly two curated cases for ${playerCount} players`);
+  const expectedCount = playerCount <= 5 ? 3 : 2;
+  assert.equal(matching.length, expectedCount, `expected ${expectedCount} curated cases for ${playerCount} players`);
+  if (playerCount <= 5) {
+    assert(new Set(matching.map((entry) => entry.packId)).size >= 2, `${playerCount}-player launch band should span at least two theme packs`);
+  }
   for (const entry of matching) {
     assert(registrySource.includes(`'${entry.id}': { playerCount: ${playerCount}, case:`), `shared curated registry missing ${entry.id} for ${playerCount} players`);
     assert(fs.existsSync(`lib/server-stories/${entry.id}.ts`), `missing curated story file: ${entry.id}`);
@@ -49,4 +53,4 @@ assert(createSource.includes('packsForPlayerCount(players)'), 'Expo create-room 
 assert(createSource.includes('setStoryPackId(null)'), 'changing player count must clear a stale pack filter');
 assert(createSource.includes("setError('اختار قضية جاهزة مناسبة لعدد اللاعبين.')"), 'submit must still validate selected preset against the full exact-count set');
 
-console.log('Curated player-count + pack contract passed: exact 4–10 coverage, safe theme browsing, shared server metadata, no unsupported fallback.');
+console.log('Curated player-count + pack contract passed: broader 4–5 launch coverage, exact 4–10 matching, safe theme browsing, shared server metadata, no unsupported fallback.');
