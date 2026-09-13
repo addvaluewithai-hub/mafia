@@ -3,78 +3,71 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 77 is a delivery session focused on reproducible npm dependency resolution and durable security evidence after the CI/runtime toolchain pinning milestone became Green.
+Session 78 is a delivery session focused on launch-readiness observability/error-path hardening after the reproducible npm dependency milestone became fully Green.
 
-The prior toolchain-hardening handoff SHA `c2ef1495294c1dc3e3e504eb12fe2bfb2491db4e` is fully Green:
-- CI run `34749829387`: `completed/success`.
-- Game QA run `34749829351`: `completed/success`.
+The Session 77 handoff SHA `358ba16062b70783b7abab4126d98dac085d652c` is fully Green:
+- CI run `34752202906`: `completed/success`.
+- Game QA run `34752202909`: `completed/success`.
 
-Core/full-game confidence remains strong for supported counts 4–10, including Solo browser and multi-client human browser journeys. No authorized release workflow-dispatch action is exposed through the connected GitHub surface, so this session did not attempt Production release/preflight and instead executed the handoff fallback priority: reproducible npm dependency resolution/security evidence.
+Core/full-game confidence remains strong for supported counts 4–10, including Solo browser and multi-client human browser journeys. No authorized release workflow-dispatch action is exposed through the connected GitHub surface, so this session did not attempt Production release/preflight and instead executed the handoff fallback priority: one bounded observability/error-path vertical slice.
 
-## Session 77 — 2026-09-13 — Delivery
+## Session 78 — 2026-09-13 — Delivery
 
 ### Starting evidence
 - Read, in order, `AGENTS.md`, `docs/qa/QA-OPERATING-MODE.md`, and this handoff from the default branch.
-- `main` started at `c2ef1495294c1dc3e3e504eb12fe2bfb2491db4e`.
-- Resolved the pending toolchain prerequisite first: CI `34749829387` and Game QA `34749829351` both `completed/success`.
-- Repository had no committed npm lockfile and both normal CI and Game QA used `npm install`, allowing package-range resolution to drift for the same repository SHA.
-- The local execution container has no outbound DNS/cache suitable for package resolution, so no lockfile was hand-authored or guessed. A temporary bounded GitHub Actions bootstrap used normal npm tooling in GitHub's runner.
+- `main` started at `358ba16062b70783b7abab4126d98dac085d652c`.
+- Resolved the pending Session 77 prerequisite first: CI `34752202906` and Game QA `34752202909` both `completed/success`.
+- Existing gameplay observability already covered create/join/start/generation/vote/resolve/reconnect with a strict privacy-safe telemetry schema and release correlation.
+- The telemetry endpoint intentionally fails non-blockingly, but rejected ingest paths had no structured operational evidence. Invalid payloads, guard outages, or telemetry rate limiting could therefore make the telemetry channel itself fail silently from an operator perspective.
 
 ### Exact objective
-Make application dependency resolution reproducible and security findings durable as one launch-hardening slice: generate a real npm lockfile with npm, capture an audit baseline, switch CI/Game QA to lockfile installs, add a high/critical production-dependency audit gate, keep the separately installed browser QA runtime from mutating lock state, and remove the temporary bootstrap workflow after use.
+Make telemetry-ingest failures diagnosable without weakening gameplay isolation or privacy: emit bounded structured evidence for telemetry endpoint rejection/failure paths, keep user/session/install identifiers and raw provider errors out of logs, protect the contract in CI, and document the operational query shape.
 
 ### Reproduction / design finding
-- GitHub runner bootstrap generated npm lockfile v3 with `npm install --package-lock-only --ignore-scripts` and committed it as `f9e932e3ae298b346fb052afcb574b8dd70c138e`.
-- The same run captured `qa/reports/npm-audit-baseline.json` from `npm audit --json`.
-- Baseline: 13 moderate, 0 high, 0 critical vulnerabilities; 769 resolved dependencies total.
-- Moderate findings are concentrated in Expo/Expo Router transitive chains. npm's suggested fixes include semver-major/stack-downgrade changes such as Expo `46.0.21` and Expo Router `5.1.11`, which are not safe automatic fixes for the current Expo 57 stack.
-- Therefore the session records this debt but does not use `npm audit fix --force` or blindly change Expo/React Native versions. CI instead gates new high/critical production dependency findings.
+- `app/api/telemetry+api.ts` returned explicit HTTP errors for missing abuse key, oversized body, invalid JSON, invalid telemetry, unavailable abuse guard, and telemetry rate limiting.
+- Gameplay callers intentionally swallow telemetry transport failures, which is correct for product resilience, but there was no separate structured log for those ingest failures.
+- This created an observability blind spot: operators could see missing gameplay telemetry without distinguishing normal absence from ingestion rejection/guard failure.
+- The safe design is a separate error-only log type with an enumerated reason, HTTP status, and server release. It must never include request bodies, room/player identity, the installation key, or raw Supabase guard errors.
 
 ### Code / database / test / doc changes
-- Added npm-generated `package-lock.json` (`lockfileVersion: 3`).
-- Added `qa/reports/npm-audit-baseline.json` with timestamped counts and package-level findings.
-- `.github/workflows/ci.yml` now uses `npm ci` and runs `npm audit --omit=dev --audit-level=high`.
-- `.github/workflows/game-qa.yml` now uses `npm ci`; the exact Playwright `1.55.0` test-only install uses `--package-lock=false` so it cannot mutate lock state.
-- A temporary path-scoped bootstrap workflow generated/committed the npm artifacts and was removed in the same session.
-- No gameplay, story, DB schema/migration, Production configuration, release behavior, or existing QA assertion was weakened.
+- `app/api/telemetry+api.ts` now emits `type: "akher_kheit.telemetry_ingest"` only for ingest failures.
+- Allowed ingest failure reasons are bounded to: `missing_abuse_key`, `payload_too_large`, `invalid_json`, `invalid_telemetry`, `guard_unavailable`, and `rate_limited`.
+- Each ingest diagnostic contains only `outcome: "error"`, `reason`, HTTP `status`, and server `release`.
+- Existing gameplay telemetry remains `type: "akher_kheit.gameplay"`; successful ingestion does not add a second noisy ingest log.
+- `scripts/qa/observability-contract.mjs` now requires the structured ingest log, bounded reason vocabulary, status/release correlation, and verifies the ingest logger helper does not reference the installation key or raw guard error.
+- `docs/operations/OBSERVABILITY.md` now documents the ingest diagnostic stream and its privacy/query contract.
+- No gameplay, story, DB schema/migration, release behavior, dependency versions, or existing gameplay QA assertion was weakened.
 
 ### Commits
-- `fb093db2505900d12c4bcea6250a7eb67f02992e` — temporary npm bootstrap workflow.
-- `f9e932e3ae298b346fb052afcb574b8dd70c138e` — npm-generated lockfile and audit baseline.
-- `46349c7159289fa0c69f92ef236fcbd1ec6f520b` — remove temporary bootstrap workflow.
-- `629a560a3417ea7787ec2f37872833b8ae9d4bca` — CI reproducible npm install + production audit gate.
-- `83796943a02a0f647399c962e5d22bd9fe18e4d6` — Game QA lockfile install.
-- `e4721eb6765919fca838e929e1090afe82efc847` — initial Session 77 handoff evidence.
-- This documentation descendant records the observed final-check state.
+- `80a3cec1e16c3328a2ece731bbc4055a06b547fd` — structured privacy-safe telemetry ingest failure logs.
+- `093ad54e152e20a28a757f06948c5078e28f9263` — initial ingest failure contract coverage.
+- `bbcb3660d06cc3ab7b7233239f808d390cac9830` — tighten ingest privacy assertion to inspect the logger boundary directly.
+- `318e03da1a27a0fac8d499bc579d0e996e387e79` — document telemetry ingest diagnostics and operational query shape.
+- This documentation descendant records the final observed check state.
 
 ### Check / test results
-Prior prerequisite `c2ef1495294c1dc3e3e504eb12fe2bfb2491db4e`:
-- CI `34749829387`: `completed/success`.
-- Game QA `34749829351`: `completed/success`.
+Prior prerequisite `358ba16062b70783b7abab4126d98dac085d652c`:
+- CI `34752202906`: `completed/success`.
+- Game QA `34752202909`: `completed/success`.
 
-Dependency bootstrap run `34752058071` on `fb093db2...`:
-- `completed/success`.
-- lockfile generation: success.
-- npm audit evidence capture: success.
-- generated evidence commit: success.
+Implementation SHA `bbcb3660d06cc3ab7b7233239f808d390cac9830` at final inspection:
+- CI run `34754648506`: `in_progress`; dependency installation was still running and the observability contract step had not yet executed.
+- Game QA run `34754648487`: `in_progress`.
 
-Session 77 handoff SHA `e4721eb6765919fca838e929e1090afe82efc847` at final inspection:
-- CI run `34752169998`: `in_progress`.
-- Game QA run `34752170006`: `in_progress`.
-
-Because final exact-SHA checks are still running, Session 77 does **not** claim the dependency-hardening change Green or deploy-safe yet.
+The documentation descendant `318e03da...` was committed after those implementation checks started. Because the exact-SHA checks for this session are not yet Green, Session 78 does **not** claim deploy safety.
 
 ### Newly discovered bugs / risks
-- Current npm audit baseline contains 13 moderate findings and no high/critical findings. The moderate Expo/Expo Router transitive debt remains open; do not apply npm's semver-major/stack-downgrade suggestions blindly.
-- The security gate depends on current registry/advisory availability; `npm ci` resolution itself is reproducible from the committed lockfile.
+- Telemetry ingest is now observable when rejected, but it remains intentionally write-only to application logs; there is no durable analytics store or alerting pipeline in this repository.
+- The failure reason vocabulary is intentionally coarse. Do not add raw exception messages or user-entered dimensions to make incident queries more detailed.
+- Current npm audit debt remains 13 moderate, 0 high, 0 critical; Expo/Expo Router transitive findings remain separate dependency debt.
 - Supabase local `[inbucket]` deprecation remains separate configuration debt.
 - Release/live smoke remains blocked from this connected surface because authorized workflow dispatch is not exposed.
 
 ### Deploy safety
-Not deploy-safe yet for Session 77 because CI/Game QA for the final lockfile-backed changes remain in progress. No Production deploy, restore, migration, production DB write, provider mutation, or release workflow dispatch was performed.
+Not deploy-safe yet for Session 78 because CI/Game QA for the implementation/documentation descendants are still running or not yet observed Green. No Production deploy, restore, migration, production DB write, provider mutation, or release workflow dispatch was performed.
 
 ### Roadmap impact
-Launch-readiness reproducibility is materially stronger: workflow/runtime tooling is immutable from Session 76, and application npm resolution is now lockfile-backed with measured security debt and a high/critical production gate.
+Launch-readiness observability is stronger: gameplay operation failures and telemetry-channel failures are now distinguishable by separate structured, release-correlated, privacy-safe log types without making telemetry blocking or identifying users.
 
 ## Prior milestone summary
 - Core/full-game behavior is Green for supported counts 4–10 with deterministic simulations, local Supabase RPC E2E, Solo Chromium full-game E2E, and multi-client human browser E2E.
@@ -82,7 +75,8 @@ Launch-readiness reproducibility is materially stronger: workflow/runtime toolin
 - Story critic passes the current curated set; LLM discussion and 11–15 player expansion remain deliberately deferred.
 - Preset start no longer depends on Gemini in exported Expo flow.
 - CI/release Actions and Supabase CLI are pinned to immutable/exact versions.
-- Application npm dependency resolution is now represented by a generated lockfile and CI/Game QA use `npm ci`.
+- Application npm dependency resolution is lockfile-backed; CI/Game QA use `npm ci`; current audit baseline is 13 moderate / 0 high / 0 critical.
+- Gameplay telemetry has a strict privacy contract and telemetry-ingest failures now have separate bounded operational diagnostics.
 
 ## Exact next-session priority
-First resolve exact-SHA CI and Game QA for the Session 77 documentation descendant and confirm `npm ci` plus the production audit gate are compatible with the full suite. If either fails, fix exactly the first meaningful dependency/lockfile compatibility failure without deleting the lockfile, weakening QA, suppressing a high/critical finding, or force-upgrading/downgrading the Expo stack. If both are fully Green and an authorized exact-SHA release dispatch becomes available, run only the repository-approved guarded release/preflight + live smoke objective. If Green and dispatch is still unavailable, execute one bounded observability/error-path hardening vertical slice from the launch-readiness roadmap. Do not add LLM discussion or expand to 11–15 next session.
+First resolve exact-SHA CI and Game QA for the Session 78 implementation/documentation descendant. If either fails, fix exactly the first meaningful observability/compatibility failure without weakening the privacy contract or gameplay QA. If both are fully Green and an authorized exact-SHA release dispatch becomes available, run only the repository-approved guarded release/preflight + live smoke objective. If Green and dispatch is still unavailable, perform a checkpoint/planning session: Session 78 follows several launch-hardening delivery sessions and the checkpoint must audit what is actually Green, remaining launch blockers, production/release evidence gaps, observability/error-path gaps, dependency/config debt, and set the next 3–4 substantial milestones. Do not add LLM discussion or expand to 11–15 before that checkpoint.
