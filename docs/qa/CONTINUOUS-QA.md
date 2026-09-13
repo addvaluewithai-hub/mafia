@@ -40,10 +40,13 @@ The correct acceptance-test contract is to keep the gameplay journey unchanged a
 
 ### Commits
 - `458e9a343d18d2feacb6a34befece38eb64146a4` — bound browser failure diagnostics independently from the test journey.
+- `f6ae3583349e3e622d095153d3aaa06326845840` — record Session 67 evidence/handoff.
 
 ### Checks
 - Baseline `c4078ecc...`: CI success; Game QA failure at `Solo AI browser E2E`.
-- Exact-SHA CI/Game QA for `458e9a343d18d2feacb6a34befece38eb64146a4` had not yet surfaced in the connected Actions listing at the final inspection immediately after the commit.
+- Post-change exact-SHA checks for `458e9a343d18d2feacb6a34befece38eb64146a4` at final inspection:
+  - CI run 34728126616: `in_progress`.
+  - Game QA run 34728126780: `in_progress`.
 - Therefore this session does **not** claim the browser check is Green or deploy-safe yet.
 
 ### Newly discovered bugs / risks
@@ -52,7 +55,7 @@ The correct acceptance-test contract is to keep the gameplay journey unchanged a
 - Browser/live Production evidence remains weaker than local evidence until an authorized guarded exact-SHA release can run.
 
 ### Deploy safety
-Not deploy-safe from this session because exact-SHA CI/Game QA for `458e9a343d18d2feacb6a34befece38eb64146a4` are not yet resolved. No Production deploy, restore, migration, DB write, or provider mutation was performed.
+Not deploy-safe from this session because exact-SHA CI/Game QA for `458e9a343d18d2feacb6a34befece38eb64146a4` are still running. No Production deploy, restore, migration, DB write, or provider mutation was performed.
 
 ### Roadmap impact
 This session stays inside the same browser-coverage milestone and does not start launch-readiness or any second product objective. LLM discussion and 11–15 expansion remain deferred.
