@@ -6,8 +6,7 @@ import { Text, View } from 'react-native';
 
 import { GenderPicker } from '@/components/gender-picker';
 import { Body, Button, Card, ErrorText, Eyebrow, Field, MiniStat, Screen, SectionTitle, Title } from '@/components/game-ui';
-import { addAiPlayer, errorToMessage } from '@/lib/game';
-import { ensureAnonymousSession, supabase } from '@/lib/supabase';
+import { addAiPlayer, createRoomV3, errorToMessage } from '@/lib/game';
 import type { PlayerGender } from '@/lib/types';
 
 export default function SoloScreen() {
@@ -23,19 +22,15 @@ export default function SoloScreen() {
     setLoading(true);
     setError('');
     try {
-      await ensureAnonymousSession();
-      const { data, error: rpcError } = await supabase.rpc('create_room_v3', {
-        p_boss_name: nickname.trim(),
-        p_boss_gender: gender,
-        p_max_players: 4,
-        p_difficulty: 'hard',
-        p_theme: 'قضية جاهزة محكمة',
-        p_case_mode: 'preset',
-        p_story_template_id: 'last-tray',
+      const code = await createRoomV3({
+        bossName: nickname,
+        bossGender: gender,
+        maxPlayers: 4,
+        difficulty: 'hard',
+        theme: 'قضية جاهزة محكمة',
+        caseMode: 'preset',
+        storyTemplateId: 'last-tray',
       });
-      if (rpcError) throw rpcError;
-
-      const code = String(data);
       await Promise.all([addAiPlayer(code), addAiPlayer(code), addAiPlayer(code)]);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace(`/room/${code}`);
