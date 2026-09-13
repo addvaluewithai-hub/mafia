@@ -86,7 +86,8 @@ The next coherent curated milestone is therefore the whole 8–10 launch band, n
 - No Production deploy, restore, migration, DB write, provider mutation, or release workflow dispatch was performed.
 
 ### Commits
-- Session 86 checkpoint handoff: this commit (`docs: record post-curated checkpoint`).
+- `a351721b390d692bcbe5a5bc0cd8e037cb7ee0f3` — `docs: record post-curated checkpoint`.
+- Session 86 final handoff status update: this commit (`docs: record checkpoint check status`).
 
 ### Check / test results
 Prerequisite evidence:
@@ -95,7 +96,11 @@ Prerequisite evidence:
 - `95b7e6ee8155f711af4a9ff419381791d101f3ae` `validate`: `completed/success`.
 - `95b7e6ee8155f711af4a9ff419381791d101f3ae` `qa`: `completed/success`.
 
-This checkpoint changes documentation only. Resulting checks for the checkpoint commit must still be inspected before the next session treats this handoff descendant as Green.
+Checkpoint commit `a351721b390d692bcbe5a5bc0cd8e037cb7ee0f3` at the last inspection:
+- `validate`: `queued` (run `34778012861`).
+- `qa`: `queued` (run `34778012872`).
+
+Because resulting checkpoint checks are not yet Green, this session does not make a new deploy-safe claim.
 
 ### Newly discovered bugs / risks
 - No new gameplay P0 was discovered.
@@ -105,8 +110,8 @@ This checkpoint changes documentation only. Resulting checks for the checkpoint 
 - The moderate dependency baseline and log-only observability remain launch debt, but neither currently outranks release evidence or the remaining curated-library milestone when release dispatch is unavailable.
 
 ### Deploy safety
-- Current `main` has Green CI/Game QA evidence through the Session 85 handoff, but this checkpoint does **not** claim production deploy safety.
-- Production migration parity and guarded live smoke remain unproven.
+- Current `main` had Green CI/Game QA evidence through the Session 85 handoff before this documentation-only checkpoint.
+- This checkpoint does **not** claim production deploy safety: its resulting checks are still queued, and production migration parity plus guarded live smoke remain unproven.
 - Do not deploy, restore services, or apply production migrations from this state without the repository's release safety gate.
 
 ### Roadmap impact — next substantial objectives
@@ -124,4 +129,4 @@ This checkpoint changes documentation only. Resulting checks for the checkpoint 
 - LLM discussion expansion and 11–15 remain deliberately deferred.
 
 ## Exact next-session priority
-First resolve exact-SHA CI/Game QA for this Session 86 checkpoint handoff descendant. If any real failure exists, fix exactly the first meaningful failure before new scope. If Green and an authorized exact-SHA release workflow dispatch becomes available, execute one guarded release-preflight + live-smoke session only. If Green and dispatch remains unavailable, execute one substantial curated 8–10 vertical slice: add one reviewed case for each of 8, 9, and 10 players in that count's currently missing theme pack, update shared catalog/server registry plus deterministic coverage/fairness evidence, and stop without opening 11–15 or unrelated features.
+First resolve exact-SHA CI/Game QA for the Session 86 checkpoint handoff descendant. If any real failure exists, fix exactly the first meaningful failure before new scope. If Green and an authorized exact-SHA release workflow dispatch becomes available, execute one guarded release-preflight + live-smoke session only. If Green and dispatch remains unavailable, execute one substantial curated 8–10 vertical slice: add one reviewed case for each of 8, 9, and 10 players in that count's currently missing theme pack, update shared catalog/server registry plus deterministic coverage/fairness evidence, and stop without opening 11–15 or unrelated features.
