@@ -3,69 +3,72 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 69 is a delivery session constrained to the still-failing `Solo AI browser E2E` prerequisite. At session start, latest `main` was `4bb02d9308e1c0b883606c2b622c2e662ecfb4db`. The prerequisite implementation SHA `5b95775e67034528c66b299288d33c31e7188292` had exact-SHA CI run 34730830821 `completed/success` and Game QA run 34730830780 `completed/failure` specifically at `Solo AI browser E2E`. Every preceding step was Green: dependencies, TypeScript, Expo doctor, static identity/story/AI contracts, deterministic full-game state simulations, story critic, clean local Supabase startup, and browser runtime installation. Downstream schema/RPC E2E steps were skipped because the browser step failed.
+Session 70 is a delivery session constrained to the still-failing `Solo AI browser E2E` prerequisite. At session start, latest `main` was `0d5da8f68721029ec49b7d31a7581a21bf224932`. The prerequisite implementation SHA `0c03838e0687ecb77097e01d28326cfc5b3426ca` had exact-SHA CI `completed/success` and Game QA `completed/failure` specifically in the browser E2E path.
 
-Session 68's Solo-path correction therefore did not fully close the browser failure. The connected GitHub job surface exposes step-level status and duration but not the Playwright stdout/error body. The existing QA artifact also contained only `game-sim.json`, `story-critic.json`, and `story-fairness-baseline.json`, so there was no durable browser failure evidence to identify the next assertion safely. The deterministic game report remained Green for 140 simulations across 4–10 players, and story critic remained Green with 14 curated cases covering 4–10.
+The new durable artifact from Session 69 successfully exposed the first actionable browser failure. `solo-browser-e2e.json` showed the journey reached `first-innocent-target-selected` for `AI ملك` within about two seconds, then timed out at 75 seconds without reaching `human-vote-submitted`. The captured page body showed that the same nickname appeared in the AI discussion card, the suspect list, and the voting choices. The test used `getByText(firstTarget.nickname).first().click()`, so it clicked the first non-voting occurrence in the AI discussion section. The subsequent `ثبّت صوتي` button stayed disabled because `selectedVote` was never set, and Playwright waited until the test timeout. This is a browser-test selector defect, not evidence of a gameplay voting deadlock.
 
-Session 69 makes the failing browser acceptance test self-report its exact progress and failure into `qa/reports/solo-browser-e2e.json`, which is already collected by the existing `qa/reports/*.json` artifact upload. The test now persists milestone timestamps from `/solo` open through room navigation, browser session capture, roster verification, case install, AI discussion visibility, human vote, first elimination, round two, refresh/reconnect, mafia vote, winner UI, and final server snapshot. On failure it persists Playwright's error message/stack plus the existing bounded URL/title/body diagnostics. No gameplay assertion, timeout safety gate, production path, schema, or test expectation was removed or weakened.
+Session 70 fixes only that evidenced failure. The browser test now targets the last exact nickname occurrence, which is the actual vote choice in the current rendered order, records a `human-vote-target-clicked` milestone, and asserts the visible `اختيارك` state before submitting the vote. No gameplay assertion, server behavior, timeout safety gate, schema, migration, Production path, or downstream acceptance step was removed or weakened.
 
 Core full-game coverage for 4–10 remains previously Green across deterministic and local RPC suites, including ties, elimination, reconnect, next rounds, Boss authority, winner, rematch, and AI Players identity/voting. The curated library remains 14 reviewed Egyptian-Arabic cases covering 4–10, and database migration parity remains closed.
 
 The connected GitHub surface still has no authorized exact-SHA dispatch action for the guarded Vercel release workflow, so do not substitute an unpinned release. LLM discussion and 11–15 expansion remain deferred until gameplay/UX evidence justifies them.
 
-## Session 69 — 2026-09-13 — Delivery
+## Session 70 — 2026-09-13 — Delivery
 
 ### Starting evidence
-- `main` started at `4bb02d9308e1c0b883606c2b622c2e662ecfb4db` (`docs: record session 68 solo room creation fix`).
-- Prerequisite implementation `5b95775e67034528c66b299288d33c31e7188292`:
-  - CI run 34730830821: `completed/success`.
-  - Game QA run 34730830780: `completed/failure`.
-  - Game QA job 103653186182: every step through `Install browser QA runtime` Green; `Solo AI browser E2E` failed; downstream schema/RPC E2E steps skipped.
-- Game QA artifact 10308818626 contained only deterministic game/story JSON reports and no browser failure trace.
-- `game-sim.json` reported `ok: true`, 140 simulations, player counts 4–10, including tie reset, eliminated-player voting prevention, next-round voting, Boss capability, and winner completion.
-- `story-critic.json` reported `ok: true`, average score 9.9, fairness/integrity Green, coverage 4–10.
+- `main` started at `0d5da8f68721029ec49b7d31a7581a21bf224932` (`docs: record session 69 browser evidence hardening`).
+- Prerequisite implementation `0c03838e0687ecb77097e01d28326cfc5b3426ca`:
+  - CI run 34733255098: `completed/success`.
+  - Game QA run 34733255112: `completed/failure`.
+- Game QA artifact `game-qa-reports` artifact id 10309524452 contained the new `solo-browser-e2e.json` evidence.
+- Browser evidence:
+  - `ok: false`.
+  - last stage: `first-innocent-target-selected`.
+  - selected target: `AI ملك` in that run.
+  - Playwright error: `Test timeout of 75000ms exceeded.`
+  - diagnostics still showed the voting UI, `ثبّت صوتي`, and `0/4 أصوات`; no vote had been selected or submitted.
+- The rendered body contained the target nickname first in `كلام لاعيبة الـAI`, then in the suspect list, then in the vote-choice list.
 
 ### Objective
-Close the evidence gap blocking diagnosis of the first meaningful `Solo AI browser E2E` failure by preserving exact browser milestones, Playwright error information, and bounded rendered-page diagnostics in the standard QA artifact, without weakening acceptance coverage or starting unrelated scope.
+Fix the first durable, evidenced browser acceptance failure by making the Solo E2E select the actual voting choice for the intended innocent Bot and prove the UI selection state before submitting the human vote, without changing gameplay behavior or weakening coverage.
 
 ### Reproduction / design finding
-The failing Game QA step lasted from 01:36:38Z to 01:38:56Z on run 34730830780, but the connected job API exposes only step state/timing. The uploaded QA artifact did not include Playwright output. Because the protocol forbids guessing and weakening a failing test, the safe first action is to make the existing test produce durable machine-readable evidence that survives CI and is retrievable from the existing artifact channel.
+The failing test used `page.getByText(firstTarget.nickname, { exact: true }).first().click()`. Because AI discussion cues are rendered above the suspect and voting sections and repeat each Bot nickname, `.first()` resolved to a non-interactive discussion nickname. The click therefore did not call the voting `PlayerCard` `onPress`, `selectedVote` remained null, and the `ثبّت صوتي` button remained disabled by the product's intended guard (`disabled={!selectedVote || !snapshot.canVote}`). Playwright then waited for the disabled button until the 75-second test timeout.
 
-The browser acceptance test already had bounded page diagnostics in `afterEach`, but those only went to stdout. Session 69 persists them and the Playwright error itself, while also writing each completed journey stage synchronously so an outer timeout or process termination still leaves the last known stage in the artifact.
+The product voting UI itself still exposed the correct target, vote button, Boss controls, and `0/4 أصوات`; the failure evidence does not support changing product voting logic.
 
 ### Changes
 - Updated `scripts/qa/solo-browser-e2e.spec.mjs`.
-- Added synchronous JSON evidence at `qa/reports/solo-browser-e2e.json`.
-- Added explicit milestones for the complete existing path: open Solo → submit create → room navigation → auth/session capture → 1 human + 3 AI roster → install deterministic case → AI discussion → human vote → seeded local vote completion → first elimination → next clue → refresh/reconnect → mafia vote → winner UI → authoritative finished snapshot.
-- Persist failure `message`/`stack` from Playwright `testInfo.error` plus bounded page URL/title/body diagnostics.
-- Kept the existing 75-second test timeout, 15-second navigation bounds, 2-second failure diagnostic bound, and every pre-existing product assertion unchanged.
-- No schema, migration, Production database, provider, release, or deployed service was changed.
+- Replaced the ambiguous first nickname click with the last exact nickname occurrence, which corresponds to the vote-choice card in the current layout.
+- Added `human-vote-target-clicked` evidence immediately after the target click.
+- Added an explicit assertion that the `اختيارك` pill becomes visible before clicking `ثبّت صوتي`.
+- Kept the complete path unchanged after that point: human vote → deterministic local vote completion → first elimination → next clue → refresh/reconnect → mafia vote → winner UI → authoritative finished snapshot.
+- No app runtime, schema, migration, Production database, provider, release, or deployed service was changed.
 
 ### Commits
-- `0c03838e0687ecb77097e01d28326cfc5b3426ca` — persist Solo browser failure evidence in standard QA reports.
+- `6268ed29728dea9985c6481e50f559dc0044fbed` — target the actual Solo vote choice and verify selection state.
 
 ### Checks
-- Baseline `5b95775e...`: CI success; Game QA failure at `Solo AI browser E2E`.
-- Post-change exact-SHA checks for `0c03838e0687ecb77097e01d28326cfc5b3426ca` at final inspection:
-  - CI run 34733255098: `completed/success`.
-  - Game QA run 34733255112: `in_progress`.
-  - In the latest job inspection, all static checks through story critic were Green and `Start clean local Supabase` was still in progress; browser execution had not started yet.
+- Baseline `0c03838e...`: CI success; Game QA failure at `Solo AI browser E2E` with durable evidence described above.
+- Post-change exact-SHA checks for `6268ed29728dea9985c6481e50f559dc0044fbed` at final inspection:
+  - CI run 34735731510: `in_progress`.
+  - Game QA run 34735731511: `in_progress`.
 - Therefore this session does **not** claim the browser check is Green or deploy-safe.
 
 ### Newly discovered bugs / risks
-- The Solo room-creation drift fixed in Session 68 was real but not sufficient to close the browser E2E failure.
-- The prior QA artifact had an observability gap: a critical browser acceptance failure could not be diagnosed from durable GitHub evidence available to this QA loop.
-- The new evidence file is diagnostic only; it does not prove or mask a gameplay fix. The next completed exact-SHA run must be read before changing selectors, product state, AI-player concurrency, or vote behavior.
-- Browser/live Production evidence remains weaker than local evidence until the browser suite is Green and an authorized guarded exact-SHA release can run.
+- The new artifact proved the previous repeated timeout was caused by an ambiguous browser selector selecting duplicated display text, not by the voting state machine itself.
+- The selector still depends on current vertical render order (`last()` means the vote-choice occurrence). The added `اختيارك` assertion makes any future layout drift fail immediately at the selection boundary instead of hanging later at vote submission.
+- If Game QA fails later in the journey, use the persisted stage/error/diagnostics to fix only the next first evidenced failure; do not infer downstream correctness from this selector fix.
+- Browser/live Production evidence remains weaker than local evidence until the complete browser suite is Green and an authorized guarded exact-SHA release can run.
 
 ### Deploy safety
-Not deploy-safe from this session because exact-SHA Game QA for `0c03838e0687ecb77097e01d28326cfc5b3426ca` had not completed at final inspection. No Production deploy, restore, migration, DB write, or provider mutation was performed.
+Not deploy-safe from this session because exact-SHA CI and Game QA for `6268ed29728dea9985c6481e50f559dc0044fbed` were still in progress at final inspection. No Production deploy, restore, migration, DB write, or provider mutation was performed.
 
 ### Roadmap impact
-This session remains inside the same full-game/browser-confidence objective and improves the evidence quality needed to close it safely. No new gameplay, LLM discussion, 11–15 expansion, or unrelated polish was started.
+This session remains inside the same full-game/browser-confidence objective. It converts the newly durable diagnostic evidence into a precise acceptance-test repair without changing product semantics. No new gameplay, LLM discussion, 11–15 expansion, or unrelated polish was started.
 
 ## Prior handoff
-Session 68 routed Solo room creation through the canonical hardened `createRoomV3` helper (`create_room_v4` + abuse installation key) instead of stale direct `create_room_v3`, while preserving the browser acceptance assertions. Its resulting exact-SHA CI passed but Game QA still failed specifically at `Solo AI browser E2E`.
+Session 69 added durable browser milestones and failure diagnostics to the standard Game QA artifact after repeated `Solo AI browser E2E` failures could not be diagnosed from GitHub step status alone. Session 68 had already corrected Solo room creation to use the canonical hardened room-creation helper; that change was real but did not close the browser test because the later vote selector was still ambiguous.
 
 ## Exact next-session priority
-Resolve exact-SHA Game QA run 34733255112 for `0c03838e0687ecb77097e01d28326cfc5b3426ca` first. If `Solo AI browser E2E` fails, download the `game-qa-reports` artifact, read `solo-browser-e2e.json`, and fix the first evidenced assertion/navigation/product failure only, without weakening coverage or starting new scope. If the browser and all downstream Game QA steps are Green and authorized exact-SHA Vercel release dispatch is available, execute one guarded release plus live smoke/playtest covering create/Solo, AI discussion, elimination, refresh/reconnect, voting, and winner. If dispatch remains unavailable, perform one bounded launch-readiness hardening objective driven by combined browser/RPC evidence; do not add LLM discussion or expand to 11–15 without new evidence.
+Resolve exact-SHA CI and Game QA for `6268ed29728dea9985c6481e50f559dc0044fbed` first. If `Solo AI browser E2E` fails again, download `game-qa-reports`, read `solo-browser-e2e.json`, and fix the first newly evidenced assertion/navigation/product failure only, without weakening coverage or starting new scope. If browser and all downstream Game QA steps are Green and authorized exact-SHA Vercel release dispatch is available, execute one guarded release plus live smoke/playtest covering create/Solo, AI discussion, elimination, refresh/reconnect, voting, and winner. If dispatch remains unavailable, perform one bounded launch-readiness hardening objective driven by combined browser/RPC evidence; do not add LLM discussion or expand to 11–15 without new evidence.
