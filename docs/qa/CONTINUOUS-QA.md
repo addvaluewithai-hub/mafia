@@ -3,101 +3,87 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 76 is a delivery session focused on dependency/runtime launch hardening after the multi-client human browser milestone became Green.
+Session 77 is a delivery session focused on reproducible npm dependency resolution and durable security evidence after the CI/runtime toolchain pinning milestone became Green.
 
-The prerequisite implementation SHA `a16c8a7a167f3d6df747062dbb5deba2c8f94425` is now fully Green:
-- CI run `34748124005`: `completed/success`.
-- Game QA run `34748123981`: `completed/success`.
+The prior toolchain-hardening handoff SHA `c2ef1495294c1dc3e3e504eb12fe2bfb2491db4e` is fully Green:
+- CI run `34749829387`: `completed/success`.
+- Game QA run `34749829351`: `completed/success`.
 
-That closes the previously active preset-start regression and confirms the multi-client human browser journey through normal Boss creation, three independent human joins, reveal, Boss controls, voting/elimination, next round, reconnect/refresh, and winner alongside the existing Solo browser path and RPC/full-game suites.
+Core/full-game confidence remains strong for supported counts 4–10, including Solo browser and multi-client human browser journeys. No authorized release workflow-dispatch action is exposed through the connected GitHub surface, so this session did not attempt Production release/preflight and instead executed the exact fallback priority from the handoff: reproducible npm dependency resolution/security evidence.
 
-No authorized workflow-dispatch action is exposed through the connected GitHub surface, so Session 76 did not attempt the guarded exact-SHA release workflow and did not perform a workaround. Per the prior checkpoint direction, the session instead executes one launch-hardening vertical slice: make GitHub Actions/runtime tooling deterministic and remove mutable action/runtime selectors that can make the same repository SHA behave differently over time.
-
-Core/full-game confidence remains strong for supported counts 4–10. Production/release safety remains gated through the repository-approved exact-SHA release path; no Production deploy, restore, migration, provider mutation, or production DB write was performed.
-
-## Session 76 — 2026-09-13 — Delivery
+## Session 77 — 2026-09-13 — Delivery
 
 ### Starting evidence
 - Read, in order, `AGENTS.md`, `docs/qa/QA-OPERATING-MODE.md`, and this handoff from the default branch.
-- `main` started at `65b37501e533622b4ae642a2cd01374798c90440` (`docs: record preset start regression fix`).
-- Resolved the handoff prerequisite `a16c8a7a167f3d6df747062dbb5deba2c8f94425` before opening new scope:
-  - CI `34748124005`: `completed/success`.
-  - Game QA `34748123981`: `completed/success`.
-- The connected GitHub tool surface supports repository reads/writes but does not expose workflow dispatch, so an authorized exact-SHA release/preflight run could not be initiated from this session.
-- Repository workflow inspection found mutable CI/runtime inputs:
-  - `actions/checkout@v4`, `actions/setup-node@v4`, and `actions/upload-artifact@v4` used moving tags.
-  - `supabase/setup-cli@v1` used a moving action tag.
-  - Game QA requested Supabase CLI with `version: latest`.
-  - Browser QA already used an exact Playwright package version (`@playwright/test@1.55.0`).
+- `main` started at `c2ef1495294c1dc3e3e504eb12fe2bfb2491db4e` (`docs: record CI toolchain hardening session`).
+- Resolved the pending toolchain prerequisite before opening new scope:
+  - CI `34749829387`: `completed/success`.
+  - Game QA `34749829351`: `completed/success`.
+- Repository had no committed npm lockfile and both normal CI and Game QA used `npm install`, so a later package publication could change the resolved graph for the same repository SHA.
+- The connected execution container has no outbound DNS/cache suitable for package resolution, so no lockfile was hand-authored or guessed. A temporary bounded GitHub Actions bootstrap used normal npm tooling in GitHub's runner instead.
 
 ### Exact objective
-Harden the CI/release toolchain as one coherent launch-readiness slice: pin GitHub Actions to immutable commit SHAs, pin Supabase CLI to an exact version, move the Supabase setup action to its current maintained major, and add an automated contract preventing mutable workflow dependencies from returning.
+Make application dependency resolution reproducible and security findings durable as one launch-hardening slice: generate a real npm lockfile using npm, capture an audit baseline, switch CI/Game QA to lockfile installs, add a high/critical production-dependency audit gate, keep the separately installed browser QA runtime from mutating lock state, and remove the temporary bootstrap workflow after use.
 
 ### Reproduction / design finding
-The previous QA logic was Green, but workflow reproducibility was weaker than product-test reproducibility. A new release of a moving GitHub Action tag or `Supabase CLI latest` could change CI/Game QA behavior without any repository commit. This is especially undesirable now that exact-SHA release safety is the launch gate.
-
-Current upstream release evidence checked during this session:
-- `actions/checkout` latest stable release: `v7.0.1`, commit `3d3c42e5aac5ba805825da76410c181273ba90b1`.
-- `actions/setup-node` latest stable release: `v7.0.0`, commit `820762786026740c76f36085b0efc47a31fe5020`.
-- `actions/upload-artifact` latest stable release: `v7.0.1`, commit `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`.
-- `supabase/setup-cli` latest stable release: `v3.0.0`, commit `46f7f98c7f948ad727d22c1e67fab04c223a0520`; this release supports exact npm-package CLI versions.
-- Supabase CLI latest stable release observed: `v2.117.0`, so Game QA now pins `2.117.0` instead of `latest`.
+- The absence of `package-lock.json` meant caret/tilde dependency ranges were re-resolved on every `npm install`.
+- GitHub runner bootstrap generated lockfile v3 successfully with `npm install --package-lock-only --ignore-scripts` and committed it as `f9e932e3ae298b346fb052afcb574b8dd70c138e`.
+- The same run captured `qa/reports/npm-audit-baseline.json` from `npm audit --json`.
+- Baseline result: 13 moderate, 0 high, 0 critical vulnerabilities across the resolved graph. The reported moderate findings are concentrated in Expo/Expo Router transitive chains; npm's suggested fixes include semver-major/downgrade-style changes such as Expo `46.0.21` and Expo Router `5.1.11`, which are not safe automatic fixes for the current Expo 57 stack.
+- Therefore this session records the moderate debt but does not run `npm audit fix --force` or change Expo/React Native versions blindly. CI now fails on newly observed high/critical production dependency findings while preserving visibility of the known moderate baseline.
 
 ### Code / database / test / doc changes
-- Added `scripts/qa/ci-toolchain-pinning-contract.mjs`.
-  - Requires external GitHub Actions in the three active CI/release workflows to use full 40-character commit SHAs.
-  - Rejects `version: latest` for the Supabase CLI.
-  - Requires an exact `x.y.z` Supabase CLI version.
-  - Requires the browser QA Playwright package to remain exactly versioned.
+- Added generated `package-lock.json` (lockfileVersion 3), produced by npm on GitHub Actions rather than hand-authored.
+- Added `qa/reports/npm-audit-baseline.json` with timestamped vulnerability/dependency counts and package-level findings.
 - Updated `.github/workflows/ci.yml`:
-  - pinned checkout to `3d3c42e5aac5ba805825da76410c181273ba90b1` (`v7.0.1`);
-  - pinned setup-node to `820762786026740c76f36085b0efc47a31fe5020` (`v7.0.0`);
-  - added the CI toolchain pinning contract as a normal CI step.
+  - changed install from `npm install` to `npm ci`;
+  - added `npm audit --omit=dev --audit-level=high` as the production dependency security gate.
 - Updated `.github/workflows/game-qa.yml`:
-  - pinned checkout/setup-node to the same immutable SHAs;
-  - upgraded/pinned `supabase/setup-cli` to `46f7f98c7f948ad727d22c1e67fab04c223a0520` (`v3.0.0`);
-  - pinned Supabase CLI to `2.117.0`;
-  - pinned upload-artifact to `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` (`v7.0.1`);
-  - retained exact Playwright `1.55.0` and all existing gameplay/browser/RPC assertions unchanged.
-- Updated `.github/workflows/package-vercel-source.yml` to pin checkout/setup-node/upload-artifact to the same immutable SHAs, preserving exact-SHA release semantics.
-- No gameplay code, tests, database schema/migration, story content, Production configuration, or release behavior was weakened.
+  - changed base install from `npm install` to `npm ci`;
+  - kept Playwright QA runtime exact at `1.55.0` and added `--package-lock=false` so the test-only install cannot mutate lock state.
+- Used a temporary path-scoped bootstrap workflow only to generate/commit npm-produced lock and audit evidence, then removed that workflow in the same session.
+- No gameplay, story, database schema/migration, Production configuration, release behavior, or existing QA assertion was weakened.
 
 ### Commits
-- `3291cd6f9bdb982866003f55f348506889ea49fd` — `test: guard pinned CI toolchain`.
-- `43c3eba743e76270bb98ff34ea73e4f13d6732fa` — `ci: pin workflow toolchain`.
-- `474353ba66f810c2c58c94bfd1dc41872f10f539` — `ci: pin game QA runtime`.
-- `fb8edf4a12909b798ff29aadfe85d67c2961b7ff` — `ci: pin release packaging actions`.
-- This documentation commit records Session 76 evidence and handoff state.
+- `fb093db2505900d12c4bcea6250a7eb67f02992e` — `chore: bootstrap reproducible dependency lock` (temporary generator workflow).
+- `f9e932e3ae298b346fb052afcb574b8dd70c138e` — `chore: commit npm lockfile and audit baseline` (GitHub Actions bot; npm-generated artifacts).
+- `46349c7159289fa0c69f92ef236fcbd1ec6f520b` — `chore: remove dependency lock bootstrap workflow`.
+- `629a560a3417ea7787ec2f37872833b8ae9d4bca` — `ci: enforce reproducible npm installs`.
+- `83796943a02a0f647399c962e5d22bd9fe18e4d6` — `ci: use lockfile in game QA`.
+- This documentation commit records Session 77 evidence and next priority.
 
 ### Check / test results
-Prerequisite SHA `a16c8a7a167f3d6df747062dbb5deba2c8f94425`:
-- CI `34748124005`: `completed/success`.
-- Game QA `34748123981`: `completed/success`.
+Prior prerequisite `c2ef1495294c1dc3e3e504eb12fe2bfb2491db4e`:
+- CI `34749829387`: `completed/success`.
+- Game QA `34749829351`: `completed/success`.
 
-Latest implementation SHA `fb8edf4a12909b798ff29aadfe85d67c2961b7ff` at final pre-handoff inspection:
-- CI `34749798351`: `in_progress`.
-- Game QA `34749798377`: `in_progress`.
+Dependency bootstrap run `34752058071` on `fb093db2...`:
+- `completed/success`.
+- `Generate npm lockfile with npm`: success.
+- `Capture npm audit evidence`: success.
+- `Commit generated dependency evidence`: success.
 
-Because exact-SHA checks are still running, this session does **not** claim the hardening change Green or deploy-safe yet.
+Latest implementation SHA `83796943a02a0f647399c962e5d22bd9fe18e4d6` had no check runs visible yet at the final pre-handoff inspection. The documentation descendant should trigger the normal CI/Game QA push workflows; resolve those exact-SHA checks first next session. Because final checks are not yet Green, this session does **not** claim the dependency-hardening change deploy-safe.
 
 ### Newly discovered bugs / risks
-- The repository still has no committed npm lockfile, and CI uses `npm install`; application-package resolution therefore remains less deterministic than the workflow runtime itself. Creating a lockfile should be treated as a separate dependency-management objective because it requires generating and validating the full dependency graph rather than hand-authoring lock data.
-- Existing npm vulnerability triage remains open and should be based on a concrete audit/report once dependency resolution is made reproducible; do not blindly apply force upgrades across the Expo/React Native stack.
-- Supabase local SMTP `[inbucket]` deprecation remains separate configuration debt below the currently running toolchain-hardening checks.
-- If the upgraded pinned GitHub Actions or Supabase setup action expose a real compatibility failure in CI/Game QA, fix that first next session rather than reverting to mutable tags.
+- Current npm audit baseline contains 13 moderate findings and no high/critical findings. The moderate Expo/Expo Router transitive debt remains open; do not apply npm's semver-major/stack-downgrade suggestions blindly.
+- The audit gate depends on registry/advisory availability at CI time; `npm ci` itself remains reproducible from the committed lockfile even if advisory data evolves.
+- Supabase local `[inbucket]` deprecation remains separate configuration debt.
+- Release/live smoke still cannot be launched from the connected GitHub surface because authorized workflow dispatch is not exposed here.
 
 ### Deploy safety
-Not deploy-safe yet for Session 76 because CI/Game QA on `fb8edf4a...` are still in progress. No Production deploy, restore, migration, production DB write, provider mutation, or release workflow dispatch was performed.
+Not deploy-safe yet for Session 77 because CI/Game QA for the final lockfile-install changes have not completed. No Production deploy, restore, migration, production DB write, provider mutation, or release workflow dispatch was performed.
 
 ### Roadmap impact
-The multi-client browser milestone is Green, so launch readiness is now the active roadmap phase. This session reduces CI/release drift and strengthens exact-SHA semantics by ensuring workflow tooling is immutable at the repository level. It does not claim release readiness until the pinned toolchain passes the full suite and the guarded production preflight/live smoke can run through an authorized dispatch path.
+Launch-readiness reproducibility is materially stronger: GitHub Actions/runtime tools are immutable from Session 76, and application npm resolution is now lockfile-backed in Session 77. The known dependency security debt is measured rather than hidden, with a high/critical production gate added without destabilizing the Expo 57 stack.
 
 ## Prior milestone summary
 - Core/full-game behavior is Green for supported counts 4–10 with deterministic simulations, local Supabase RPC E2E, Solo Chromium full-game E2E, and multi-client human browser E2E.
 - Identity/gender/case-role and curated story contracts are covered; gender remains wording-only and nickname remains visible identity.
 - Story critic passes the current curated set; LLM discussion and 11–15 player expansion remain deliberately deferred.
-- Session 75 fixed exported Expo preset start incorrectly depending on Gemini; `a16c8a7a...` is now fully Green.
-- Prior checkpoint launch priorities were: multi-client browser confidence, guarded release/live smoke, dependency/runtime hardening, then observability/error-path hardening. Multi-client confidence is now closed; this session executes the dependency/runtime hardening fallback because release dispatch is unavailable through the connected surface.
+- Preset start no longer depends on Gemini in exported Expo flow.
+- CI/release Actions and Supabase CLI are pinned to immutable/exact versions.
+- Application npm dependency resolution is now represented by a generated lockfile and CI/Game QA use `npm ci`.
 
 ## Exact next-session priority
-First resolve exact-SHA CI and Game QA for `fb8edf4a12909b798ff29aadfe85d67c2961b7ff` (and the documentation descendant). If either check fails, fix exactly the first meaningful toolchain compatibility failure without weakening QA coverage or restoring mutable tags. If both are fully Green and an authorized exact-SHA release dispatch becomes available, run only the repository-approved guarded release/preflight + live smoke objective. If Green and dispatch is still unavailable, execute one bounded dependency-management hardening slice centered on reproducible npm dependency resolution/security evidence (generate/validate a lockfile and audit findings using normal package tooling; do not hand-author lock data or force-upgrade the Expo stack). Do not add LLM discussion or expand to 11–15 next session.
+First resolve exact-SHA CI and Game QA for the Session 77 documentation descendant and confirm `npm ci` plus the production audit gate are compatible with the full suite. If either fails, fix exactly the first meaningful dependency/lockfile compatibility failure without deleting the lockfile, weakening QA, suppressing a high/critical finding, or force-upgrading/downgrading the Expo stack. If both are fully Green and an authorized exact-SHA release dispatch becomes available, run only the repository-approved guarded release/preflight + live smoke objective. If Green and dispatch is still unavailable, execute one bounded observability/error-path hardening vertical slice from the launch-readiness roadmap. Do not add LLM discussion or expand to 11–15 next session.
