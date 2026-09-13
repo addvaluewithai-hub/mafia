@@ -233,7 +233,9 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   await reloadHydrated(page);
   await expect(page.getByText('احسم التصويت', { exact: true })).toBeVisible();
   await page.getByText('احسم التصويت', { exact: true }).click();
-  await expect(page.getByText('CASE CLOSED', { exact: true })).toBeVisible();
+  const caseClosedLabels = page.getByText('CASE CLOSED', { exact: true });
+  await expect(caseClosedLabels).toHaveCount(2);
+  await expect(caseClosedLabels.last()).toBeVisible();
   await expect(page.getByText('الأبرياء كسبوا', { exact: true })).toBeVisible();
   await expect(page.getByText('Browser E2E fixture only.', { exact: true })).toBeVisible();
   markStage('winner-ui-verified');
