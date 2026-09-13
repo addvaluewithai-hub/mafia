@@ -50,7 +50,9 @@ for (const field of forbiddenTelemetryFields) {
   assert.equal(telemetryApi.includes(field), false, `telemetry API must not accept/log sensitive field: ${field}`);
 }
 
-assert.equal(telemetryApi.includes('slotError.message'), false, 'telemetry ingest diagnostics must not log raw guard errors');
-assert.equal(telemetryApi.includes('abuseKey,'), false, 'telemetry ingest diagnostics must not log the installation key');
+const ingestLogger = telemetryApi.match(/function logTelemetryIngestFailure[\s\S]*?\n}\n/)?.[0] ?? '';
+assert.ok(ingestLogger, 'telemetry ingest logger helper must exist');
+assert.equal(ingestLogger.includes('abuseKey'), false, 'telemetry ingest diagnostics must not log the installation key');
+assert.equal(ingestLogger.includes('slotError'), false, 'telemetry ingest diagnostics must not log raw guard errors');
 
 console.log('observability contract: PASS');
