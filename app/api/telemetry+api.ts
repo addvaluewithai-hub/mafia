@@ -13,6 +13,14 @@ const telemetrySchema = z.object({
   release: z.string().max(80).optional(),
 }).strict();
 
+type TelemetryIngestFailureReason =
+  | 'missing_abuse_key'
+  | 'payload_too_large'
+  | 'invalid_json'
+  | 'invalid_telemetry'
+  | 'guard_unavailable'
+  | 'rate_limited';
+
 function headers() {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -22,6 +30,25 @@ function headers() {
   };
 }
 
+function serverRelease() {
+  return process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.RELEASE_SHA ?? 'unknown';
+}
+
+function logTelemetryIngestFailure(reason: TelemetryIngestFailureReason, status: number) {
+  console.warn(JSON.stringify({
+    type: 'akher_kheit.telemetry_ingest',
+    outcome: 'error',
+    reason,
+    status,
+    release: serverRelease(),
+  }));
+}
+
+function errorResponse(error: string, status: number, reason: TelemetryIngestFailureReason, extraHeaders?: Record<string, string>) {
+  logTelemetryIngestFailure(reason, status);
+  return Response.json({ error }, { status, headers: { ...headers(), ...extraHeaders } });
+}
+
 export function OPTIONS() {
   return new Response(null, { headers: headers() });
 }
@@ -29,24 +56,24 @@ export function OPTIONS() {
 export async function POST(request: Request) {
   const abuseKey = request.headers.get('X-Abuse-Key')?.trim();
   if (!abuseKey) {
-    return Response.json({ error: 'missing_abuse_key' }, { status: 400, headers: headers() });
+    return errorResponse('missing_abuse_key', 400, 'missing_abuse_key');
   }
 
   const raw = await request.text();
   if (raw.length > 2048) {
-    return Response.json({ error: 'payload_too_large' }, { status: 413, headers: headers() });
+    return errorResponse('payload_too_large', 413, 'payload_too_large');
   }
 
   let parsed: unknown;
   try {
     parsed = raw ? JSON.parse(raw) : {};
   } catch {
-    return Response.json({ error: 'invalid_json' }, { status: 400, headers: headers() });
+    return errorResponse('invalid_json', 400, 'invalid_json');
   }
 
   const result = telemetrySchema.safeParse(parsed);
   if (!result.success) {
-    return Response.json({ error: 'invalid_telemetry' }, { status: 400, headers: headers() });
+    return errorResponse('invalid_telemetry', 400, 'invalid_telemetry');
   }
 
   const supabase = createClient(
@@ -59,22 +86,18 @@ export async function POST(request: Request) {
     p_action: 'telemetry',
   });
   if (slotError) {
-    return Response.json({ error: 'telemetry_guard_unavailable' }, { status: 503, headers: headers() });
+    return errorResponse('telemetry_guard_unavailable', 503, 'guard_unavailable');
   }
   if (!slot?.allowed) {
     const retryAfterSeconds = Math.max(1, Number(slot?.retryAfterSeconds ?? 60));
-    return Response.json(
-      { error: 'rate_limited' },
-      { status: 429, headers: { ...headers(), 'Retry-After': String(retryAfterSeconds) } },
-    );
+    return errorResponse('rate_limited', 429, 'rate_limited', { 'Retry-After': String(retryAfterSeconds) });
   }
 
-  const serverRelease = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.RELEASE_SHA ?? 'unknown';
   console.info(JSON.stringify({
     type: 'akher_kheit.gameplay',
     ...result.data,
     clientRelease: result.data.release ?? 'unknown',
-    release: serverRelease,
+    release: serverRelease(),
   }));
 
   return Response.json({ ok: true }, { headers: headers() });
