@@ -2,6 +2,8 @@ import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
+import { getCuratedCase } from '@/lib/server-stories';
+
 const DEFAULT_SUPABASE_URL = 'https://bwxgzcppxdrfcaorobpm.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_76VPHfV-oe9rexR8B80Vkw_M0LhqckV';
 
@@ -129,8 +131,6 @@ export async function POST(request: Request) {
   try {
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? DEFAULT_SUPABASE_URL;
     const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) return Response.json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' }, { status: 500, headers: corsHeaders() });
 
     const body = (await request.json().catch(() => ({}))) as { roomCode?: string; sessionToken?: string; abuseKey?: string };
     const roomCode = body.roomCode?.trim().toUpperCase();
@@ -163,6 +163,21 @@ export async function POST(request: Request) {
     const playerCount = Number(snapshot.playerCount);
     if (playerCount < 4 || playerCount > 12) return Response.json({ error: 'عدد اللاعبين لازم يكون من 4 لـ12.' }, { status: 400, headers: corsHeaders() });
 
+    const mafiaCount = mafiaCountFor(playerCount);
+    const validator = schemaFor(playerCount, mafiaCount);
+
+    if (snapshot.room.caseMode === 'preset') {
+      const selected = getCuratedCase(String(snapshot.room.storyTemplateId ?? ''));
+      if (!selected) return Response.json({ error: 'القضية الجاهزة المختارة مش موجودة.' }, { status: 400, headers: corsHeaders() });
+      if (selected.playerCount !== playerCount) {
+        return Response.json({ error: `القضية دي معمولة لـ${selected.playerCount} لاعبين، والموجودين ${playerCount}.` }, { status: 409, headers: corsHeaders() });
+      }
+      const curated = validator.parse(selected.case);
+      const { error: installError } = await supabase.rpc('install_case', { p_code: roomCode, p_case: curated });
+      if (installError) return Response.json({ error: errorMessage(installError) }, { status: 500, headers: corsHeaders() });
+      return Response.json({ ok: true, source: 'preset', model: 'قضية جاهزة', storyTitle: curated.title }, { headers: corsHeaders() });
+    }
+
     const { data: generationSlot, error: generationSlotError } = await supabase.rpc('claim_case_generation_slot_v2', { p_code: roomCode, p_abuse_key: abuseKey });
     if (generationSlotError) return Response.json({ error: errorMessage(generationSlotError) }, { status: 500, headers: corsHeaders() });
     if (!generationSlot?.allowed) {
@@ -170,8 +185,9 @@ export async function POST(request: Request) {
       return Response.json({ error: `استنى ${retryAfterSeconds} ثانية قبل ما تطلب قضية AI جديدة.`, retryAfterSeconds }, { status: 429, headers: { ...corsHeaders(), 'Retry-After': String(retryAfterSeconds) } });
     }
 
-    const mafiaCount = mafiaCountFor(playerCount);
-    const validator = schemaFor(playerCount, mafiaCount);
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) return Response.json({ error: 'GEMINI_API_KEY مش متسجل على السيرفر لسه.' }, { status: 500, headers: corsHeaders() });
+
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const models = (process.env.GEMINI_MODELS ?? 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it,gemma-4-26b-a4b-it').split(',').map((model) => model.trim()).filter(Boolean);
     const prompt = buildPrompt({ playerCount, mafiaCount, theme: snapshot.room.theme, difficulty: snapshot.room.difficulty });
@@ -203,7 +219,7 @@ export async function POST(request: Request) {
     const { error: installError } = await supabase.rpc('install_case', { p_code: roomCode, p_case: generated });
     if (installError) return Response.json({ error: errorMessage(installError) }, { status: 500, headers: corsHeaders() });
 
-    return Response.json({ ok: true, model: usedModel }, { headers: corsHeaders() });
+    return Response.json({ ok: true, source: 'ai', model: usedModel }, { headers: corsHeaders() });
   } catch (error) {
     const message = errorMessage(error);
     console.error('generate-case fatal:', message);
