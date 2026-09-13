@@ -1,3 +1,6 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+
 import { expect, test } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
@@ -6,10 +9,34 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const navigationTimeoutMs = 15_000;
+const evidencePath = resolve('qa/reports/solo-browser-e2e.json');
+const evidence = {
+  ok: false,
+  startedAt: new Date().toISOString(),
+  finishedAt: null,
+  lastStage: 'bootstrap',
+  stages: [],
+  error: null,
+  diagnostics: null,
+};
 
 if (!supabaseUrl || !anonKey || !serviceRoleKey) {
   throw new Error('SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are required');
 }
+
+function persistEvidence() {
+  mkdirSync(dirname(evidencePath), { recursive: true });
+  writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
+}
+
+function markStage(stage, detail = null) {
+  evidence.lastStage = stage;
+  evidence.stages.push({ stage, at: new Date().toISOString(), ...(detail ? { detail } : {}) });
+  persistEvidence();
+  console.log(`[solo-browser-e2e] ${stage}${detail ? `: ${detail}` : ''}`);
+}
+
+persistEvidence();
 
 function deterministicCase() {
   return {
@@ -103,33 +130,54 @@ async function boundedFailureDiagnostics(page) {
 }
 
 test.afterEach(async ({ page }, testInfo) => {
-  if (testInfo.status === testInfo.expectedStatus) return;
+  evidence.finishedAt = new Date().toISOString();
+  evidence.ok = testInfo.status === testInfo.expectedStatus;
+  if (evidence.ok) {
+    markStage('completed');
+    return;
+  }
   const diagnostics = await boundedFailureDiagnostics(page);
+  evidence.error = testInfo.error
+    ? {
+        message: testInfo.error.message ?? String(testInfo.error),
+        stack: testInfo.error.stack ?? null,
+      }
+    : { message: `unexpected test status: ${testInfo.status}`, stack: null };
+  evidence.diagnostics = diagnostics;
+  persistEvidence();
   console.error('Solo browser E2E diagnostics:', JSON.stringify(diagnostics, null, 2));
 });
 
 test('Solo AI browser journey survives elimination, refresh, next round, voting, and winner', async ({ page }) => {
   test.setTimeout(75_000);
+  markStage('open-solo');
   await gotoHydrated(page, `${baseUrl}/solo`);
+  markStage('solo-visible');
   await page.getByPlaceholder('مثلاً: شريف').fill('Browser Boss');
   await page.getByRole('button', { name: 'ذكر' }).click();
   await page.getByText('جهّز ماتش AI', { exact: true }).click();
 
+  markStage('solo-create-submitted');
   await page.waitForURL(/\/room\/[A-Z0-9]{6}$/, { timeout: navigationTimeoutMs, waitUntil: 'domcontentloaded' });
   const code = page.url().split('/').pop();
   expect(code).toMatch(/^[A-Z0-9]{6}$/);
+  markStage('room-navigation-complete', code);
 
   const accessToken = await browserAccessToken(page);
   expect(accessToken).toBeTruthy();
   const host = hostClient(accessToken);
+  markStage('browser-session-captured');
 
   let snapshot = await rpc(host, 'room_snapshot', { p_code: code });
   expect(snapshot.playerCount).toBe(4);
   expect(snapshot.players.filter((player) => player.isBot)).toHaveLength(3);
+  markStage('solo-roster-verified');
 
   await rpc(host, 'install_case', { p_code: code, p_case: deterministicCase() });
+  markStage('case-installed');
   await reloadHydrated(page);
   await expect(page.getByText('كلام لاعيبة الـAI', { exact: true })).toBeVisible();
+  markStage('ai-discussion-visible');
 
   snapshot = await rpc(host, 'room_snapshot', { p_code: code });
   const { data: roles, error: rolesError } = await service
@@ -140,23 +188,28 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   const roleByPlayer = new Map(roles.map((row) => [row.player_id, row.role]));
   const firstTarget = snapshot.players.find((player) => player.isBot && roleByPlayer.get(player.id) === 'innocent');
   expect(firstTarget).toBeTruthy();
+  markStage('first-innocent-target-selected', firstTarget.nickname);
 
   await page.getByText(firstTarget.nickname, { exact: true }).first().click();
   await page.getByText('ثبّت صوتي', { exact: true }).click();
+  markStage('human-vote-submitted');
 
   snapshot = await rpc(host, 'room_snapshot', { p_code: code });
   const aliveRoundZero = snapshot.players.filter((player) => !player.isEliminated);
   await seedVotes(snapshot.room.id, snapshot.room.roundIndex, aliveRoundZero, firstTarget.id);
+  markStage('round-one-votes-seeded');
   await reloadHydrated(page);
   await page.getByText('احسم التصويت', { exact: true }).click();
 
   await expect(page.getByText(firstTarget.nickname, { exact: true }).first()).toBeVisible();
   await expect(page.getByText('في السجن', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('اكشف الدليل اللي بعده', { exact: true })).toBeVisible();
+  markStage('first-elimination-verified');
 
   await page.getByText('اكشف الدليل اللي بعده', { exact: true }).click();
   await expect(page.getByText('الدليل 2', { exact: true })).toBeVisible();
   await expect(page.getByText('كلام لاعيبة الـAI', { exact: true })).toBeVisible();
+  markStage('round-two-visible');
 
   const cuesBeforeReload = await page.locator('body').innerText();
   await reloadHydrated(page);
@@ -165,20 +218,24 @@ test('Solo AI browser journey survives elimination, refresh, next round, voting,
   expect(cuesAfterReload).toContain('كلام لاعيبة الـAI');
   expect(cuesAfterReload).toContain('الدليل 2');
   expect(cuesBeforeReload).toContain('الدليل 2');
+  markStage('refresh-reconnect-verified');
 
   snapshot = await rpc(host, 'room_snapshot', { p_code: code });
   const mafia = snapshot.players.find((player) => roleByPlayer.get(player.id) === 'mafia' && !player.isEliminated);
   expect(mafia).toBeTruthy();
   const aliveRoundOne = snapshot.players.filter((player) => !player.isEliminated);
   await seedVotes(snapshot.room.id, snapshot.room.roundIndex, aliveRoundOne, mafia.id);
+  markStage('mafia-votes-seeded', mafia.nickname);
 
   await reloadHydrated(page);
   await expect(page.getByText('احسم التصويت', { exact: true })).toBeVisible();
   await page.getByText('احسم التصويت', { exact: true }).click();
   await expect(page.getByText('انتهت القضية', { exact: true })).toBeVisible();
   await expect(page.getByText('الأبرياء كشفوا المافيا.', { exact: true })).toBeVisible();
+  markStage('winner-ui-verified');
 
   const finalSnapshot = await rpc(host, 'room_snapshot', { p_code: code });
   expect(finalSnapshot.room.status).toBe('finished');
   expect(finalSnapshot.room.winner).toBe('innocents');
+  markStage('winner-snapshot-verified');
 });
