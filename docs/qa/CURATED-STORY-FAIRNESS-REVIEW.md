@@ -1,16 +1,16 @@
 # Curated Story Fairness Review — 4–10 Players
 
 Date: 2026-09-13
-Scope: all 18 curated cases currently shipped for exact player counts 4–10.
+Scope: all 21 curated cases currently shipped for exact player counts 4–10.
 
-This is the semantic/human review layer that complements `scripts/qa/story-critic.mjs`. The script can prove lexical role-distribution properties; this review judges whether the actual story logic leaves plausible alternatives alive, escalates clues fairly, and reads naturally in spoken Egyptian Arabic.
+This is the semantic/human review layer that complements `scripts/qa/story-critic.mjs`. The automated critic checks lexical role-distribution and final-role reconnection; this review judges whether the story logic leaves plausible alternatives alive, escalates clues fairly, separates independent mafia acts, and reads naturally in spoken Egyptian Arabic.
 
 ## Review rubric
 
 A case passes when:
-- rounds 1–3 preserve at least one plausible non-mafia explanation for the important evidence;
+- rounds 1–3 preserve at least one plausible non-mafia explanation for important evidence;
 - no single early clue functionally solves the case;
-- the final clue can narrow strongly, but still makes sense only when connected to earlier opportunity/motive/evidence;
+- the final clue narrows strongly but makes sense only when connected to earlier opportunity/motive/evidence;
 - every mafia role has a coherent action, motive, and evidence chain;
 - red herrings have a real innocent explanation rather than random noise;
 - wording is natural enough to read aloud during a social game;
@@ -18,90 +18,51 @@ A case passes when:
 
 ## Case-by-case matrix
 
-| Players | Case | Mafia role(s) | R1–R3 plausible alternatives | Final-clue function | Review |
-| ---: | --- | --- | --- | --- | --- |
-| 4 | `last-tray` — آخر صينية | الحلويات | ترتيب السفرة، التصوير، المشروبات all retain legitimate access/evidence explanations | ties the serving box to timing; still needs drawer knowledge + distraction + shared traces | PASS |
-| 4 | `balcony-key` — مفتاح البلكونة | تهوية البلكونة | الشاي والقهوة، الموسيقى، ترتيب القعدة all have physical contact explanations | locates the key near the balcony; prior curtain/plate timing is still needed | PASS |
-| 4 | `soundcheck-ticket` — تذكرة الساوند تشيك | الصوت | تنسيق المسرح، استقبال الضيوف، وتصوير الكواليس all have legitimate backstage access; the silver tape is deliberately shared | accidental video places the missing stamped envelope inside sound gear only after opportunity + shared-trace clues have accumulated | PASS |
-| 5 | `clock-1117` — الساعة 11:17 | الديكور | الصوت والتصوير can touch power; gift coordination and house knowledge preserve code/access alternatives | CAM-UPS sticker identifies camera-power manipulation; theft conclusion still requires safe-code/opportunity chain | PASS |
-| 5 | `room-312` — مفتاح 312 | تصوير الرحلة | العرض والفيديو، التورتة والهدايا، الحجز والاستقبال retain balcony/service-route explanations | recovered accidental clip links the same device to the crossing; earlier key/service evidence completes the case | PASS |
-| 5 | `family-fridge` — ورقة التلاجة | تنظيم السفر | تحضير العشا، ترتيب السفرة، الحلويات، وتصوير اللمة all have natural kitchen movement; paper scraps and magnet movement stay non-exclusive | later photo links the note to the travel file, but only becomes conclusive with prior knowledge + the one-minute opportunity | PASS |
-| 6 | `last-rehearsal` — آخر بروفة | الإضاءة + الرعاة | إدارة الخشبة/الإكسسوارات compete for stage-one access; التمثيل/المكياج compete for stage-two movement | final records separate sensor disabling from later removal | PASS |
-| 6 | `blue-notebook` — الكراسة الزرقا | التسويق + التقنية والطباعة | الحسابات، تصميم العرض، تنسيق المستثمرين remain plausible around notebook/printing paths | separate filename/account evidence resolves two independent acts | PASS |
-| 6 | `birthday-envelope` — ظرف عيد الميلاد | تجهيز الزينة + تنظيم المفاجأة | تحضير الأكل/المشروبات/تصوير اللمة share kitchen movement; استقبال الضيوف/التصوير retain legitimate access to the side room | pre-party photo proves the key impression while the 9:44 guest video independently fixes the later theft window | PASS |
-| 7 | `fourth-floor` — الدور الرابع مقفول | الصيانة + تاريخ الفندق | تنظيم الفعالية/التصوير compete in first window; الضيافة/تسجيل الدخول compete in second | key log + corridor permit separate preparation from opportunistic theft | PASS |
-| 7 | `silent-auction` — المزاد الصامت | ترميم اللوحات + تمثيل المشتري | إدارة الجاليري/التصوير compete for careful opening; مساعدة المزاد/الأمن compete for fast-access window | adhesive/template versus file residue cleanly separates fabrication and final swap | PASS |
-| 7 | `beach-house-key` — مفتاح بيت المصيف | توزيع المصاريف + حجز العربية | تجهيز الأكل/تنظيم السفر share note-paper evidence; التصوير/مراجعة البيت/تحميل الشنط all have ordinary access around the shelf | pressure marks + automatic photo prove the earlier card swap; the driver-call interval plus exit video independently fixes key removal | PASS |
-| 8 | `rooftop-envelope` — ظرف السطح | إدارة الفندق + الصوت | تنظيم الحفلة/الضيافة compete for office corridor; الديكور and others share key/tool evidence | key checkout + sound power log explain two overlapping but independent actions | PASS |
-| 8 | `backstage-pass` — تصريح الكواليس | إدارة الكواليس + تسجيل النتائج | تنسيق العرض/الإضاءة/الصوت compete for corridor; لجنة التحكيم compete around score sheets | pass-drawer timing + print-account evidence resolves the two acts | PASS |
-| 9 | `gallery-ledger` — دفتر المعرض | التنسيق الفني + الحسابات | إدارة المعرض/المبيعات/المخزن compete around office; العلاقات العامة/mخزن compete around card materials | card checkout + two-file office exit separate label swap from ledger removal | PASS |
-| 9 | `garden-locker` — دولاب الجنينة | إدارة النادي + الاستقبال | الصيانة/تنظيم اليوم compete for key/log; المخزن/الأنشطة/الضيافة compete for replacement box | pen-log evidence assigns the log edit to إدارة النادي; visit order assigns the replacement to الاستقبال | PASS |
-| 10 | `midnight-menu` — منيو نص الليل | إدارة المطعم + الحسابات + الدعم التقني | الحجوزات/الصالة/التصوير compete around office; المطبخ/المخزن compete around printer; shared purple-mark evidence keeps reservation path ambiguous | final camera evidence links the reviewed reservation sheet to الحسابات, while door/printer logs separate all three acts | PASS AFTER SPOKEN-LANGUAGE CLEANUP |
-| 10 | `archive-seal` — ختم الأرشيف | تسجيل الاستلام + الشؤون القانونية + إدارة المشروع | إدارة الأرشيف/الحسابات compete for original access; التصوير/المراجعة/mراسلات provide copy/seal alternatives | door camera + e-pen record + office printer cleanly separate three acts | PASS |
+| Players | Case | Mafia role(s) | R1–R3 alternatives / final-clue function | Review |
+| ---: | --- | --- | --- | --- |
+| 4 | `last-tray` — آخر صينية | الحلويات | shared serving access stays ambiguous; final timing connects the serving box to drawer knowledge | PASS |
+| 4 | `balcony-key` — مفتاح البلكونة | تهوية البلكونة | tea/music/seating explain contact; final location only works with earlier curtain/plate timing | PASS |
+| 4 | `soundcheck-ticket` — تذكرة الساوند تشيك | الصوت | backstage access and silver tape are shared; accidental video resolves only after opportunity evidence | PASS |
+| 5 | `clock-1117` — الساعة 11:17 | الديكور | sound/photo share power access; final camera-power evidence still needs safe-code/opportunity chain | PASS |
+| 5 | `room-312` — مفتاح 312 | تصوير الرحلة | balcony/service-route alternatives remain live; recovered clip resolves after key evidence | PASS |
+| 5 | `family-fridge` — ورقة التلاجة | تنظيم السفر | kitchen movement and paper/magnet traces are shared; later photo needs prior knowledge + timing | PASS |
+| 6 | `last-rehearsal` — آخر بروفة | الإضاءة + الرعاة | stage-access alternatives survive; final records separate sensor disabling from later removal | PASS |
+| 6 | `blue-notebook` — الكراسة الزرقا | التسويق + التقنية والطباعة | accounts/design/investor roles remain plausible; filename/account evidence separates two acts | PASS |
+| 6 | `birthday-envelope` — ظرف عيد الميلاد | تجهيز الزينة + تنظيم المفاجأة | shared kitchen/side-room movement stays plausible; photo and guest video independently resolve key-copy and theft windows | PASS |
+| 7 | `fourth-floor` — الدور الرابع مقفول | الصيانة + تاريخ الفندق | event/photo and hospitality/check-in compete across two windows; final logs separate preparation from theft | PASS |
+| 7 | `silent-auction` — المزاد الصامت | ترميم اللوحات + تمثيل المشتري | gallery/photo and auction/security retain access explanations; final residue/template evidence separates acts | PASS |
+| 7 | `beach-house-key` — مفتاح بيت المصيف | توزيع المصاريف + حجز العربية | shared travel movement and note-paper remain ambiguous; independent photo/call evidence resolves card swap and key removal | PASS |
+| 8 | `rooftop-envelope` — ظرف السطح | إدارة الفندق + الصوت | office-corridor/key/tool access is shared; key checkout + power log resolve independent acts | PASS |
+| 8 | `backstage-pass` — تصريح الكواليس | إدارة الكواليس + تسجيل النتائج | corridor and score-sheet access have innocent alternatives; drawer timing + print account resolve two acts | PASS |
+| 8 | `invoice-stamp` — ختم الفاتورة | المراجعة القانونية + إدارة الموردين | paper/clip traces and office movement are deliberately shared; cabinet log identifies removal, printer log independently identifies the replacement copy | PASS |
+| 9 | `gallery-ledger` — دفتر المعرض | التنسيق الفني + الحسابات | office/card-material alternatives remain; checkout + two-file exit separate label swap from ledger removal | PASS |
+| 9 | `garden-locker` — دولاب الجنينة | إدارة النادي + الاستقبال | key/log and replacement-box access stay ambiguous; final pen-log and visit order assign independent acts | PASS |
+| 9 | `expense-ledger` — دفتر المصروفات | المراجعة الداخلية + إدارة الجمعية | ruler/paper traces are non-exclusive and several roles handle the records; camera removal and printer record independently resolve page removal and receipt substitution | PASS |
+| 10 | `midnight-menu` — منيو نص الليل | إدارة المطعم + الحسابات + الدعم التقني | office/printer/reservation access stays broad; final camera evidence plus door/printer logs separate three acts | PASS |
+| 10 | `archive-seal` — ختم الأرشيف | تسجيل الاستلام + الشؤون القانونية + إدارة المشروع | original/copy/seal access has several innocent explanations; camera + e-pen + printer logs separate three acts | PASS |
+| 10 | `villa-guest-list` — قائمة ضيوف الفيلا | تنسيق الموسيقى + تنظيم العيلة + متابعة الدعوات | drawer/marker/list access is shared across normal party prep; final camera, saved seating copy, and hall footage independently resolve card, seating sheet, and guest-list acts | PASS |
 
-## 2026-09-13 launch-breadth expansion — 6–7 players
+## 2026-09-13 launch-breadth completion — 8–10 players
 
-After the 4–5 slice became Green, the next breadth audit found the same structural gap in 6–7: each count had only two cases, both split between `stage-events` and `work-records`. The smallest coherent expansion was therefore one `home-social` case per count, without touching 8–10.
+The checkpoint identified exactly one missing reviewed theme pack at each remaining count: 8 lacked `work-records`, 9 lacked `work-records`, and 10 lacked `home-social`. The coherent slice adds one case to each count and completes three exact-count cases for every supported count 4–10.
 
-The 6–7 band now has three cases per exact count and all three reviewed theme packs per count:
-- 6 players adds `birthday-envelope` in `home-social` alongside `last-rehearsal` and `blue-notebook`;
-- 7 players adds `beach-house-key` in `home-social` alongside `fourth-floor` and `silent-auction`.
+### `invoice-stamp` — 8 players / work-records
+- rounds 1–3 preserve alternatives through normal cabinet, paper, clip, printing, and supplier-file handling;
+- the two mafia acts are independent: removal of the original invoice and later insertion of a deficient replacement;
+- the final cabinet and printer logs resolve different actors at different times rather than implying a conspiracy;
+- spoken wording is office-Egyptian and deduction depends on timing, not jargon.
 
-Semantic review of `birthday-envelope`:
-- rounds 1–3 keep innocent alternatives alive through shared kitchen/side-room movement and deliberately non-exclusive putty/paper evidence;
-- the two mafia acts are independent: one prepares a temporary key copy, another later discovers and uses it;
-- the final evidence does not retroactively make early clues unfair: the pre-party photo proves who made the impression, while a separate guest video fixes the later theft window;
-- the language stays domestic, conversational, and easy to read aloud.
+### `expense-ledger` — 9 players / work-records
+- the ruler edge, copied receipt paper, and record access all have legitimate innocent explanations;
+- page removal and receipt substitution are separate actions with separate motives;
+- the final office camera and printer record reconnect both semantic roles explicitly while preserving earlier ambiguity;
+- the story asks players to separate evidence sources rather than decode obscure wording.
 
-Semantic review of `beach-house-key`:
-- rounds 1–3 keep shared note-paper, shelf contact, and travel movement ambiguous across several innocent roles;
-- the code-card swap and physical key theft are separate acts with separate opportunity windows;
-- the final clue resolves each act with a different evidence source: pressure marks/automatic photo for the card swap, and the driver-call interval plus exit video for the key theft;
-- the story difficulty comes from ordering events and separating two opportunistic actors, not from obscure wording.
-
-## 2026-09-13 launch-breadth expansion — 4–5 players
-
-The launch-readiness audit found a breadth problem rather than a fairness defect: every supported player count had exactly two cases, but the smallest bands had no theme choice at all. Both 4-player cases were `home-social`, and both 5-player cases were `work-records`.
-
-The 4–5 band now has three cases per exact count and at least two theme packs per count:
-- 4 players adds `soundcheck-ticket` in `stage-events` alongside the two existing `home-social` cases;
-- 5 players adds `family-fridge` in `home-social` alongside the two existing `work-records` cases.
-
-Semantic review of `soundcheck-ticket`:
-- rounds 1–3 keep real innocent alternatives through ordinary backstage access and deliberately shared silver-tape evidence;
-- the mafia role is not uniquely isolated by any early clue;
-- the final accidental-video clue places the missing stamped envelope in sound equipment, but requires the earlier one-minute opportunity and shared trace to become persuasive;
-- the wording is conversational Egyptian Arabic and the difficulty comes from connecting movement, timing, and non-exclusive evidence.
-
-Semantic review of `family-fridge`:
-- rounds 1–3 preserve kitchen-access alternatives for every innocent role and keep the paper/magnet evidence deliberately non-exclusive;
-- knowing the emergency-note location creates motive/opportunity context without proving guilt;
-- the final photo links the note to the travel file only after the one-minute distraction window, so the case still requires combining knowledge + timing + later possession;
-- the wording is intentionally domestic and spoken rather than technical.
-
-## Earlier defects found and corrected
-
-### 1. `garden-locker`: unresolved log-tamper actor
-Before this review, the crime explicitly included changing the key log, but the final evidence only said the log changed after the visits. The solution named two mafia roles without assigning the log edit to either one with evidence. That left one crime component semantically unproven.
-
-Fix:
-- final clue now records إدارة النادي returning to the desk at 5:21 and changing the key-out time;
-- solution explicitly assigns theft + log cover-up to إدارة النادي and the later replacement-box act to الاستقبال.
-
-### 2. `midnight-menu`: weak reservation-sheet motive/evidence for accounts
-Before this review, الحسابات was a mafia role that replaced the reservation sheet, but its bio focused on menu margin disagreement and the clues did not clearly connect it to that reservation sheet. The final conclusion was therefore stronger than the evidence chain.
-
-Fix:
-- الحسابات now has a concrete relationship to the unauthorized large-group discount;
-- round 2 adds a deliberately non-exclusive purple review mark shared by multiple roles;
-- round 3 keeps multiple reservation/printer alternatives alive;
-- final clue shows the marked reservation sheet inside the accounts file, giving the final deduction a direct but appropriately late anchor.
-
-### 3. `midnight-menu`: English game-design jargon leaked into player-facing speech
-The full spoken-language pass found one remaining player-facing phrase, `red herring`, in a discussion prompt. It describes the design mechanic rather than how Egyptian players would naturally discuss the evidence aloud.
-
-Fix:
-- round 2 now asks which widespread trace is "موجود بس عشان يشتتكم" instead. This preserves the exact deduction/fairness function while making the prompt natural spoken Egyptian Arabic.
+### `villa-guest-list` — 10 players / home-social
+- normal party setup gives multiple innocent roles access to the office, seating sheet, guest list, and shared marker;
+- the three mafia acts are deliberately independent: taking an access card, changing a seating sheet, and hiding the original guest list;
+- final evidence uses three independent sources and timestamps so the larger case does not collapse into one oversized conspiracy;
+- language is domestic/social Egyptian Arabic and all visible identities remain real player nicknames at runtime.
 
 ## Deterministic regression baseline
 
@@ -109,14 +70,17 @@ Fix:
 1. a pre-final clue explicitly mentions mafia role(s) but no explicit non-mafia role alternative;
 2. the final clue fails to reconnect every mafia role to the evidence chain.
 
-It also scores jargon/stiff phrasing, clue density, and bio density. This remains intentionally narrower than semantic judgment. Lexical mentions do not prove guilt or innocence; the human review remains the source for motive/plausibility/escalation quality.
+It also scores jargon/stiff phrasing, clue density, and bio density. Lexical checks remain intentionally narrower than semantic judgment.
 
-`curated-player-count-contract.mjs` now protects the completed 4–7 launch-breadth slices: 4–7 players require three exact-count cases each; 6 and 7 must span all three reviewed theme packs, while the already-reviewed 4–5 contract retains its minimum two-pack requirement. Counts 8–10 remain at the existing two-case baseline until their own coherent library-expansion slice is reviewed.
+`curated-player-count-contract.mjs` now protects the completed launch library:
+- exactly three curated cases for every supported exact count 4–10;
+- 6–10 must span all three reviewed theme packs, while 4–5 retain at least two packs each;
+- catalog and server registry must agree and each registered file must exist;
+- browsing/reference selection remains exact-count-first with no fallback to unrelated counts;
+- 11–12 remain unadvertised until their own gameplay/UX/E2E slice exists.
 
 ## Review conclusion
 
-All 18 curated cases pass the current 4–10-player human semantic/fairness review. The 4–7 launch bands now have three exact-count cases each; 6 and 7 cover all three reviewed theme packs. The new cases do not change player identity, gender fairness, mafia assignment rules, or supported player-count semantics. Larger cases continue to use multiple independent acts rather than one oversized conspiracy, which keeps mafia counts compatible with the game while making the evidence separable.
+All 21 curated cases pass the current 4–10-player semantic/fairness review. Every supported exact count now has three reviewed cases; counts 6–10 cover all three theme packs, while 4–5 already have meaningful pack choice. The new cases do not change nickname identity, gender wording-only behavior, mafia assignment rules, or supported player-count semantics.
 
-The next curated breadth gap is 8–10: those counts still have only two cases each. That should remain deferred until the current 6–7 expansion is Green and higher-priority release evidence does not become available. No player-count expansion beyond 10 is justified by this review.
-
-The next story-quality review should be triggered by a material content rewrite, a new curated case, or a regression signal—not by a fixed hourly cadence.
+The 4–10 curated breadth milestone is therefore content-complete at the current target. Future story work should be triggered by a material rewrite, regression signal, or evidence-backed launch need—not by hourly churn. Expansion to 11–15 remains deferred until gameplay/UX and release evidence justify it.
