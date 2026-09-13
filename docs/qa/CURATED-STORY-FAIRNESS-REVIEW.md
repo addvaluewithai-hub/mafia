@@ -1,7 +1,7 @@
 # Curated Story Fairness Review — 4–10 Players
 
 Date: 2026-09-13
-Scope: all 16 curated cases currently shipped for exact player counts 4–10.
+Scope: all 18 curated cases currently shipped for exact player counts 4–10.
 
 This is the semantic/human review layer that complements `scripts/qa/story-critic.mjs`. The script can prove lexical role-distribution properties; this review judges whether the actual story logic leaves plausible alternatives alive, escalates clues fairly, and reads naturally in spoken Egyptian Arabic.
 
@@ -28,8 +28,10 @@ A case passes when:
 | 5 | `family-fridge` — ورقة التلاجة | تنظيم السفر | تحضير العشا، ترتيب السفرة، الحلويات، وتصوير اللمة all have natural kitchen movement; paper scraps and magnet movement stay non-exclusive | later photo links the note to the travel file, but only becomes conclusive with prior knowledge + the one-minute opportunity | PASS |
 | 6 | `last-rehearsal` — آخر بروفة | الإضاءة + الرعاة | إدارة الخشبة/الإكسسوارات compete for stage-one access; التمثيل/المكياج compete for stage-two movement | final records separate sensor disabling from later removal | PASS |
 | 6 | `blue-notebook` — الكراسة الزرقا | التسويق + التقنية والطباعة | الحسابات، تصميم العرض، تنسيق المستثمرين remain plausible around notebook/printing paths | separate filename/account evidence resolves two independent acts | PASS |
+| 6 | `birthday-envelope` — ظرف عيد الميلاد | تجهيز الزينة + تنظيم المفاجأة | تحضير الأكل/المشروبات/تصوير اللمة share kitchen movement; استقبال الضيوف/التصوير retain legitimate access to the side room | pre-party photo proves the key impression while the 9:44 guest video independently fixes the later theft window | PASS |
 | 7 | `fourth-floor` — الدور الرابع مقفول | الصيانة + تاريخ الفندق | تنظيم الفعالية/التصوير compete in first window; الضيافة/تسجيل الدخول compete in second | key log + corridor permit separate preparation from opportunistic theft | PASS |
 | 7 | `silent-auction` — المزاد الصامت | ترميم اللوحات + تمثيل المشتري | إدارة الجاليري/التصوير compete for careful opening; مساعدة المزاد/الأمن compete for fast-access window | adhesive/template versus file residue cleanly separates fabrication and final swap | PASS |
+| 7 | `beach-house-key` — مفتاح بيت المصيف | توزيع المصاريف + حجز العربية | تجهيز الأكل/تنظيم السفر share note-paper evidence; التصوير/مراجعة البيت/تحميل الشنط all have ordinary access around the shelf | pressure marks + automatic photo prove the earlier card swap; the driver-call interval plus exit video independently fixes key removal | PASS |
 | 8 | `rooftop-envelope` — ظرف السطح | إدارة الفندق + الصوت | تنظيم الحفلة/الضيافة compete for office corridor; الديكور and others share key/tool evidence | key checkout + sound power log explain two overlapping but independent actions | PASS |
 | 8 | `backstage-pass` — تصريح الكواليس | إدارة الكواليس + تسجيل النتائج | تنسيق العرض/الإضاءة/الصوت compete for corridor; لجنة التحكيم compete around score sheets | pass-drawer timing + print-account evidence resolves the two acts | PASS |
 | 9 | `gallery-ledger` — دفتر المعرض | التنسيق الفني + الحسابات | إدارة المعرض/المبيعات/المخزن compete around office; العلاقات العامة/mخزن compete around card materials | card checkout + two-file office exit separate label swap from ledger removal | PASS |
@@ -37,7 +39,27 @@ A case passes when:
 | 10 | `midnight-menu` — منيو نص الليل | إدارة المطعم + الحسابات + الدعم التقني | الحجوزات/الصالة/التصوير compete around office; المطبخ/المخزن compete around printer; shared purple-mark evidence keeps reservation path ambiguous | final camera evidence links the reviewed reservation sheet to الحسابات, while door/printer logs separate all three acts | PASS AFTER SPOKEN-LANGUAGE CLEANUP |
 | 10 | `archive-seal` — ختم الأرشيف | تسجيل الاستلام + الشؤون القانونية + إدارة المشروع | إدارة الأرشيف/الحسابات compete for original access; التصوير/المراجعة/mراسلات provide copy/seal alternatives | door camera + e-pen record + office printer cleanly separate three acts | PASS |
 
-## 2026-09-13 launch-breadth expansion
+## 2026-09-13 launch-breadth expansion — 6–7 players
+
+After the 4–5 slice became Green, the next breadth audit found the same structural gap in 6–7: each count had only two cases, both split between `stage-events` and `work-records`. The smallest coherent expansion was therefore one `home-social` case per count, without touching 8–10.
+
+The 6–7 band now has three cases per exact count and all three reviewed theme packs per count:
+- 6 players adds `birthday-envelope` in `home-social` alongside `last-rehearsal` and `blue-notebook`;
+- 7 players adds `beach-house-key` in `home-social` alongside `fourth-floor` and `silent-auction`.
+
+Semantic review of `birthday-envelope`:
+- rounds 1–3 keep innocent alternatives alive through shared kitchen/side-room movement and deliberately non-exclusive putty/paper evidence;
+- the two mafia acts are independent: one prepares a temporary key copy, another later discovers and uses it;
+- the final evidence does not retroactively make early clues unfair: the pre-party photo proves who made the impression, while a separate guest video fixes the later theft window;
+- the language stays domestic, conversational, and easy to read aloud.
+
+Semantic review of `beach-house-key`:
+- rounds 1–3 keep shared note-paper, shelf contact, and travel movement ambiguous across several innocent roles;
+- the code-card swap and physical key theft are separate acts with separate opportunity windows;
+- the final clue resolves each act with a different evidence source: pressure marks/automatic photo for the card swap, and the driver-call interval plus exit video for the key theft;
+- the story difficulty comes from ordering events and separating two opportunistic actors, not from obscure wording.
+
+## 2026-09-13 launch-breadth expansion — 4–5 players
 
 The launch-readiness audit found a breadth problem rather than a fairness defect: every supported player count had exactly two cases, but the smallest bands had no theme choice at all. Both 4-player cases were `home-social`, and both 5-player cases were `work-records`.
 
@@ -89,12 +111,12 @@ Fix:
 
 It also scores jargon/stiff phrasing, clue density, and bio density. This remains intentionally narrower than semantic judgment. Lexical mentions do not prove guilt or innocence; the human review remains the source for motive/plausibility/escalation quality.
 
-`curated-player-count-contract.mjs` now also protects the completed 4–5 launch-breadth slice: 4 and 5 players require three exact-count cases and at least two theme packs each. Counts 6–10 remain at the existing two-case baseline until their own coherent library-expansion slices are reviewed.
+`curated-player-count-contract.mjs` now protects the completed 4–7 launch-breadth slices: 4–7 players require three exact-count cases each; 6 and 7 must span all three reviewed theme packs, while the already-reviewed 4–5 contract retains its minimum two-pack requirement. Counts 8–10 remain at the existing two-case baseline until their own coherent library-expansion slice is reviewed.
 
 ## Review conclusion
 
-All 16 curated cases pass the current 4–10-player human semantic/fairness review. The new 4–5 cases add theme breadth without changing player identity, gender fairness, mafia assignment rules, or supported player-count semantics. The larger 8–10-player cases continue to use multiple independent acts rather than one oversized conspiracy, which keeps mafia counts compatible with the game while making the evidence separable.
+All 18 curated cases pass the current 4–10-player human semantic/fairness review. The 4–7 launch bands now have three exact-count cases each; 6 and 7 cover all three reviewed theme packs. The new cases do not change player identity, gender fairness, mafia assignment rules, or supported player-count semantics. Larger cases continue to use multiple independent acts rather than one oversized conspiracy, which keeps mafia counts compatible with the game while making the evidence separable.
 
-The next highest-value content breadth gap is 6–7: those counts still have only two cases each and uneven theme coverage. That should remain a future bounded slice only after the current 4–5 expansion is Green. No player-count expansion beyond 10 is justified by this review.
+The next curated breadth gap is 8–10: those counts still have only two cases each. That should remain deferred until the current 6–7 expansion is Green and higher-priority release evidence does not become available. No player-count expansion beyond 10 is justified by this review.
 
 The next story-quality review should be triggered by a material content rewrite, a new curated case, or a regression signal—not by a fixed hourly cadence.
