@@ -21,10 +21,13 @@ export const STORY_CATALOG = [
   { id: 'beach-house-key', playerCount: 7, packId: 'home-social', title: 'مفتاح بيت المصيف', teaser: 'كارت كود اتبدل وبعده المفتاح الاحتياطي اختفى في آخر دقايق قبل السفر.' },
   { id: 'rooftop-envelope', playerCount: 8, packId: 'home-social', title: 'ظرف السطح', teaser: 'عقد اختفى وسط حركة مفاتيح وتصوير وكل توقيت يفتح احتمال مختلف.' },
   { id: 'backstage-pass', playerCount: 8, packId: 'stage-events', title: 'تصريح الكواليس', teaser: 'تصريح اختفى وكشف درجات اتبدل وسط زحمة عرض مسرحي.' },
+  { id: 'invoice-stamp', playerCount: 8, packId: 'work-records', title: 'ختم الفاتورة', teaser: 'فاتورة أصلية مختومة اختفت ونسخة ناقصة ظهرت مكانها قبل التسليم بدقايق.' },
   { id: 'gallery-ledger', playerCount: 9, packId: 'stage-events', title: 'دفتر المعرض', teaser: 'دفتر مبيعات اختفى وبطاقة لوحة اتبدلت وسط ملفات متشابهة.' },
   { id: 'garden-locker', playerCount: 9, packId: 'home-social', title: 'دولاب الجنينة', teaser: 'صندوق تبرعات اتبدل والسجل نفسه اتعدل بعد زيارتين متتاليتين.' },
+  { id: 'expense-ledger', playerCount: 9, packId: 'work-records', title: 'دفتر المصروفات', teaser: 'صفحة من دفتر المصروفات اختفت وإيصال أصلي اتبدل بصورة ناقصة قبل المراجعة.' },
   { id: 'midnight-menu', playerCount: 10, packId: 'stage-events', title: 'منيو نص الليل', teaser: 'منيو نهائية اختفت وحجز اتبدل وطابعة اتعطلت في نفس عشر دقايق.' },
   { id: 'archive-seal', playerCount: 10, packId: 'work-records', title: 'ختم الأرشيف', teaser: 'محضر أصلي اختفى والسجل والنسخة البديلة اتحركوا كل واحد في توقيت مختلف.' },
+  { id: 'villa-guest-list', playerCount: 10, packId: 'home-social', title: 'قائمة ضيوف الفيلا', teaser: 'قائمة ضيوف اختفت وكارت دخول وورقة سفرة اتحركوا وسط زحمة لمة كبيرة.' },
 ] as const;
 
 export function storiesForPlayerCount(playerCount: number, packId?: StoryPackId | null) {
