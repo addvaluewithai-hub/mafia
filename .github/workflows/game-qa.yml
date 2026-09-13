@@ -15,8 +15,8 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22.13'
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies from lockfile
+        run: npm ci
       - name: TypeScript
         run: npm run typecheck
       - name: Expo doctor
@@ -49,7 +49,7 @@ jobs:
         run: supabase start
       - name: Install browser QA runtime
         run: |
-          npm install --no-save @playwright/test@1.55.0
+          npm install --no-save --package-lock=false @playwright/test@1.55.0
           npx playwright install --with-deps chromium
       - name: Solo AI browser E2E
         shell: bash
