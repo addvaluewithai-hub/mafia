@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "release:preflight": "node scripts/release/preflight.mjs",
     "qa:release-preflight": "node scripts/qa/release-preflight-contract.mjs",
-    "qa:observability": "node scripts/qa/observability-contract.mjs"
+    "qa:observability": "node scripts/qa/observability-contract.mjs && node scripts/qa/observability-operations-contract.mjs",
+    "ops:observability-summary": "node scripts/operations/observability-summary.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
