@@ -42,7 +42,7 @@ This makes production logs searchable by deployed SHA without trusting client-su
 
 Gameplay telemetry is deliberately non-blocking, which means a broken telemetry transport must not break the game. That also means failures in the telemetry endpoint need their own bounded evidence or they can become operationally invisible.
 
-Rejected/failed telemetry ingestion now emits a second structured log type: `akher_kheit.telemetry_ingest`. It is emitted only for ingest failures and contains exactly the operational dimensions needed to diagnose the path:
+Rejected/failed telemetry ingestion emits a second structured log type: `akher_kheit.telemetry_ingest`. It is emitted only for ingest failures and contains exactly the operational dimensions needed to diagnose the path:
 
 - `outcome: "error"`
 - an allowlisted `reason`: `missing_abuse_key`, `payload_too_large`, `invalid_json`, `invalid_telemetry`, `guard_unavailable`, or `rate_limited`
@@ -57,6 +57,41 @@ Telemetry transport remains non-blocking for gameplay. A failure to send telemet
 
 Reconnect telemetry is intentionally low-noise: routine successful room snapshots are not emitted. Only a snapshot that recovers after a transient retry emits `recovered`, and a snapshot that ultimately fails emits `error`.
 
+## Operator incident workflow
+
+Use Vercel's log view/export to select the incident window and, whenever possible, the exact deployed SHA. Do not search for or export room codes, nicknames, player IDs, story text, or other user-entered values.
+
+The repository includes a deterministic summary tool for JSONL log exports:
+
+```bash
+npm run ops:observability-summary -- --file /path/to/vercel-logs.jsonl --release <40-char-sha>
+```
+
+The default mode is failures-only. It groups only allowlisted operational dimensions:
+
+- gameplay: `release`, `event`, `outcome`, `errorClass`, count
+- telemetry ingest: `release`, `reason`, HTTP `status`, count
+
+It accepts either the structured telemetry object directly on each JSONL line or common wrappers where the JSON log string is in `message`, `text`, or `msg`. Unknown records and invalid dimensions are ignored rather than echoed.
+
+Use `--all` only when a success/error denominator is needed for the same bounded incident window:
+
+```bash
+npm run ops:observability-summary -- --file /path/to/vercel-logs.jsonl --release <40-char-sha> --all
+```
+
+The output never reproduces arbitrary input fields, so even a malformed export containing a nickname, room code, installation key, or other unexpected field cannot make that value part of the operator summary. `scripts/qa/observability-operations-contract.mjs` regression-tests this boundary and runs under CI through `qa:observability`.
+
+### Triage order
+
+1. Confirm the exact `release` first. Do not mix releases in one diagnosis when a deployment boundary is known.
+2. Check `akher_kheit.telemetry_ingest` failures. A spike in `guard_unavailable` or `rate_limited` means the reporting channel itself is degraded or constrained and gameplay counts may be incomplete.
+3. Check gameplay `error` counts by event and `errorClass`. Prioritize `start`, `vote`, `resolve`, and `reconnect` because those can strand a full-game journey.
+4. Treat `recovered` reconnects as reliability degradation evidence, not gameplay failure. Compare them against errors only within the same release/window.
+5. Correlate any material spike with the exact release checks and release-preflight evidence before considering rollback/deploy action.
+
+Do not create numeric alert thresholds from local/test data. Alerting thresholds require production baseline evidence across multiple real windows so normal traffic variation is not encoded as a false operational contract.
+
 ## Operational query shape
 
 For gameplay events, Vercel logs contain JSON objects with `type: "akher_kheit.gameplay"`. Filter by that type, then by `release`, `event`, `outcome`, and `errorClass`.
@@ -67,4 +102,4 @@ Do not add user-entered values to either schema when investigating an incident; 
 
 ## Current limitation
 
-The telemetry endpoint is intentionally data-minimal and write-only to application logs; it is not an analytics warehouse. The installation boundary is designed to survive routine anonymous-auth churn, not deliberate storage resets or sophisticated distributed abuse. Stronger controls, if later justified by evidence, should be added without introducing gameplay identity or PII into telemetry.
+The telemetry endpoint is intentionally data-minimal and write-only to application logs; it is not an analytics warehouse. The operator summary is an incident-analysis helper over exported logs, not a persistent dashboard or alerting system. The installation boundary is designed to survive routine anonymous-auth churn, not deliberate storage resets or sophisticated distributed abuse. Stronger controls or alerting, if later justified by production evidence, should be added without introducing gameplay identity or PII into telemetry.
