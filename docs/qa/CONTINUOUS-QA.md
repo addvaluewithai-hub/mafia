@@ -3,96 +3,84 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 87 is a normal delivery session that completed the planned curated 8–10 launch-band breadth slice. The Session 86 checkpoint prerequisite was resolved first: handoff `aae794733dbd57f9c19bfb516025035b510dc09b` is Green in both `validate` and `qa`. The connected GitHub surface still has no authorized workflow-dispatch write action, so the guarded production release workflow was not bypassed.
+Session 88 is a bounded launch-readiness checkpoint performed after the 4–10 curated-library milestone completed. Session 87 prerequisite was resolved first: handoff `12f8bee51b2b4d9d98530359fb7fad0f2fe78eb2` is Green in both `validate` and `qa`.
 
 Core/full-game confidence remains strong for supported counts 4–10 with no known open P0 gameplay deadlock. Identity/gender/story contracts remain unchanged: nickname is visible identity, gender is wording-only, and mafia assignment/win probability are gender-independent.
 
-## Session 87 — 2026-09-13 — Delivery
+The 4–10 curated milestone is now complete at the current launch target: 21 reviewed exact-count cases, three per supported count; counts 6–10 span all three reviewed theme packs and 4–5 retain meaningful pack choice. 11–15 remain deliberately deferred.
+
+The highest launch blocker is still production release evidence. The repository has a guarded exact-SHA `Vercel Release Package` workflow whose preflight requires Green `validate` + `qa` and performs read-only production migration-ledger parity before packaging. This connected GitHub surface still exposes no authorized workflow-dispatch write action, so the gate was not bypassed and production parity/live smoke remain unproven.
+
+## Session 88 — 2026-09-14 — Checkpoint
 
 ### Starting evidence
 - Read in order from the default branch: `AGENTS.md`, `docs/qa/QA-OPERATING-MODE.md`, then this handoff.
-- `main` started at Session 86 handoff `aae794733dbd57f9c19bfb516025035b510dc09b`.
-- Exact-SHA checks for that handoff were resolved before new scope: `validate` = `completed/success`, `qa` = `completed/success`.
-- No newer failing gameplay check existed on `main`.
-- Authorized release workflow dispatch is still unavailable from this connected surface, so the checkpoint-directed fallback objective became active.
+- `main` started at Session 87 handoff `12f8bee51b2b4d9d98530359fb7fad0f2fe78eb2`.
+- Exact-SHA checks for that handoff were resolved before planning: `validate` = `completed/success`; `qa` = `completed/success`.
+- No newer failing gameplay/story check existed on `main`.
+- Checkpoint cadence is due because the curated 4–10 milestone ended; the operating mode explicitly calls for a checkpoint at milestone completion rather than forcing another implementation slice.
 
 ### Exact objective
-Complete the curated 8–10 launch band as one coherent vertical slice: add one reviewed exact-count case for each count in its missing theme pack (8 `work-records`, 9 `work-records`, 10 `home-social`), wire catalog/server registry, raise deterministic breadth contracts, refresh semantic/fairness evidence, and stop without opening 11–15 or unrelated features.
+Audit what is actually Green and launch-relevant after completion of the 4–10 curated milestone: production/release evidence, full-game coverage, story/content status, dependency and observability debt, and roadmap order. Produce the next 3–4 substantial objectives and one exact next-session priority without opening unrelated features or 11–15.
 
-### Reproduction / design finding
-The checkpoint established a breadth imbalance rather than a gameplay defect:
-- 8 players had `home-social` + `stage-events` but no `work-records` case.
-- 9 players had `stage-events` + `home-social` but no `work-records` case.
-- 10 players had `stage-events` + `work-records` but no `home-social` case.
+### Audit findings
+#### Core / full-game
+- No known open P0 gameplay deadlock was found in repository truth.
+- Session 87 exact-SHA CI and Game QA are Green, so the newly completed 4–10 content library is covered by the existing type/story/player-count/runtime suite.
+- The existing Game QA/full-game confidence remains the safety gate for create/join/start/reveal/clues/voting/ties/elimination/reconnect/Boss/winner/rematch paths. No evidence justified reopening those areas during this checkpoint.
 
-The smallest coherent completion therefore required three cases together. Splitting one count per hourly run would have artificially fragmented a single launch-band milestone.
+#### Production / DB parity
+- `.github/workflows/package-vercel-source.yml` is the authoritative release-preflight path and is `workflow_dispatch` only.
+- It accepts a full 40-character `release_sha`, checks out that exact SHA, and runs `scripts/release/preflight.mjs` before packaging.
+- `scripts/release/preflight.mjs` requires exact-SHA Green `validate` and `qa`, then performs a read-only query of `supabase_migrations.schema_migrations` and fails on missing/unexpected migration history.
+- This is the correct next launch evidence, but the connected GitHub tool surface available in this session has read/file-write actions and no workflow-dispatch action. No manual production connection, migration, deploy, restore, or bypass was attempted.
 
-### Code / content changes
-Added three exact-count curated cases:
-- `invoice-stamp` — 8 players / `work-records` / **ختم الفاتورة**. Two independent acts: removal of a stamped original invoice and later insertion of a deficient replacement. Shared paper/clip traces preserve innocent alternatives; cabinet and printer logs resolve the two acts separately.
-- `expense-ledger` — 9 players / `work-records` / **دفتر المصروفات**. Two independent acts: removing a ledger page and replacing an original receipt with an unsigned copy. Shared ruler/paper/record access remains ambiguous until camera + printer evidence.
-- `villa-guest-list` — 10 players / `home-social` / **قائمة ضيوف الفيلا**. Three independent acts: taking an access card, changing the seating sheet, and hiding the original guest list. Shared party-prep movement remains plausible until three separate final evidence sources resolve the actors.
+#### Story / curated content
+- `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md` covers all 21 current cases and records PASS semantic/fairness review for each.
+- Every exact count 4–10 now has three curated cases. Counts 6–10 span `home-social`, `stage-events`, and `work-records`; 4–5 already have meaningful pack choice.
+- Automated contracts keep exact-count/no-fallback behavior, catalog/server-registry agreement, file existence, and unsupported-count guards.
+- Result: the current 4–10 launch breadth milestone is complete. Additional stories should be driven by playtest/reliability evidence, not hourly activity.
 
-All three cases:
-- use real runtime nicknames as visible identity via the existing player mapping;
-- keep neutral semantic `role` values plus male/female wording variants;
-- do not use gender in mafia assignment or probability;
-- keep rounds 1–3 non-conclusive with real innocent alternatives;
-- reconnect every mafia semantic role explicitly in the final clue;
-- use natural spoken Egyptian Arabic and make difficulty come from ordering/timing rather than confusing wording.
+#### Dependency debt
+- The reviewed production dependency baseline remains 13 moderate, 0 high, 0 critical.
+- The known findings are concentrated in Expo / Expo Router transitive dependencies. Current npm remediation suggestions would move the app away from the supported Expo 57 stack, so forced audit fixes/framework downgrades are not deploy-safe.
+- CI already fails on any new vulnerability name, any high/critical finding, or a moderate count above the reviewed baseline. This is bounded launch debt, not the highest next implementation priority without a compatible upstream path.
 
-Shared integration changes:
-- `lib/story-catalog.ts` now contains 21 reviewed cases and registers the three new entries in the previously missing packs.
-- `lib/server-stories/index.ts` imports/registers all three so preset lookup and AI reference cases continue through the shared exact-count registry.
-- No schema, database migration, gameplay state machine, UI behavior, or supported-count range changed.
+#### Observability debt
+- Gameplay and telemetry-ingest logs are privacy-safe, release-correlated, bounded by allowlisted dimensions, and protected by CI contracts.
+- A deterministic operator summary exists for exported Vercel JSONL logs, with incident triage documented.
+- The remaining limitation is external/operational: no persistent analytics/alerting baseline exists. The runbook explicitly avoids inventing thresholds from local/test data. Alerting should wait for real production windows rather than speculative implementation.
 
-### Test / contract changes
-Updated `scripts/qa/curated-player-count-contract.mjs`:
-- exact catalog total raised from 18 to 21;
-- every supported exact count 4–10 now requires exactly three curated cases;
-- counts 6–10 must span all three reviewed theme packs;
-- existing file-existence, catalog/registry consistency, exact-count filtering, no-fallback, create-room range, and unsupported 11–12 guards remain intact.
-
-Updated `docs/qa/CURATED-STORY-FAIRNESS-REVIEW.md` to cover all 21 cases and record explicit semantic review for the three new stories.
+### Code / database / test / doc changes
+- Checkpoint only: no product code, schema, migration, UI, story content, or test behavior changed.
+- Updated only this handoff to preserve the audit, roadmap, deploy-safety state, and exact next-session priority.
 
 ### Commits
-- `0fa4a7c8902ca2b536308db85552d025656e883b` — `content: add 8-player work-records case`.
-- `0e34723d1b479e5268357a980e5b9d16a71953b2` — `content: add 9-player work-records case`.
-- `d6e4e811e3856ca579f9655e46f2f925a9e9a510` — `content: add 10-player home-social case`.
-- `79dc1d902dc02a06cd07036acfaf51277959e59a` — `content: register 8-10 launch cases`.
-- `f853f34d5589f4e19dae6fd2f53b9c816aeadde1` — `content: register 8-10 server stories`.
-- `1ad9809f158aa877a497d670b3a281e5f0cab9b8` — `qa: require complete 4-10 curated breadth`.
-- `e03ccdff4cf3b1aaa1ae330d17cc035b32e85b1d` — `docs: review completed 4-10 curated library`.
-- Session 87 final handoff: this commit (`docs: record 8-10 curated completion`).
+- Session 88 checkpoint handoff: this commit (`docs: checkpoint completed 4-10 launch milestone`).
 
 ### Check / test results
 Prerequisite:
-- Session 86 handoff `aae794733dbd57f9c19bfb516025035b510dc09b`: `validate` = `completed/success`; `qa` = `completed/success`.
+- Session 87 handoff `12f8bee51b2b4d9d98530359fb7fad0f2fe78eb2`: `validate` = `completed/success`; `qa` = `completed/success`.
 
-Latest implementation/documentation descendant `e03ccdff4cf3b1aaa1ae330d17cc035b32e85b1d` at last inspection:
-- `validate`: `queued` (run `34781060463`).
-- `qa`: `queued` (run `34781060455`).
-
-Resulting checks are not yet Green, so this session does not make a new deploy-safe claim. If a real story/type/player-count failure appears, it must be fixed before any new objective; do not delete a case or weaken the critic/coverage contract merely to turn CI Green.
+Resulting checkpoint-documentation SHA must still receive its own normal repository checks. If they are still pending at handoff time, do not treat this SHA as a new deploy-safe release candidate.
 
 ### Newly discovered bugs / risks
-- No new gameplay P0 was discovered.
-- The 4–10 curated breadth gap is now closed in repository content: every exact count has three cases; 6–10 cover all three packs.
-- The three new cases still require resulting CI/Game QA to prove syntax/type/story-critic/runtime compatibility; checks are currently pending.
-- Production migration parity and guarded live smoke remain unproven because authorized workflow dispatch is unavailable from this surface.
-- Dependency security remains at the reviewed bounded baseline (13 moderate, 0 high, 0 critical as last audited); observability remains privacy-safe/log-based. Neither justified unrelated work in this content session.
+- No new gameplay P0 or story correctness defect was discovered.
+- Production migration parity and live-smoke evidence remain unproven because authorized release workflow dispatch is unavailable from this connected surface.
+- Dependency debt remains bounded at the reviewed moderate-only baseline but should be revisited when a compatible Expo/Router remediation exists.
+- Observability is sufficient for bounded incident investigation, but launch alert thresholds cannot be justified before real production baseline data exists.
+- Continuing to add curated cases to 4–10 now would create quantity without evidence-backed product value; 11–15 expansion remains intentionally deferred.
 
 ### Deploy safety
 - No Production deploy, restore, migration, database write, provider mutation, or release workflow dispatch was performed.
-- This session is **not deploy-safe yet** because resulting `validate`/`qa` are still pending and production release evidence remains unavailable.
-- Do not apply production changes without the repository release safety gate and explicit Green handoff evidence.
+- The prerequisite product/content state is Green in CI/Game QA, but production release evidence is still incomplete.
+- This checkpoint itself does not make a new deploy-safe claim until its resulting repository checks are Green; even then, production deployment remains gated by exact-SHA release preflight and live-smoke evidence.
 
-### Roadmap impact
-- Milestone A / Core Stable: unchanged and Green locally/CI through the prerequisite.
-- Milestone B / Identity & Story Contract Stable: unchanged.
-- Milestone C / Story Quality: expanded human semantic/fairness review to all 21 current cases.
-- Milestone D / Curated Case Library: the targeted 4–10 launch breadth is now complete in repository content. Every exact count 4–10 has three reviewed cases; 6–10 span all three theme packs. 11–15 remain deliberately deferred.
-- Launch readiness: production exact-SHA parity/live-smoke evidence remains the highest external blocker. New gameplay features and LLM discussion expansion remain deferred.
+### Roadmap impact / next milestones
+1. **Production release evidence** — when authorized workflow dispatch is available, run one guarded exact-SHA release-preflight for a Green `main` SHA, capture migration-parity evidence, package the exact source, and perform only the documented live smoke; stop on any parity/check failure.
+2. **Evidence-driven launch defects** — after real preflight/smoke or production evidence exists, fix the first material gameplay/reliability/observability defect as one vertical slice with regression coverage. Do not invent features to fill sessions.
+3. **Compatible dependency remediation** — when Expo/Expo Router provides a supported path that removes reviewed vulnerabilities without runtime downgrade, take one dependency-hardening slice with Expo Doctor, TypeScript, CI, and Game QA proof, then tighten the baseline.
+4. **Post-evidence polish** — only after release evidence is established, use real playtest/production signals to choose UX polish or story rewrites. Keep 11–15 and unrelated new gameplay features deferred until evidence justifies them.
 
 ## Exact next-session priority
-First resolve exact-SHA `validate` and `qa` for the Session 87 implementation/handoff descendant. If any real failure exists, fix exactly the first meaningful story/type/player-count/runtime regression without weakening tests or removing the new cases. If Green and an authorized release workflow dispatch becomes available, execute one guarded exact-SHA release-preflight + live-smoke session only. If Green and dispatch remains unavailable, perform one bounded launch-readiness checkpoint: reassess production-evidence blockers, the now-complete 4–10 curated milestone, dependency/observability debt, and choose the next evidence-backed objective without opening 11–15 or unrelated gameplay features.
+First resolve exact-SHA `validate` and `qa` for this Session 88 checkpoint handoff. If any real failure exists, fix exactly the first meaningful regression before new scope. If Green and an authorized release workflow dispatch is available, execute one guarded exact-SHA release-preflight + documented live-smoke session only. If Green and dispatch remains unavailable, do not manufacture content/features: perform one bounded launch-evidence/dependency reconnaissance session only if repository truth exposes a new actionable compatible remediation or failure; otherwise preserve the current roadmap and blocker in the handoff without production mutation.
