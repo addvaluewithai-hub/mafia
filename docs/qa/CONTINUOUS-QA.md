@@ -3,68 +3,79 @@
 Read `AGENTS.md` and `docs/qa/QA-OPERATING-MODE.md` first. Git history contains earlier session detail.
 
 ## Current state
-Session 80 is a delivery session focused only on Supabase local configuration/runtime compatibility. Core/full-game confidence remains strong for supported counts 4–10; no P0 gameplay regression was present at session start.
+Session 81 is a delivery session focused only on operational observability readiness. Core/full-game confidence remains strong for supported counts 4–10; no P0 gameplay regression was present at session start.
 
-The Session 79 checkpoint SHA `9c64d104d094b8d2f0a808a657fe418c40229e66` is fully Green:
-- `validate`: `completed/success` (run `34757319107`).
-- `qa`: `completed/success` (run `34757319089`).
+The Session 80 handoff SHA `01a0eefca82204354c6e681e5150876ab3dda90a` is fully Green:
+- `validate`: `completed/success` (run `34760270198`).
+- `qa`: `completed/success` (run `34760270182`).
 
 The connected GitHub surface still exposes no authorized workflow-dispatch action, so production release preflight/live smoke was not bypassed or simulated.
 
-## Session 80 — 2026-09-13 — Delivery
+## Session 81 — 2026-09-13 — Delivery
 
 ### Starting evidence
 - Read, in order, `AGENTS.md`, `docs/qa/QA-OPERATING-MODE.md`, and this handoff from the default branch.
-- `main` started at `9c64d104d094b8d2f0a808a657fe418c40229e66`.
+- `main` started at `01a0eefca82204354c6e681e5150876ab3dda90a`.
 - Resolved the prerequisite first: exact-SHA `validate` and `qa` are both `completed/success`.
-- Confirmed `supabase/config.toml` still contained the legacy disabled `[inbucket]` section identified by Session 79.
+- Confirmed existing telemetry already emits bounded privacy-safe gameplay and ingest-failure JSON logs, but the operator guidance stopped at query dimensions and did not provide a deterministic incident-summary workflow.
 - No authorized release workflow-dispatch write action is available from the connected GitHub tool surface, so the handoff fallback objective applies.
 
 ### Exact objective
-Replace the deprecated local Supabase `[inbucket]` configuration safely, preserve gameplay-required local services, prove compatibility through the existing clean local Supabase/Game QA startup path, and add regression protection so the deprecated config cannot silently return.
+Turn the existing privacy-safe structured logs into a bounded operator-facing incident workflow: add a deterministic failure-summary tool, regression-test its privacy/filtering behavior, wire the contract into CI, and document a release-scoped triage sequence without inventing production alert thresholds.
 
 ### Reproduction / design finding
-- The legacy configuration was isolated to a disabled `[inbucket]` block; removing it does not change gameplay schema, migrations, auth semantics, storage behavior, or production configuration.
-- Game QA already has the strongest appropriate runtime proof for this objective: pinned Supabase CLI `2.117.0`, `supabase start`, browser journeys, and all RPC E2E tests run against that clean local stack.
-- Therefore the safest vertical slice is config cleanup + a static config contract + running that contract before local Supabase startup in Game QA, rather than introducing a new runtime path.
+- Existing gameplay logs already expose the right bounded dimensions: `release`, `event`, `outcome`, and coarse `errorClass`; telemetry-ingest logs expose `release`, allowlisted `reason`, and HTTP `status`.
+- The operational gap was consumption rather than instrumentation: an operator had to manually aggregate exported logs and could accidentally echo unrelated fields while doing so.
+- Production traffic baselines are not available in repository truth, so numeric alert thresholds would be speculative. The safe slice is deterministic aggregation + triage/runbook + CI privacy protection, while deferring alert thresholds until live evidence exists.
 
 ### Code / database / test / doc changes
-- Removed the deprecated `[inbucket]` / `enabled = false` section from `supabase/config.toml`.
-- Added `scripts/qa/supabase-config-contract.mjs` which fails if `[inbucket]` returns and also asserts the gameplay-required local API, DB, auth, and anonymous-auth configuration remains explicit.
-- Added a `Supabase config contract` step to Game QA immediately before installing/starting the pinned Supabase CLI, so configuration drift fails before runtime E2E.
-- No schema, migration, gameplay code, story content, dependency version, or production configuration changed.
+- Added `scripts/operations/observability-summary.mjs`:
+  - reads JSONL from `--file` or stdin;
+  - accepts direct structured telemetry records and common `message`/`text`/`msg` wrappers;
+  - defaults to failures/recoveries only, with optional `--all` for a bounded denominator;
+  - supports exact `--release` filtering;
+  - outputs aggregate counts only for allowlisted operational dimensions and never echoes arbitrary input fields.
+- Added `scripts/qa/observability-operations-contract.mjs` with deterministic fixture coverage for release filtering, gameplay errors, reconnect recovery, telemetry-ingest failures, optional success inclusion, and non-echoing of injected nickname/room-code/installation-key values.
+- Extended `qa:observability` so both instrumentation privacy and operator-workflow contracts run together.
+- Updated CI naming to make the combined privacy/operations contract explicit.
+- Expanded `docs/operations/OBSERVABILITY.md` with exact CLI usage, release-scoped triage order, telemetry-channel caveats, and an explicit rule not to derive alert thresholds from local/test evidence.
+- No gameplay logic, schema, migration, story content, dependency version, production configuration, or telemetry payload schema changed.
 - No Production deploy, restore, migration, DB write, provider mutation, or release workflow dispatch was performed.
 
 ### Commits
-- `abeaf79ecc0a3a39d0accb1bbc9361323f2b16af` — add Supabase config regression contract.
-- `21828adb67ff045e1fae26bb0f3587c4b2690fa2` — remove deprecated local `[inbucket]` config.
-- `c9b62a8dfaf2c08ff4f5c85164a55c05c75bec50` — run config contract in Game QA before Supabase startup.
-- Session 80 handoff commit: this commit (`docs: record Supabase config compatibility session`).
+- `4f5b5c200c6dd862fa4c1e76a249a2e0bfb9caf9` — add privacy-safe observability summary tool.
+- `d771679d3b6a90adc647a24b7d677746469721ee` — add operator observability regression contract.
+- `c249f8fa13419eb2cb1de1b682a5b3ea76a704bc` — expose the operator tool and combine observability QA contracts.
+- `dd0ec3df974f5b614a968fd64d84f40b06edb958` — enforce the combined observability contract in CI.
+- `48c8284580ead1ff7c6656d91be44f9ccfc4ad1d` — document the operator incident workflow.
+- Session 81 handoff commit: this commit (`docs: record observability operations session`).
 
 ### Check / test results
-Starting SHA `9c64d104d094b8d2f0a808a657fe418c40229e66`:
+Starting SHA `01a0eefca82204354c6e681e5150876ab3dda90a`:
 - `validate`: `completed/success`.
 - `qa`: `completed/success`.
 
-Implementation SHA `c9b62a8dfaf2c08ff4f5c85164a55c05c75bec50` at the last inspection:
-- `validate`: `queued` (run `34760243861`).
-- Game QA / `qa` had not yet appeared in the exact-SHA check-runs response at that instant.
+Implementation/documentation SHA `48c8284580ead1ff7c6656d91be44f9ccfc4ad1d` at the last inspection:
+- `validate`: `queued` (run `34763124275`).
+- `qa`: `queued` (run `34763124255`).
 
-Because resulting checks are not yet Green, this session does not claim deploy safety. The next session must resolve these exact-SHA checks before any new objective or release action.
+Because resulting checks are not yet Green, this session does not claim deploy safety. The next session must resolve these exact-SHA checks and the handoff descendant before any new objective or release action.
 
 ### Newly discovered bugs / risks
 - No new P0 gameplay bug was discovered.
-- Runtime compatibility of the cleaned config is pending the resulting Game QA run; do not infer success before `supabase start` and the downstream E2E suite are Green.
+- The new operator summary is intentionally an offline/log-export helper, not a durable dashboard, analytics warehouse, or alerting system.
+- JSONL wrapper support is deliberately narrow (`message`, `text`, `msg`); unknown shapes are ignored rather than guessed or echoed.
 - Production migration parity and guarded live smoke remain unproven because the approved manual release workflow cannot be dispatched from the current connected surface.
-- Existing moderate-only npm dependency debt and application-log-based observability remain launch debt, but neither was expanded in this session.
+- Numeric alert thresholds remain intentionally undefined until multiple real production windows provide a baseline.
+- Existing moderate-only npm dependency debt remains launch debt but was not expanded in this session.
 
 ### Deploy safety
-- Not deploy-safe from this session yet: implementation checks are pending and production release preflight/live smoke were not executed.
+- Not deploy-safe from this session yet: resulting checks are pending and production release preflight/live smoke were not executed.
 - Do not deploy, restore services, or apply production migrations from this state.
 
 ### Roadmap impact
 1. **Guarded exact-SHA release preflight + live smoke** remains the highest-value launch gate whenever an authorized dispatch path becomes available.
-2. **Operational observability readiness** follows live evidence: define operator-facing failure queries/runbook and only evidence-justified alerting.
+2. **Production-evidenced observability thresholds/durable alerting** should follow only after live windows exist; the operator query/runbook foundation is now implemented.
 3. **Launch dependency/content readiness**: compatible Expo-stack dependency review, then curated-case breadth reassessment for 4–10.
 4. Keep LLM discussion and 11–15 expansion deferred until launch gates close or product evidence changes priority.
 
@@ -74,7 +85,8 @@ Because resulting checks are not yet Green, this session does not claim deploy s
 - Story critic passes the current curated set; LLM discussion and 11–15 remain deliberately deferred.
 - CI/tooling is reproducible: lockfile-backed `npm ci`, immutable GitHub Action SHAs, exact Supabase CLI, and pinned Playwright runtime.
 - Gameplay telemetry and telemetry-ingest failures have bounded privacy-safe operational evidence.
-- Deprecated local `[inbucket]` configuration has now been removed and guarded against regression; runtime proof is pending Session 80 checks.
+- Deprecated local `[inbucket]` configuration has been removed and its runtime path is Green from Session 80.
+- Operator-facing observability now has a deterministic release-scoped JSONL summary tool, CI privacy/filtering regression coverage, and a bounded incident triage runbook; production baselines/alerting remain intentionally deferred.
 
 ## Exact next-session priority
-First resolve exact-SHA CI/Game QA for `c9b62a8dfaf2c08ff4f5c85164a55c05c75bec50` and the Session 80 handoff descendant. If either fails, fix exactly the first meaningful Supabase config/runtime compatibility regression before new scope. If both are Green and an authorized exact-SHA release workflow dispatch is available, execute one guarded release-preflight + live-smoke session only. If both are Green and dispatch is still unavailable, execute one operational observability-readiness vertical slice focused on an operator-facing failure query/runbook using the existing privacy-safe structured logs; do not add speculative alerting without production evidence, LLM discussion, or 11–15 expansion.
+First resolve exact-SHA CI/Game QA for `48c8284580ead1ff7c6656d91be44f9ccfc4ad1d` and the Session 81 handoff descendant. If either fails, fix exactly the first meaningful observability-tool/CI compatibility regression before new scope. If both are Green and an authorized exact-SHA release workflow dispatch is available, execute one guarded release-preflight + live-smoke session only. If both are Green and dispatch is still unavailable, execute one launch dependency/content-readiness vertical slice based on repository evidence, preferring compatible dependency-risk reduction before expanding curated content; do not add speculative alert thresholds, LLM discussion, or 11–15 expansion.
